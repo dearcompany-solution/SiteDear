@@ -986,15 +986,7 @@ function htmlReport(){
    보고서 데이터 로드 & 렌더
 ════════════════════════════════════════ */
 async function fetchReportData(month){
-  /* ── Supabase 연동 시 아래 주석 해제 ──
-  try {
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/ad_reports?month=eq.${month}&select=*`,{
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-    });
-    const rows=await res.json();
-    if(rows&&rows.length>0)return JSON.parse(rows[0].report_json);
-  } catch(e){console.warn('Supabase fetch 실패, 로컬 데이터 사용',e);}
-  ── 여기까지 ── */
+  
   return REPORT_DATA[month]||null;
 }
 
