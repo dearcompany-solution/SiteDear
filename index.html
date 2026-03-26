@@ -2024,21 +2024,38 @@ function openEditClient(id){
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function saveEditClient(id){
+async function saveEditClient(id){
   const c=ACCOUNTS.find(a=>a.id===id);
   if(!c)return;
   const name=document.getElementById('ec-name').value.trim();
   if(!name){toast('⚠️ 업체명을 입력해주세요');return;}
-  c.company=name;
-  c.name=name;
-  c.manager=document.getElementById('ec-mgr').value;
-  c.url=document.getElementById('ec-url').value.trim();
-  c.cid=document.getElementById('ec-cid').value.trim();
+  const mgr=document.getElementById('ec-mgr').value;
+  const url=document.getElementById('ec-url').value.trim();
+  const cid=document.getElementById('ec-cid').value.trim();
   const pw=document.getElementById('ec-pw').value;
-  if(pw)c.pw=pw;
-  closeModal();
-  toast(`✅ ${name} 정보가 수정되었습니다`);
-  renderContent('admin');
+
+  try{
+    // Supabase 업데이트
+    const body={company_name:name, manager:mgr, store_url:url, client_code:cid};
+    if(pw)body.password=pw;
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
+      {method:'PATCH',
+       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+       body:JSON.stringify(body)}
+    );
+    if(!res.ok)throw new Error(await res.text());
+
+    // 로컬 ACCOUNTS도 동기화
+    c.company=name; c.name=name; c.manager=mgr; c.url=url; c.cid=cid;
+    if(pw)c.pw=pw;
+
+    closeModal();
+    toast(`✅ ${name} 정보가 수정되었습니다`);
+    renderContent('admin');
+  }catch(err){
+    toast('❌ 수정 실패: '+err.message);
+  }
 }
 
 /* ── 클라이언트 삭제 ── */
@@ -2063,15 +2080,30 @@ function confirmDeleteClient(id){
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function deleteClient(id){
+async function deleteClient(id){
   const idx=ACCOUNTS.findIndex(a=>a.id===id);
   if(idx===-1)return;
   const name=ACCOUNTS[idx].company;
-  ACCOUNTS.splice(idx,1);
-  if(activeClientId===id)activeClientId=null;
-  closeModal();
-  toast(`🗑 ${name} 계정이 삭제되었습니다`);
-  renderContent('admin');
+
+  try{
+    // Supabase 삭제
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
+      {method:'DELETE',
+       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+    );
+    if(!res.ok)throw new Error(await res.text());
+
+    // 로컬 ACCOUNTS도 동기화
+    ACCOUNTS.splice(idx,1);
+    if(activeClientId===id)activeClientId=null;
+
+    closeModal();
+    toast(`🗑 ${name} 계정이 삭제되었습니다`);
+    renderContent('admin');
+  }catch(err){
+    toast('❌ 삭제 실패: '+err.message);
+  }
 }
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
