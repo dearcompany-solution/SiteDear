@@ -617,6 +617,8 @@ function doLogin(){
   const acc=ACCOUNTS.find(a=>a.id===id&&a.pw===pw);
   if(!acc){document.getElementById('lerr').style.display='block';return;}
   currentUser=acc;
+  sessionStorage.setItem('currentUser', JSON.stringify(acc));
+  sessionStorage.setItem('currentPage', 'combined');
   document.getElementById('lerr').style.display='none';
   document.getElementById('loginPage').style.display='none';
   document.getElementById('appShell').style.display='block';
@@ -624,6 +626,7 @@ function doLogin(){
 }
 function doLogout(){
   currentUser=null;activeClientId=null;destroyCharts();
+  sessionStorage.clear();
   document.getElementById('appShell').style.display='none';
   document.getElementById('loginPage').style.display='flex';
   document.getElementById('lid').value='';document.getElementById('lpw').value='';
@@ -713,6 +716,7 @@ function go(id,el){
     toast('⚠️ 먼저 클라이언트를 선택해주세요');return;
   }
   setActive(id);
+  sessionStorage.setItem('currentPage', id);
   const t=pageTitles[id]||['대시보드',''];
   document.getElementById('pgTitle').textContent=t[0];
   document.getElementById('pgSub').textContent=t[1];
@@ -1590,6 +1594,18 @@ document.addEventListener('click',e=>{
   const overlay=document.getElementById('pdfOverlay');
   if(overlay&&e.target===overlay)closePdfOverlay();
 });
+/* ── 새로고침 시 로그인 상태 복원 ── */
+(function(){
+  const saved = sessionStorage.getItem('currentUser');
+  const savedPage = sessionStorage.getItem('currentPage') || 'combined';
+  if(saved){
+    currentUser = JSON.parse(saved);
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('appShell').style.display='block';
+    initApp();
+    setTimeout(()=>{ go(savedPage, null); setActive(savedPage); }, 150);
+  }
+})();
 </script>
 </body>
 </html>
