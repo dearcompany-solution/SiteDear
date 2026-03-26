@@ -635,7 +635,7 @@ function doLogout(){
 /* ════════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
-function initApp(){
+function initApp(restorePage){
   if(currentUser.role==='admin'){
     renderAdminNav();
     setSb('DEARCOMPANY 관리자','admin','관리자');
@@ -643,9 +643,10 @@ function initApp(){
     renderClientNav();
     setSb(currentUser.company,currentUser.cid||currentUser.id,'광고 운영 중');
   }
-  renderContent('combined');
+  const page = restorePage || 'combined';
+  renderContent(page);
   setTimeout(renderCharts,100);
-  setActive('combined');
+  setActive(page);
 }
 function setSb(name,id,st){
   document.getElementById('sbName').textContent=name;
@@ -1602,8 +1603,7 @@ document.addEventListener('click',e=>{
     currentUser = JSON.parse(saved);
     document.getElementById('loginPage').style.display='none';
     document.getElementById('appShell').style.display='block';
-    initApp();
-    setTimeout(()=>{ go(savedPage, null); setActive(savedPage); }, 150);
+    initApp(savedPage);
   }
 })();
 </script>
