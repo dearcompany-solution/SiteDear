@@ -2123,10 +2123,10 @@ function openEditClient(id){
 }
 
 async function saveEditClient(id){
+  // 1. 수정할 클라이언트 찾기
   const c = ACCOUNTS.find(a => a.id === id);
   if(!c) return;
 
-  // 1. 입력창의 현재 값들을 가져옴
   const name = document.getElementById('ec-name').value.trim();
   const mgr = document.getElementById('ec-mgr').value;
   const url = document.getElementById('ec-url').value.trim();
@@ -2138,30 +2138,27 @@ async function saveEditClient(id){
     return;
   }
 
-  toast('💾 Supabase DB에 영구 저장 중...');
+  toast('💾 DB 저장 시도 중...');
 
   try {
-    // 2. DB에 업데이트할 데이터 객체 구성
     const updateData = {
       company_name: name,
       manager: mgr,
       store_url: url,
       client_code: cid
     };
-
-    // 비밀번호가 입력된 경우에만 포함
     if(pw) updateData.password = pw;
 
-    // 3. Supabase PATCH 요청 실행
+    // 2. Supabase PATCH 요청 (id를 통해 정확한 행을 타겟팅)
+    // ⚠️ 핵심: client_key=eq.${id} 부분이 DB의 실제 ID와 정확히 일치해야 합니다.
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
+      `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${encodeURIComponent(id)}`,
       {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'Prefer': 'return=minimal'
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
         },
         body: JSON.stringify(updateData)
       }
@@ -2169,10 +2166,11 @@ async function saveEditClient(id){
 
     if(!res.ok) {
       const errorDetail = await res.text();
-      throw new Error(errorDetail);
+      console.error('DB 응답 에러:', errorDetail);
+      throw new Error('DB 응답 실패');
     }
 
-    // 4. DB 저장 성공 시에만 로컬 데이터 업데이트 (이게 핵심)
+    // 3. DB 저장 성공 확인 후 화면 데이터 업데이트
     c.company = name;
     c.name = name;
     c.manager = mgr;
@@ -2181,14 +2179,14 @@ async function saveEditClient(id){
     if(pw) c.pw = pw;
 
     closeModal();
-    toast(`✅ ${name} 정보가 DB에 저장되었습니다. 새로고침해도 유지됩니다.`);
+    toast(`✅ [${name}] 정보가 DB에 영구 저장되었습니다.`);
     
-    // 리스트 화면 갱신
+    // 리스트 화면 즉시 갱신
     if(typeof renderContent === 'function') renderContent('admin');
 
   } catch(err) {
-    console.error('DB 저장 실패:', err);
-    toast('❌ DB 저장 실패! 보안 정책(RLS)을 확인하세요.');
+    console.error('최종 저장 실패:', err);
+    toast('❌ 저장 실패! (콘솔 에러를 확인하세요)');
   }
 }
 
