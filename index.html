@@ -1714,31 +1714,77 @@ function parseExcelFile(idx){
 }
 
 async function saveToSupabase(idx){
-  const f=uploadedFiles[idx];
-  if(!f||!f.parsed||!f.parsed.length){toast('⚠️ 먼저 파싱을 완료해주세요');return;}
-  toast('☁️ Supabase에 저장 중...');
-  try{
-    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'};
-    const daily=f.parsed.filter(r=>r.data_type==='daily');
-    const keyword=f.parsed.filter(r=>r.data_type==='keyword');
-    const hourly=f.parsed.filter(r=>r.data_type==='hourly');
-    if(daily.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{method:'POST',headers,body:JSON.stringify(daily)});if(!res.ok)throw new Error(await res.text());}
-    if(keyword.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/keyword_reports`,{method:'POST',headers,body:JSON.stringify(keyword)});if(!res.ok)throw new Error(await res.text());}
-    if(hourly.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/hourly_reports`,{method:'POST',headers,body:JSON.stringify(hourly)});if(!res.ok)throw new Error(await res.text());}
-    if(daily.length){
-      const tot=(k)=>daily.reduce((s,r)=>s+(r[k]||0),0);
-      const tc=tot('cost'),tr=tot('rev');
-      await fetch(`${SUPABASE_URL}/rest/v1/ad_reports`,{method:'POST',headers,body:JSON.stringify([{
-        client_key:f.client,month:f.month,period_label:f.month.replace('-','년 ')+'월',
-        total_imp:tot('imp'),total_click:tot('click'),total_cost:tc,total_conv:tot('conv'),total_rev:tr,
-        roas:tc>0?+(tr/tc).toFixed(2):0,mom_click:0,mom_cost:0,mom_rev:0,mom_roas:0,
-        report_json:JSON.stringify({channels:[],weekly:[],hourly:[],topKeywords:[],insights:[]})
-      }])});
+  const f = uploadedFiles[idx];
+  if(!f || !f.parsed || !f.parsed.length){
+    toast('⚠️ 먼저 파싱을 완료해주세요');
+    return;
+  }
+
+  // 삭제와 저장을 동시에 진행하므로 안내 메시지 변경
+  toast(`☁️ [${f.month}] 기존 데이터 삭제 후 새 데이터 저장 중...`);
+
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    };
+
+    // 1️⃣ [추가된 로직] 기존 데이터 삭제
+    // 해당 업체(client_key)와 해당 월(month)이 일치하는 데이터를 모든 테이블에서 삭제
+    const deleteParams = `client_key=eq.${f.client}&month=eq.${f.month}`;
+    const tables = ['daily_reports', 'keyword_reports', 'hourly_reports', 'ad_reports'];
+
+    for (const table of tables) {
+      await fetch(`${SUPABASE_URL}/rest/v1/${table}?${deleteParams}`, {
+        method: 'DELETE',
+        headers: headers
+      });
     }
-    uploadedFiles[idx].status='저장완료';
-    renderContent('input');setTimeout(renderUploadTab,50);
-    toast(`✅ Supabase 저장 완료! (${f.parsed.length}건)`);
-  }catch(err){console.error(err);toast('❌ 저장 실패: '+err.message);}
+
+    // 2️⃣ 데이터 분류 (기존과 동일)
+    const daily = f.parsed.filter(r => r.data_type === 'daily');
+    const keyword = f.parsed.filter(r => r.data_type === 'keyword');
+    const hourly = f.parsed.filter(r => r.data_type === 'hourly');
+
+    // 3️⃣ 새 데이터 저장 (POST)
+    if(daily.length){
+      await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`, { method: 'POST', headers, body: JSON.stringify(daily) });
+    }
+    if(keyword.length){
+      await fetch(`${SUPABASE_URL}/rest/v1/keyword_reports`, { method: 'POST', headers, body: JSON.stringify(keyword) });
+    }
+    if(hourly.length){
+      await fetch(`${SUPABASE_URL}/rest/v1/hourly_reports`, { method: 'POST', headers, body: JSON.stringify(hourly) });
+    }
+
+    // 4️⃣ 월간 요약 리포트(ad_reports) 재생성
+    if(daily.length){
+      const tot = (k) => daily.reduce((s, r) => s + (r[k] || 0), 0);
+      const tc = tot('cost'), tr = tot('rev');
+      await fetch(`${SUPABASE_URL}/rest/v1/ad_reports`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify([{
+          client_key: f.client, month: f.month,
+          period_label: f.month.replace('-', '년 ') + '월',
+          total_imp: tot('imp'), total_click: tot('click'), total_cost: tc,
+          total_conv: tot('conv'), total_rev: tr,
+          roas: tc > 0 ? +(tr / tc).toFixed(2) : 0,
+          report_json: JSON.stringify({ channels: [], weekly: [], hourly: [], topKeywords: [], insights: [] })
+        }])
+      });
+    }
+
+    uploadedFiles[idx].status = '저장완료';
+    renderContent('input');
+    setTimeout(renderUploadTab, 50);
+    toast(`✅ [${f.month}] 데이터가 성공적으로 교체되었습니다!`);
+
+  } catch(err) {
+    console.error(err);
+    toast('❌ 데이터 교체 실패: ' + err.message);
+  }
 }
 
 async function saveAllParsed(){
