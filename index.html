@@ -1720,8 +1720,7 @@ async function saveToSupabase(idx){
     return;
   }
 
-  // 삭제와 저장을 동시에 진행하므로 안내 메시지 변경
-  toast(`☁️ [${f.month}] 기존 데이터 삭제 후 새 데이터 저장 중...`);
+  toast(`🔍 [${f.month}] 중복 데이터 확인 및 저장 중...`);
 
   try {
     const headers = {
@@ -1730,60 +1729,47 @@ async function saveToSupabase(idx){
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
     };
 
-    // 1️⃣ [추가된 로직] 기존 데이터 삭제
-    // 해당 업체(client_key)와 해당 월(month)이 일치하는 데이터를 모든 테이블에서 삭제
-    const deleteParams = `client_key=eq.${f.client}&month=eq.${f.month}`;
-    const tables = ['daily_reports', 'keyword_reports', 'hourly_reports', 'ad_reports'];
+    // 1️⃣ 현재 DB에 저장된 해당 월의 데이터 목록을 가져옴 (중복 체크용)
+    const checkRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${f.client}&month=eq.${f.month}&select=date,campaign_type,device`,
+      { headers }
+    );
+    const existingData = await checkRes.json();
 
-    for (const table of tables) {
-      await fetch(`${SUPABASE_URL}/rest/v1/${table}?${deleteParams}`, {
-        method: 'DELETE',
-        headers: headers
-      });
-    }
+    // 2️⃣ 중복 데이터 필터링 함수
+    // 날짜 + 캠페인 + 기기 조합이 DB에 없는 것만 골라냄
+    const isNew = (item) => !existingData.some(old => 
+      old.date === item.date && 
+      old.campaign_type === item.campaign_type && 
+      old.device === item.device
+    );
 
-    // 2️⃣ 데이터 분류 (기존과 동일)
-    const daily = f.parsed.filter(r => r.data_type === 'daily');
-    const keyword = f.parsed.filter(r => r.data_type === 'keyword');
-    const hourly = f.parsed.filter(r => r.data_type === 'hourly');
+    const dailyNew = f.parsed.filter(r => r.data_type === 'daily' && isNew(r));
+    const keywordNew = f.parsed.filter(r => r.data_type === 'keyword'); // 키워드는 통상 전체 교체 권장
+    const hourlyNew = f.parsed.filter(r => r.data_type === 'hourly');
 
-    // 3️⃣ 새 데이터 저장 (POST)
-    if(daily.length){
-      await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`, { method: 'POST', headers, body: JSON.stringify(daily) });
-    }
-    if(keyword.length){
-      await fetch(`${SUPABASE_URL}/rest/v1/keyword_reports`, { method: 'POST', headers, body: JSON.stringify(keyword) });
-    }
-    if(hourly.length){
-      await fetch(`${SUPABASE_URL}/rest/v1/hourly_reports`, { method: 'POST', headers, body: JSON.stringify(hourly) });
-    }
-
-    // 4️⃣ 월간 요약 리포트(ad_reports) 재생성
-    if(daily.length){
-      const tot = (k) => daily.reduce((s, r) => s + (r[k] || 0), 0);
-      const tc = tot('cost'), tr = tot('rev');
-      await fetch(`${SUPABASE_URL}/rest/v1/ad_reports`, {
+    // 3️⃣ 새로운 데이터가 있을 때만 저장 진행
+    if(dailyNew.length > 0){
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`, {
         method: 'POST',
-        headers: headers,
-        body: JSON.stringify([{
-          client_key: f.client, month: f.month,
-          period_label: f.month.replace('-', '년 ') + '월',
-          total_imp: tot('imp'), total_click: tot('click'), total_cost: tc,
-          total_conv: tot('conv'), total_rev: tr,
-          roas: tc > 0 ? +(tr / tc).toFixed(2) : 0,
-          report_json: JSON.stringify({ channels: [], weekly: [], hourly: [], topKeywords: [], insights: [] })
-        }])
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(dailyNew)
       });
+      if(!res.ok) throw new Error('데이터 저장 중 오류 발생');
+      
+      toast(`✅ 새 데이터 ${dailyNew.length}건 추가 완료!`);
+    } else {
+      toast('ℹ️ 추가할 새로운 데이터가 없습니다.');
     }
 
+    // 4️⃣ 상태 업데이트
     uploadedFiles[idx].status = '저장완료';
     renderContent('input');
     setTimeout(renderUploadTab, 50);
-    toast(`✅ [${f.month}] 데이터가 성공적으로 교체되었습니다!`);
 
   } catch(err) {
     console.error(err);
-    toast('❌ 데이터 교체 실패: ' + err.message);
+    toast('❌ 저장 실패: ' + err.message);
   }
 }
 
