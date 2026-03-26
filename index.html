@@ -1064,11 +1064,11 @@ async function loadReportData(month){
     }
   });
 
-  // ── 빈 차트 표시 ──
-  let wEl=document.getElementById('weeklyChart');
-  if(wEl){
+ // ── 빈 차트 표시 ──
+  const emptyChartEl=document.getElementById('weeklyChart');
+  if(emptyChartEl){
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
-    reportCharts.weekly=new Chart(wEl,{
+    reportCharts.weekly=new Chart(emptyChartEl,{
       type:'bar',
       data:{labels:['1주','2주','3주','4주'],datasets:[
         {label:'광고비',data:[0,0,0,0],backgroundColor:'rgba(59,130,246,.3)',borderRadius:4,yAxisID:'y'},
