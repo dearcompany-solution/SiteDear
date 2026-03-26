@@ -611,11 +611,44 @@ const SUPABASE_ANON_KEY='sb_publishable_Y9xRQs7ny8tsPr8qEVH1Gg_kADs0sOp';
 /* ════════════════════════════════════════
    LOGIN
 ════════════════════════════════════════ */
-function doLogin(){
+async function doLogin(){
   const id=document.getElementById('lid').value.trim();
   const pw=document.getElementById('lpw').value.trim();
-  const acc=ACCOUNTS.find(a=>a.id===id&&a.pw===pw);
+  if(!id||!pw){document.getElementById('lerr').style.display='block';return;}
+
+  // 1) 먼저 로컬 ACCOUNTS에서 확인 (admin 포함)
+  let acc=ACCOUNTS.find(a=>a.id===id&&a.pw===pw);
+
+  // 2) 없으면 Supabase에서 확인
+  if(!acc){
+    try{
+      const res=await fetch(
+        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}&select=*`,
+        {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+      );
+      const rows=await res.json();
+      if(rows&&rows.length>0){
+        const row=rows[0];
+        if(row.password===pw){
+          acc={
+            id:row.client_key,
+            pw:row.password,
+            role:'client',
+            name:row.company_name,
+            company:row.company_name,
+            manager:row.manager||'',
+            url:row.store_url||'',
+            cid:row.client_code||''
+          };
+          // 로컬 ACCOUNTS에도 추가 (세션 동안 유지)
+          if(!ACCOUNTS.find(a=>a.id===acc.id)) ACCOUNTS.push(acc);
+        }
+      }
+    }catch(e){console.warn('Supabase 로그인 확인 실패',e);}
+  }
+
   if(!acc){document.getElementById('lerr').style.display='block';return;}
+
   currentUser=acc;
   sessionStorage.setItem('currentUser', JSON.stringify(acc));
   sessionStorage.setItem('currentPage', 'combined');
@@ -2171,8 +2204,20 @@ function registerAcc(){
   if(!name||!id||!pw||!mgr){toast('⚠️ 필수 항목을 입력해주세요');return;}
   if(pw!==pw2){toast('⚠️ 비밀번호가 일치하지 않습니다');return;}
   if(ACCOUNTS.find(a=>a.id===id)){toast('⚠️ 이미 사용 중인 아이디입니다');return;}
+  // 로컬 추가
   ACCOUNTS.push({id,pw,role:'client',name,company:name,manager:mgr,url,cid});
-  toast(`✅ ${name} 계정 등록 완료!`);
+
+  // Supabase에도 저장
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({client_key:id,password:pw,company_name:name,manager:mgr,store_url:url,client_code:cid,is_active:true})
+    });
+    toast(`✅ ${name} 계정 등록 완료! (Supabase 저장됨)`);
+  }catch(e){
+    toast(`✅ ${name} 로컬 등록 완료 (Supabase 저장 실패)`);
+  }
   clearReg();renderContent('register');
 }
 function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-cid','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
