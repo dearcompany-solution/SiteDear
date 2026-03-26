@@ -1196,53 +1196,487 @@ function openUploadReport(){
 /* ════════════════════════════════════════
    INPUT HTML
 ════════════════════════════════════════ */
-let uploadedFiles=[
-  {id:1,name:'2026년 2월 Dear.Isopa 광고리포트.xlsx',type:'report',date:'2026-03-01',size:'2.7 MB',uploader:'이채환'},
-  {id:2,name:'2025년 12월 통합 성과 리포트.xlsx',type:'report',date:'2026-01-05',size:'2.5 MB',uploader:'이채환'},
-];
+let uploadedFiles=[];
+let parsedTableData=[];
+let currentInputTab='upload';
+
+function loadSheetJS(cb){
+  if(window.XLSX){cb();return;}
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=cb;
+  document.head.appendChild(s);
+}
 function htmlInput(){
-  const rows=uploadedFiles.map((f,idx)=>{
-    const tI={naver:'🟢',store:'🟠',report:'📊',etc:'📄'};
-    const tL={naver:'네이버 광고',store:'스마트스토어',report:'리포트',etc:'기타'};
-    const tC={naver:'var(--naver)',store:'var(--store)',report:'var(--blue)',etc:'var(--text3)'};
-    const tB={naver:'var(--naver-l)',store:'var(--store-l)',report:'var(--blue-l)',etc:'var(--surface)'};
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--rsm);box-shadow:var(--sh)">
-      <div style="width:36px;height:36px;border-radius:9px;background:${tB[f.type]||tB.etc};display:flex;align-items:center;justify-content:center;font-size:18px">${tI[f.type]||'📄'}</div>
+  return `
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+    <button class="nav-tab ${currentInputTab==='upload'?'active':''}" onclick="switchInputTab('upload')">📤 파일 업로드</button>
+    <button class="nav-tab ${currentInputTab==='data'?'active':''}"   onclick="switchInputTab('data')">📊 데이터 확인</button>
+    <button class="nav-tab ${currentInputTab==='edit'?'active':''}"   onclick="switchInputTab('edit')">✏️ 데이터 수정</button>
+  </div>
+  <div id="inputTabContent"></div>`;}
+
+function switchInputTab(tab){
+  currentInputTab=tab;
+  renderContent('input');
+  setTimeout(()=>{
+    if(tab==='upload') renderUploadTab();
+    if(tab==='data')   renderDataTab();
+    if(tab==='edit')   renderEditTab();
+  },50);
+}
+
+function renderUploadTab(){
+  const el=document.getElementById('inputTabContent');
+  if(!el)return;
+  const fileRows=uploadedFiles.map((f,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--rsm);box-shadow:var(--sh)">
+      <div style="width:38px;height:38px;border-radius:9px;background:var(--naver-l);display:flex;align-items:center;justify-content:center;font-size:20px">📊</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13.5px;font-weight:600">${f.name}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:10px">
-          <span style="background:${tB[f.type]};color:${tC[f.type]};padding:1px 7px;border-radius:20px;font-weight:600">${tL[f.type]||'기타'}</span>
-          <span>${f.date}</span><span>${f.size}</span>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
+          <span style="background:var(--naver-l);color:var(--naver);padding:1px 8px;border-radius:20px;font-weight:600">${f.client||'미지정'}</span>
+          <span>${f.month||'월 미지정'}</span><span>${f.date}</span><span>${f.size}</span>
+          <span style="color:${f.status==='저장완료'?'var(--naver)':f.status==='파싱완료'?'var(--gold)':'var(--text3)'}">
+            ${f.status==='저장완료'?'✅ 저장완료':f.status==='파싱완료'?'⚡ 파싱완료':'📎 업로드됨'}
+          </span>
         </div>
       </div>
-      <div style="display:flex;gap:7px;flex-shrink:0">
-        <button class="btn btn-bl btn-sm" onclick="toast('⬇ 다운로드 중...')">⬇</button>
-        <button class="btn btn-ol btn-sm" onclick="uploadedFiles.splice(${idx},1);renderContent('input')" style="color:var(--red)">삭제</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-bl btn-sm" onclick="parseExcelFile(${i})">🔍 파싱</button>
+        <button class="btn btn-gn btn-sm" onclick="saveToSupabase(${i})" ${f.status!=='파싱완료'?'disabled style="opacity:.4"':''}>☁️ 저장</button>
+        <button class="btn btn-ol btn-sm" onclick="removeFile(${i})" style="color:var(--red)">삭제</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 
-  return `<div style="max-width:860px">
-    <div class="card" style="margin-bottom:18px">
-      <div class="card-hd"><div><div class="card-title">📁 파일 업로드</div></div></div>
-      <div style="border:2.5px dashed var(--border2);border-radius:var(--radius);padding:36px;text-align:center;cursor:pointer;background:var(--surface)" onclick="document.getElementById('fileInput').click()">
-        <div style="font-size:36px;margin-bottom:10px">📂</div>
-        <div style="font-size:15px;font-weight:600;margin-bottom:5px">파일을 드래그하거나 클릭해서 선택</div>
-        <div style="font-size:12.5px;color:var(--text3)">.xlsx .csv .xls .pdf 지원</div>
-        <input type="file" id="fileInput" multiple accept=".xlsx,.csv,.xls,.pdf" style="display:none" onchange="handleFileSelect(this)">
+  el.innerHTML=`
+  <div style="max-width:900px">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:14px">⚙️ 업로드 설정</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체 선택 *</div>
+          <select id="uploadClient" class="fi">
+            <option value="">업체를 선택하세요</option>
+            ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}">${a.company}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">보고서 월 *</div>
+          <input type="month" id="uploadMonth" class="fi" value="${new Date().toISOString().slice(0,7)}">
+        </div>
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">파일 유형</div>
+          <select id="uploadType" class="fi">
+            <option value="daily">일별_누적</option>
+            <option value="keyword">키워드 보고서</option>
+            <option value="hourly">시간대별 보고서</option>
+          </select>
+        </div>
       </div>
     </div>
-    <div style="font-size:14px;font-weight:600;margin-bottom:12px">업로드된 파일 <span style="font-size:12px;color:var(--text3)">(${uploadedFiles.length}개)</span></div>
-    <div style="display:flex;flex-direction:column;gap:8px">${rows}</div>
-  </div>`;
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title" style="margin-bottom:14px">📁 엑셀 파일 업로드</div>
+      <div id="dropZone"
+        style="border:2.5px dashed var(--border2);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;background:var(--surface);transition:all .2s"
+        onclick="document.getElementById('xlsxInput').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-l)'"
+        ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'"
+        ondrop="handleDrop(event)">
+        <div style="font-size:40px;margin-bottom:12px">📂</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">엑셀 파일을 드래그하거나 클릭해서 선택</div>
+        <div style="font-size:12.5px;color:var(--text3)">지원: .xlsx · Dear.Isopa 보고서 양식 자동 인식</div>
+        <input type="file" id="xlsxInput" multiple accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(this)">
+      </div>
+      <div style="margin-top:12px;padding:12px;background:var(--blue-l);border-radius:var(--rsm);font-size:12px;color:var(--text2);line-height:1.8">
+        💡 <b>자동 인식 시트:</b> 일별_누적, 키워드_파워링크, 키워드_쇼핑검색, 시간대
+      </div>
+    </div>
+    ${uploadedFiles.length>0?`
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px">
+      업로드된 파일 <span style="font-size:12px;color:var(--text3);font-weight:400">(${uploadedFiles.length}개)</span>
+      <button class="btn btn-gn btn-sm" style="margin-left:12px" onclick="saveAllParsed()">☁️ 파싱완료 전체 저장</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">${fileRows}</div>
+    `:'<div class="empty"><div class="ei">📭</div><p>업로드된 파일이 없습니다</p></div>'}
+  </div>`;}
+
+function renderDataTab(){
+  const el=document.getElementById('inputTabContent');
+  if(!el)return;
+  const selClient=document.getElementById('filterClient2')?document.getElementById('filterClient2').value:'';
+  const selMonth=document.getElementById('filterMonth2')?document.getElementById('filterMonth2').value:'';
+  const selType=document.getElementById('filterType2')?document.getElementById('filterType2').value:'daily';
+  el.innerHTML=`
+  <div style="max-width:1100px">
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end">
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체</div>
+          <select id="filterClient2" class="fi" onchange="renderDataTab()">
+            <option value="">전체 업체</option>
+            ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${a.id===selClient?'selected':''}>${a.company}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">월</div>
+          <input type="month" id="filterMonth2" class="fi" value="${selMonth}" onchange="renderDataTab()">
+        </div>
+        <div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">데이터 유형</div>
+          <select id="filterType2" class="fi" onchange="renderDataTab()">
+            <option value="daily" ${selType==='daily'?'selected':''}>📅 일별</option>
+            <option value="keyword" ${selType==='keyword'?'selected':''}>🔑 키워드별</option>
+            <option value="hourly" ${selType==='hourly'?'selected':''}>🕐 시간대별</option>
+            <option value="summary" ${selType==='summary'?'selected':''}>📊 월별 요약</option>
+          </select>
+        </div>
+        <button class="btn btn-bl" onclick="loadDataFromSupabase()">🔄 불러오기</button>
+      </div>
+    </div>
+    <div id="dataTableWrap">${renderDataTable(selType,selClient,selMonth)}</div>
+  </div>`;}
+
+function renderDataTable(type,client,month){
+  const data=parsedTableData.filter(r=>{
+    if(client&&r.client_key!==client)return false;
+    if(month&&r.month!==month)return false;
+    if(type&&r.data_type!==type)return false;
+    return true;
+  });
+  if(!data.length)return`<div class="card"><div class="empty"><div class="ei">📊</div><p style="font-size:13px">데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">[불러오기]를 클릭하거나 파일을 업로드하세요</span></p></div></div>`;
+
+  if(type==='daily')return`<div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:14px;font-weight:600">📅 일별 데이터 <span style="font-size:12px;color:var(--text3);font-weight:400">${data.length}건</span></div>
+      <button class="btn btn-ol btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    </div>
+    <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+      <table class="tbl"><thead style="position:sticky;top:0;background:var(--white);z-index:1">
+        <tr><th>날짜</th><th>업체</th><th>캠페인</th><th>기기</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th><th>수정</th></tr>
+      </thead><tbody>
+        ${data.map((r,i)=>`<tr>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date||'-'}</td>
+          <td><span style="background:var(--naver-l);color:var(--naver);padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600">${r.client_key||'-'}</span></td>
+          <td style="font-size:12px">${r.campaign_type||'-'}</td>
+          <td><span style="background:${r.device==='모바일'?'var(--store-l)':'var(--blue-l)'};color:${r.device==='모바일'?'var(--store)':'var(--blue)'};padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600">${r.device||'-'}</span></td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.imp||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.click||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.cost||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.conv||0}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.rev||0).toLocaleString()}</td>
+          <td style="font-weight:700;color:${r.cost>0&&(r.rev/r.cost)>=3?'var(--naver)':r.cost>0&&(r.rev/r.cost)>=1?'var(--gold)':'var(--red)'}">
+            ${r.cost>0?((r.rev/r.cost)*100).toFixed(0)+'%':'—'}
+          </td>
+          <td><button class="btn btn-ol btn-sm" onclick="switchInputTab('edit')" style="font-size:10.5px">✏️</button></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div></div>`;
+
+  if(type==='keyword')return`<div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:600">🔑 키워드별 데이터 <span style="font-size:12px;color:var(--text3);font-weight:400">${data.length}건</span></div>
+    </div>
+    <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+      <table class="tbl"><thead style="position:sticky;top:0;background:var(--white);z-index:1">
+        <tr><th>키워드</th><th>유형</th><th>기기</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>평균순위</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr>
+      </thead><tbody>
+        ${data.map(r=>`<tr>
+          <td style="font-weight:600;font-size:13px">${r.keyword||'-'}</td>
+          <td><span style="background:${r.campaign_type==='파워링크'?'var(--indigo-l)':'var(--naver-l)'};color:${r.campaign_type==='파워링크'?'var(--indigo)':'var(--naver)'};padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600">${r.campaign_type||'-'}</span></td>
+          <td><span style="background:${r.device==='모바일'?'var(--store-l)':'var(--blue-l)'};color:${r.device==='모바일'?'var(--store)':'var(--blue)'};padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600">${r.device||'-'}</span></td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.imp||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.click||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.cost||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.avg_rank||'-'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.conv||0}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.rev||0).toLocaleString()}</td>
+          <td style="font-weight:700;color:${r.cost>0&&(r.rev/r.cost)>=3?'var(--naver)':r.cost>0&&(r.rev/r.cost)>=1?'var(--gold)':'var(--red)'}">
+            ${r.cost>0?((r.rev/r.cost)*100).toFixed(0)+'%':'—'}
+          </td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div></div>`;
+
+  if(type==='hourly')return`<div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:600">🕐 시간대별 데이터 <span style="font-size:12px;color:var(--text3);font-weight:400">${data.length}건</span></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl"><thead>
+        <tr><th>시간대</th><th>캠페인</th><th>기기</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th></tr>
+      </thead><tbody>
+        ${data.map(r=>`<tr>
+          <td style="font-weight:600">${r.time_slot||'-'}</td>
+          <td style="font-size:12px">${r.campaign_type||'-'}</td>
+          <td style="font-size:12px">${r.device||'-'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.imp||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(r.click||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.cost||0).toLocaleString()}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.conv||0}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">₩${(r.rev||0).toLocaleString()}</td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div></div>`;
+
+  const byMonth={};
+  data.forEach(r=>{const k=r.month||'미지정';if(!byMonth[k])byMonth[k]={month:k,client:r.client_key,imp:0,click:0,cost:0,conv:0,rev:0};byMonth[k].imp+=r.imp||0;byMonth[k].click+=r.click||0;byMonth[k].cost+=r.cost||0;byMonth[k].conv+=r.conv||0;byMonth[k].rev+=r.rev||0;});
+  return`<div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📊 월별 요약</div></div>
+    <div style="overflow-x:auto"><table class="tbl"><thead>
+      <tr><th>월</th><th>업체</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr>
+    </thead><tbody>
+      ${Object.values(byMonth).sort((a,b)=>b.month.localeCompare(a.month)).map(r=>`<tr>
+        <td style="font-weight:700">${r.month}</td>
+        <td><span style="background:var(--naver-l);color:var(--naver);padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600">${r.client}</span></td>
+        <td style="font-family:'IBM Plex Mono',monospace">${r.imp.toLocaleString()}</td>
+        <td style="font-family:'IBM Plex Mono',monospace">${r.click.toLocaleString()}</td>
+        <td style="font-family:'IBM Plex Mono',monospace">₩${r.cost.toLocaleString()}</td>
+        <td style="font-family:'IBM Plex Mono',monospace">${r.conv}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace">₩${r.rev.toLocaleString()}</td>
+        <td style="font-weight:700;color:${r.cost>0&&(r.rev/r.cost)>=3?'var(--naver)':r.cost>0&&(r.rev/r.cost)>=1?'var(--gold)':'var(--red)'}">
+          ${r.cost>0?((r.rev/r.cost)*100).toFixed(0)+'%':'—'}
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div></div>`;}
+
+function renderEditTab(){
+  const el=document.getElementById('inputTabContent');
+  if(!el)return;
+  const editable=parsedTableData.filter(r=>r.data_type==='daily');
+  if(!editable.length){el.innerHTML=`<div class="card"><div class="empty"><div class="ei">✏️</div><p>수정할 데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">파일을 업로드하고 파싱 후 저장하거나 불러오기를 클릭하세요</span></p></div></div>`;return;}
+  el.innerHTML=`
+  <div class="card" style="margin-bottom:16px;padding:16px 20px;background:var(--blue-l);border-color:rgba(59,130,246,.2)">
+    <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:4px">✏️ 인라인 수정 모드</div>
+    <div style="font-size:12px;color:var(--text2)">셀을 직접 수정 후 💾 버튼으로 저장하거나 [전체 저장]을 눌러주세요</div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
+      <table class="tbl" id="editTable">
+        <thead style="position:sticky;top:0;background:var(--white);z-index:1">
+          <tr><th>#</th><th>날짜</th><th>업체</th><th>캠페인</th><th>기기</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>저장</th></tr>
+        </thead><tbody>
+          ${editable.map((r,i)=>`<tr id="erow-${i}">
+            <td style="font-size:11px;color:var(--text3)">${i+1}</td>
+            <td><input style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:90px;font-family:'IBM Plex Mono',monospace" value="${r.date||''}" onchange="parsedTableData[${i}].date=this.value"></td>
+            <td style="font-size:12px">${r.client_key||'-'}</td>
+            <td><input style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:80px" value="${r.campaign_type||''}" onchange="parsedTableData[${i}].campaign_type=this.value"></td>
+            <td><select style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px" onchange="parsedTableData[${i}].device=this.value">
+              <option ${r.device==='PC'?'selected':''}>PC</option>
+              <option ${r.device==='모바일'?'selected':''}>모바일</option>
+            </select></td>
+            <td><input type="number" style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:80px" value="${r.imp||0}" onchange="parsedTableData[${i}].imp=+this.value"></td>
+            <td><input type="number" style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:70px" value="${r.click||0}" onchange="parsedTableData[${i}].click=+this.value"></td>
+            <td><input type="number" style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:90px" value="${r.cost||0}" onchange="parsedTableData[${i}].cost=+this.value"></td>
+            <td><input type="number" style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:55px" value="${r.conv||0}" onchange="parsedTableData[${i}].conv=+this.value"></td>
+            <td><input type="number" style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11.5px;width:100px" value="${r.rev||0}" onchange="parsedTableData[${i}].rev=+this.value"></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-gn btn-sm" onclick="saveRowToSupabase(${i})">💾</button>
+              <button class="btn btn-rd btn-sm" onclick="deleteRow(${i})">🗑</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button class="btn btn-gn" onclick="saveAllEdited()">☁️ 전체 저장</button>
+      <button class="btn btn-ol" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-bl" onclick="addNewRow()">+ 행 추가</button>
+    </div>
+  </div>`;}
+
+function handleDrop(e){
+  e.preventDefault();
+  const dz=document.getElementById('dropZone');
+  if(dz){dz.style.borderColor='var(--border2)';dz.style.background='var(--surface)';}
+  processFiles(e.dataTransfer.files);
 }
-function handleFileSelect(input){
+function handleFileSelect(input){processFiles(input.files);}
+
+function processFiles(files){
+  const client=document.getElementById('uploadClient')?document.getElementById('uploadClient').value:'';
+  const month=document.getElementById('uploadMonth')?document.getElementById('uploadMonth').value:'';
+  const type=document.getElementById('uploadType')?document.getElementById('uploadType').value:'daily';
+  if(!client){toast('⚠️ 업체를 먼저 선택해주세요');return;}
   const today=new Date().toISOString().split('T')[0];
-  Array.from(input.files).forEach(f=>{
-    uploadedFiles.unshift({id:Date.now(),name:f.name,type:'report',date:today,size:Math.round(f.size/1024)+' KB',uploader:currentUser?currentUser.name:'나'});
+  Array.from(files).forEach(f=>{
+    uploadedFiles.unshift({id:Date.now()+Math.random(),name:f.name,file:f,client,month,type,date:today,
+      size:f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB',
+      uploader:currentUser?currentUser.name:'나',status:'업로드됨',parsed:null});
   });
   renderContent('input');
-  toast('✅ '+input.files.length+'개 파일이 업로드되었습니다');
+  setTimeout(renderUploadTab,50);
+  toast(`✅ ${files.length}개 업로드됨 — [파싱] 버튼을 눌러주세요`);
+}
+
+function parseNum(v){
+  if(v===''||v===null||v===undefined)return 0;
+  if(typeof v==='number')return v;
+  return parseFloat(String(v).replace(/[,원\s]/g,''))||0;
+}
+
+function parseExcelFile(idx){
+  const f=uploadedFiles[idx];
+  if(!f||!f.file){toast('⚠️ 파일을 다시 업로드해주세요');return;}
+  toast('🔍 파싱 중...');
+  loadSheetJS(()=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+        const rows=[];
+        wb.SheetNames.forEach(sheetName=>{
+          const ws=wb.Sheets[sheetName];
+          const json=XLSX.utils.sheet_to_json(ws,{defval:''});
+          if(!json.length)return;
+          if(sheetName==='일별_누적'||f.type==='daily'){
+            json.forEach(r=>{
+              const date=r['일자\n(서식 셀)']||r['일자']||r['날짜']||'';
+              const dateStr=date instanceof Date?date.toISOString().slice(0,10):String(date).slice(0,10);
+              if(!dateStr||dateStr.length<8)return;
+              rows.push({data_type:'daily',client_key:f.client,month:f.month,date:dateStr,
+                campaign_type:String(r['캠페인유형']||r['유형']||''),
+                device:String(r['PC/모바일']||r['기기']||''),
+                media:String(r['매체']||''),
+                imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||r['광고비']||0),
+                conv:parseNum(r['전환수']),
+                rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
+            });
+          } else if(sheetName.includes('키워드')||f.type==='keyword'){
+            json.forEach(r=>{
+              const kw=r['키워드명']||r['키워드']||'';
+              if(!kw)return;
+              rows.push({data_type:'keyword',client_key:f.client,month:f.month,keyword:String(kw),
+                campaign_type:String(r['유형']||r['캠페인유형']||''),
+                device:String(r['PC/모바일']||''),
+                imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                cost:parseNum(r['총비용\n(VAT포함,원)']||r['총비용']||r['광고비용']||0),
+                avg_rank:parseNum(r['평균노출순위']||r['평균\n노출순위']||0),
+                conv:parseNum(r['전환수']),
+                rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
+            });
+          } else if(sheetName==='시간대'||f.type==='hourly'){
+            json.forEach(r=>{
+              const t=r['시간대별']||r['시간대']||'';
+              if(!t)return;
+              rows.push({data_type:'hourly',client_key:f.client,month:f.month,time_slot:String(t),
+                campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일']||''),
+                imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||0),
+                conv:parseNum(r['전환수']),
+                rev:parseNum(r['전환매출액(원)']||r['전환매출액']||0)});
+            });
+          }
+        });
+        if(!rows.length){toast('⚠️ 인식된 데이터가 없습니다. 시트명을 확인해주세요');return;}
+        uploadedFiles[idx].parsed=rows;
+        uploadedFiles[idx].status='파싱완료';
+        parsedTableData=parsedTableData.filter(r=>!(r.client_key===f.client&&r.month===f.month&&r.data_type===(rows[0]?.data_type)));
+        parsedTableData.push(...rows);
+        renderContent('input');
+        setTimeout(renderUploadTab,50);
+        toast(`✅ 파싱 완료! ${rows.length}개 행 인식됨`);
+      }catch(err){console.error(err);toast('❌ 파싱 실패: '+err.message);}
+    };
+    reader.readAsBinaryString(f.file);
+  });
+}
+
+async function saveToSupabase(idx){
+  const f=uploadedFiles[idx];
+  if(!f||!f.parsed||!f.parsed.length){toast('⚠️ 먼저 파싱을 완료해주세요');return;}
+  toast('☁️ Supabase에 저장 중...');
+  try{
+    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'};
+    const daily=f.parsed.filter(r=>r.data_type==='daily');
+    const keyword=f.parsed.filter(r=>r.data_type==='keyword');
+    const hourly=f.parsed.filter(r=>r.data_type==='hourly');
+    if(daily.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{method:'POST',headers,body:JSON.stringify(daily)});if(!res.ok)throw new Error(await res.text());}
+    if(keyword.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/keyword_reports`,{method:'POST',headers,body:JSON.stringify(keyword)});if(!res.ok)throw new Error(await res.text());}
+    if(hourly.length){const res=await fetch(`${SUPABASE_URL}/rest/v1/hourly_reports`,{method:'POST',headers,body:JSON.stringify(hourly)});if(!res.ok)throw new Error(await res.text());}
+    if(daily.length){
+      const tot=(k)=>daily.reduce((s,r)=>s+(r[k]||0),0);
+      const tc=tot('cost'),tr=tot('rev');
+      await fetch(`${SUPABASE_URL}/rest/v1/ad_reports`,{method:'POST',headers,body:JSON.stringify([{
+        client_key:f.client,month:f.month,period_label:f.month.replace('-','년 ')+'월',
+        total_imp:tot('imp'),total_click:tot('click'),total_cost:tc,total_conv:tot('conv'),total_rev:tr,
+        roas:tc>0?+(tr/tc).toFixed(2):0,mom_click:0,mom_cost:0,mom_rev:0,mom_roas:0,
+        report_json:JSON.stringify({channels:[],weekly:[],hourly:[],topKeywords:[],insights:[]})
+      }])});
+    }
+    uploadedFiles[idx].status='저장완료';
+    renderContent('input');setTimeout(renderUploadTab,50);
+    toast(`✅ Supabase 저장 완료! (${f.parsed.length}건)`);
+  }catch(err){console.error(err);toast('❌ 저장 실패: '+err.message);}
+}
+
+async function saveAllParsed(){
+  const idxs=uploadedFiles.map((f,i)=>f.status==='파싱완료'?i:-1).filter(i=>i>=0);
+  if(!idxs.length){toast('⚠️ 파싱 완료된 파일이 없습니다');return;}
+  for(const i of idxs)await saveToSupabase(i);
+}
+
+async function loadDataFromSupabase(){
+  toast('🔄 불러오는 중...');
+  const client=document.getElementById('filterClient2')?document.getElementById('filterClient2').value:'';
+  const month=document.getElementById('filterMonth2')?document.getElementById('filterMonth2').value:'';
+  const type=document.getElementById('filterType2')?document.getElementById('filterType2').value:'daily';
+  const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
+  const table=tableMap[type]||'daily_reports';
+  try{
+    let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&order=date.desc&limit=500`;
+    if(client)url+=`&client_key=eq.${client}`;
+    if(month)url+=`&month=eq.${month}`;
+    const res=await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const rows=await res.json();
+    if(!Array.isArray(rows))throw new Error(JSON.stringify(rows));
+    rows.forEach(r=>r.data_type=type);
+    parsedTableData=parsedTableData.filter(r=>r.data_type!==type);
+    parsedTableData.push(...rows);
+    renderDataTab();
+    toast(`✅ ${rows.length}건 불러오기 완료`);
+  }catch(err){toast('❌ 불러오기 실패: '+err.message);}
+}
+
+async function saveRowToSupabase(idx){
+  const r=parsedTableData[idx];
+  const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
+  const table=tableMap[r.data_type]||'daily_reports';
+  try{
+    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'};
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{method:'POST',headers,body:JSON.stringify([r])});
+    if(!res.ok)throw new Error(await res.text());
+    toast('✅ 저장 완료');
+  }catch(err){toast('❌ 저장 실패: '+err.message);}
+}
+
+async function saveAllEdited(){
+  toast('☁️ 전체 저장 중...');
+  let ok=0,fail=0;
+  for(let i=0;i<parsedTableData.length;i++){try{await saveRowToSupabase(i);ok++;}catch(e){fail++;}}
+  toast(`✅ ${ok}건 저장${fail>0?' / ❌'+fail+'건 실패':''}`);
+}
+
+function deleteRow(idx){parsedTableData.splice(idx,1);renderEditTab();toast('🗑 삭제됨');}
+
+function addNewRow(){
+  const client=document.getElementById('filterClient2')?document.getElementById('filterClient2').value:(ACCOUNTS.find(a=>a.role==='client')?.id||'');
+  parsedTableData.unshift({data_type:'daily',client_key:client,month:'',date:new Date().toISOString().slice(0,10),campaign_type:'쇼핑검색',device:'모바일',imp:0,click:0,cost:0,conv:0,rev:0});
+  renderEditTab();
+}
+
+function removeFile(idx){uploadedFiles.splice(idx,1);renderContent('input');setTimeout(renderUploadTab,50);}
+
+function exportCSV(){
+  if(!parsedTableData.length){toast('⚠️ 데이터가 없습니다');return;}
+  const keys=Object.keys(parsedTableData[0]);
+  const csv=[keys.join(','),...parsedTableData.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download=`export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('⬇ CSV 다운로드 완료');
 }
 
 /* ════════════════════════════════════════
