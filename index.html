@@ -1064,7 +1064,7 @@ async function loadReportData(month){
     }
   });
 
- // ── 빈 차트 표시 ──
+  // ── 빈 차트 표시 ──
   const emptyChartEl=document.getElementById('weeklyChart');
   if(emptyChartEl){
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
@@ -2138,29 +2138,6 @@ async function deleteClient(id){
     toast('❌ 삭제 실패: '+err.message);
   }
 }
-  activeClientId=id;
-  const c=ACCOUNTS.find(a=>a.id===id);
-  setSb(c.company,c.cid||c.id,'광고 운영 중');
-  toast(`✅ ${c.company} 선택됨`);
-  renderContent('admin');
-  setTimeout(()=>{
-    const d=document.getElementById('clientDetail');if(!d)return;
-    d.innerHTML=`<div class="card">
-      <div class="card-hd"><div><div class="card-title">${c.company}</div><div class="card-sub">${c.cid||c.id}</div></div></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;font-size:13px">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">업체명</div><b>${c.company}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">담당 매니저</div><b>${c.manager||'미지정'}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.cid||c.id}</b></div>
-        <div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
-      </div>
-      <div style="margin-top:14px;display:flex;gap:8px">
-        <button class="btn btn-bl" onclick="go('report',null);setActive('report')">📑 보고서 확인</button>
-        <button class="btn btn-ol" onclick="go('combined',null);setActive('combined')">📊 대시보드</button>
-      </div>
-    </div>`;
-  },50);
-}
-
 /* ════════════════════════════════════════
    REGISTER HTML
 ════════════════════════════════════════ */
@@ -2193,7 +2170,7 @@ function htmlRegister(){return `
   </div>
 </div>`;}
 
-function registerAcc(){
+async function registerAcc(){
   const name=document.getElementById('rg-name').value.trim();
   const id=document.getElementById('rg-id').value.trim();
   const pw=document.getElementById('rg-pw').value;
