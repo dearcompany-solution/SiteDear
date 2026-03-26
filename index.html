@@ -611,51 +611,84 @@ const SUPABASE_ANON_KEY='sb_publishable_Y9xRQs7ny8tsPr8qEVH1Gg_kADs0sOp';
 /* ════════════════════════════════════════
    LOGIN
 ════════════════════════════════════════ */
+/* ════════════════════════════════════════
+   LOGIN - 통합 수정본
+════════════════════════════════════════ */
 async function doLogin(){
-  const id=document.getElementById('lid').value.trim();
-  const pw=document.getElementById('lpw').value.trim();
-  if(!id||!pw){document.getElementById('lerr').style.display='block';return;}
-
-  // 1) 먼저 로컬 ACCOUNTS에서 확인 (admin 포함)
-  let acc=ACCOUNTS.find(a=>a.id===id&&a.pw===pw);
-
-  // 2) 없으면 Supabase에서 확인
-  if(!acc){
-    try{
-      const res=await fetch(
-        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}&select=*`,
-        {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
-      );
-      const rows=await res.json();
-      if(rows&&rows.length>0){
-        const row=rows[0];
-        if(row.password===pw){
-          acc={
-            id:row.client_key,
-            pw:row.password,
-            role:'client',
-            name:row.company_name,
-            company:row.company_name,
-            manager:row.manager||'',
-            url:row.store_url||'',
-            cid:row.client_code||''
-          };
-          // 로컬 ACCOUNTS에도 추가 (세션 동안 유지)
-          if(!ACCOUNTS.find(a=>a.id===acc.id)) ACCOUNTS.push(acc);
-        }
-      }
-    }catch(e){console.warn('Supabase 로그인 확인 실패',e);}
+  const id = document.getElementById('lid').value.trim();
+  const pw = document.getElementById('lpw').value.trim();
+  const errEl = document.getElementById('lerr');
+  
+  if(!id || !pw){
+    errEl.textContent = "아이디와 비밀번호를 모두 입력해주세요.";
+    errEl.style.display = 'block';
+    return;
   }
 
-  if(!acc){document.getElementById('lerr').style.display='block';return;}
+  // 1. 관리자(admin) 등 로컬 계정 먼저 확인
+  let acc = ACCOUNTS.find(a => a.id === id && a.pw === pw);
 
-  currentUser=acc;
-  sessionStorage.setItem('currentUser', JSON.stringify(acc));
-  sessionStorage.setItem('currentPage', 'combined');
-  document.getElementById('lerr').style.display='none';
-  document.getElementById('loginPage').style.display='none';
-  document.getElementById('appShell').style.display='block';
-  initApp();
+  // 2. 로컬에 없을 경우 Supabase DB에서 확인
+  if(!acc){
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}&select=*`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) throw new Error("네트워크 응답 에러");
+      
+      const rows = await response.json();
+
+      if(rows && rows.length > 0){
+        const row = rows[0];
+        // DB의 password 컬럼과 입력값 비교
+        if(row.password === pw){
+          acc = {
+            id: row.client_key,
+            pw: row.password,
+            role: 'client',
+            name: row.company_name,
+            company: row.company_name,
+            manager: row.manager || '',
+            url: row.store_url || '',
+            cid: row.client_code || ''
+          };
+          // 세션 유지를 위해 로컬 배열에 임시 추가
+          if(!ACCOUNTS.find(a => a.id === acc.id)) ACCOUNTS.push(acc);
+        }
+      }
+    } catch(e) {
+      console.error('로그인 중 에러 발생:', e);
+      errEl.textContent = "서버 연결에 실패했습니다.";
+      errEl.style.display = 'block';
+      return;
+    }
+  }
+
+  // 3. 최종 로그인 성공 처리
+  if(acc){
+    currentUser = acc;
+    sessionStorage.setItem('currentUser', JSON.stringify(acc));
+    sessionStorage.setItem('currentPage', 'combined');
+    
+    errEl.style.display = 'none';
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appShell').style.display = 'block';
+    
+    initApp();
+  } else {
+    // 계정 정보가 틀린 경우
+    errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
+    errEl.style.display = 'block';
+  }
 }
 function doLogout(){
   currentUser=null;activeClientId=null;destroyCharts();
