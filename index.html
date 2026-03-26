@@ -2123,11 +2123,10 @@ function openEditClient(id){
 }
 
 async function saveEditClient(id){
-  // 1. 현재 수정 중인 클라이언트 객체 찾기
   const c = ACCOUNTS.find(a => a.id === id);
   if(!c) return;
 
-  // 2. 입력창에서 현재 입력된 값들 가져오기
+  // 1. 입력창의 현재 값들을 가져옴
   const name = document.getElementById('ec-name').value.trim();
   const mgr = document.getElementById('ec-mgr').value;
   const url = document.getElementById('ec-url').value.trim();
@@ -2139,10 +2138,10 @@ async function saveEditClient(id){
     return;
   }
 
-  toast('💾 Supabase DB에 저장 중...');
+  toast('💾 Supabase DB에 영구 저장 중...');
 
   try {
-    // 3. DB에 보낼 데이터 꾸러미 만들기
+    // 2. DB에 업데이트할 데이터 객체 구성
     const updateData = {
       company_name: name,
       manager: mgr,
@@ -2150,12 +2149,10 @@ async function saveEditClient(id){
       client_code: cid
     };
 
-    // 비밀번호 입력칸에 내용이 있을 때만 비밀번호도 변경 목록에 추가
-    if(pw) {
-      updateData.password = pw;
-    }
+    // 비밀번호가 입력된 경우에만 포함
+    if(pw) updateData.password = pw;
 
-    // 4. Supabase API 호출 (PATCH 방식: 기존 데이터 수정)
+    // 3. Supabase PATCH 요청 실행
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
       {
@@ -2164,18 +2161,18 @@ async function saveEditClient(id){
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'Prefer': 'return=minimal' 
+          'Prefer': 'return=minimal'
         },
         body: JSON.stringify(updateData)
       }
     );
 
     if(!res.ok) {
-      const errorMsg = await res.text();
-      throw new Error(errorMsg);
+      const errorDetail = await res.text();
+      throw new Error(errorDetail);
     }
 
-    // 5. DB 저장 성공 후, 현재 화면에 보이는 데이터(ACCOUNTS)도 업데이트
+    // 4. DB 저장 성공 시에만 로컬 데이터 업데이트 (이게 핵심)
     c.company = name;
     c.name = name;
     c.manager = mgr;
@@ -2183,18 +2180,15 @@ async function saveEditClient(id){
     c.cid = cid;
     if(pw) c.pw = pw;
 
-    // 6. 창 닫고 화면 새로고침 없이 리스트 갱신
     closeModal();
-    toast(`✅ ${name} 정보가 안전하게 저장되었습니다.`);
+    toast(`✅ ${name} 정보가 DB에 저장되었습니다. 새로고침해도 유지됩니다.`);
     
-    // 관리자 페이지라면 클라이언트 목록 다시 그리기
-    if(typeof renderContent === 'function') {
-      renderContent('admin');
-    }
+    // 리스트 화면 갱신
+    if(typeof renderContent === 'function') renderContent('admin');
 
   } catch(err) {
-    console.error('저장 실패 원인:', err);
-    toast('❌ 저장 실패: ' + err.message);
+    console.error('DB 저장 실패:', err);
+    toast('❌ DB 저장 실패! 보안 정책(RLS)을 확인하세요.');
   }
 }
 
