@@ -2123,36 +2123,76 @@ function openEditClient(id){
 }
 
 async function saveEditClient(id){
-  const c=ACCOUNTS.find(a=>a.id===id);
-  if(!c)return;
-  const name=document.getElementById('ec-name').value.trim();
-  if(!name){toast('⚠️ 업체명을 입력해주세요');return;}
-  const mgr=document.getElementById('ec-mgr').value;
-  const url=document.getElementById('ec-url').value.trim();
-  const cid=document.getElementById('ec-cid').value.trim();
-  const pw=document.getElementById('ec-pw').value;
+  const c = ACCOUNTS.find(a => a.id === id);
+  if(!c) return;
 
-  try{
-    // Supabase 업데이트
-    const body={company_name:name, manager:mgr, store_url:url, client_code:cid};
-    if(pw)body.password=pw;
-    const res=await fetch(
+  const name = document.getElementById('ec-name').value.trim();
+  const mgr = document.getElementById('ec-mgr').value;
+  const url = document.getElementById('ec-url').value.trim();
+  const cid = document.getElementById('ec-cid').value.trim();
+  const pw = document.getElementById('ec-pw').value;
+
+  if(!name){
+    toast('⚠️ 업체명을 입력해주세요');
+    return;
+  }
+
+  toast('💾 저장 중...');
+
+  try {
+    // 1. Supabase 업데이트용 데이터 객체 생성
+    const updateData = {
+      company_name: name,
+      manager: mgr,
+      store_url: url,
+      client_code: cid
+    };
+
+    // 비밀번호를 입력했을 경우에만 업데이트 객체에 추가
+    if(pw) {
+      updateData.password = pw;
+    }
+
+    // 2. Supabase API 호출 (PATCH)
+    const res = await fetch(
       `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
-      {method:'PATCH',
-       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
-       body:JSON.stringify(body)}
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=minimal' // 응답 데이터 최소화
+        },
+        body: JSON.stringify(updateData)
+      }
     );
-    if(!res.ok)throw new Error(await res.text());
 
-    // 로컬 ACCOUNTS도 동기화
-    c.company=name; c.name=name; c.manager=mgr; c.url=url; c.cid=cid;
-    if(pw)c.pw=pw;
+    if(!res.ok) {
+      const errorMsg = await res.text();
+      throw new Error(errorMsg);
+    }
 
+    // 3. DB 저장 성공 후 로컬 ACCOUNTS 데이터도 동기화 (새로고침 전까지 유지용)
+    c.company = name;
+    c.name = name;
+    c.manager = mgr;
+    c.url = url;
+    c.cid = cid;
+    if(pw) c.pw = pw;
+
+    // 4. UI 갱신 및 닫기
     closeModal();
-    toast(`✅ ${name} 정보가 수정되었습니다`);
-    renderContent('admin');
-  }catch(err){
-    toast('❌ 수정 실패: '+err.message);
+    toast(`✅ ${name} 정보가 DB에 영구 저장되었습니다.`);
+    
+    // 관리자 페이지라면 목록 다시 그리기
+    if(typeof renderContent === 'function') {
+      renderContent('admin');
+    }
+
+  } catch(err) {
+    console.error('저장 실패:', err);
+    toast('❌ 저장 실패: ' + err.message);
   }
 }
 
