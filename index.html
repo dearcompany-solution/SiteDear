@@ -907,7 +907,7 @@ function htmlReport(){
         ${opts}
       </select>
       <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-      <button class="btn btn-ol btn-sm" onclick="openUploadReport()" style="white-space:nowrap">⬆ 보고서 업로드</button>
+      <button class="btn btn-ol btn-sm" onclick="go('input',null);setActive('input')" style="white-space:nowrap">📁 파일 업로드</button>
     </div>
   </div>
 
@@ -1178,19 +1178,9 @@ function downloadPDF(){
 }
 
 function openUploadReport(){
-  document.getElementById('modalTitle').textContent='보고서 데이터 업로드';
-  document.getElementById('modalBody').innerHTML=`
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:12px">
-      새 월 보고서를 추가하려면 REPORT_DATA 객체에 항목을 추가하거나<br>
-      Supabase <code style="background:var(--surface);padding:1px 5px;border-radius:4px">ad_reports</code> 테이블에 INSERT하세요.
-    </p>
-    <div style="background:var(--surface);border-radius:8px;padding:16px;font-size:12px;color:var(--text2);line-height:2">
-      <b>Supabase SQL 예시:</b><br>
-      INSERT INTO ad_reports (month, client_id, report_json)<br>
-      VALUES ('2026-03', 'dear-isopa', '{"period":"2026년 3월",...}');
-    </div>`;
-  document.getElementById('modalFooter').innerHTML=`<button class="btn btn-ol" onclick="closeModal()">닫기</button>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  closeModal();
+  go('input',null);
+  setActive('input');
 }
 
 /* ════════════════════════════════════════
