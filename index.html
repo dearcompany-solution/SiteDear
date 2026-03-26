@@ -996,37 +996,70 @@ async function fetchReportData(month){
 }
 
 async function loadReportData(month){
-  const data=await fetchReportData(month);
-  if(!data){toast('⚠️ 해당 월 데이터가 없습니다');return;}
   currentReportMonth=month;
+  let data=await fetchReportData(month);
+
+  // 데이터 없으면 빈 구조로 0 표시
+  if(!data){
+    data={
+      client:currentUser?.company||'—',
+      period:month.replace('-','년 ')+'월',
+      manager:'—',
+      kpi:{totalImp:0,totalClick:0,totalCost:0,totalConv:0,totalRev:0,roas:0,ctr:0,cpc:0},
+      mom:{click:0,cost:0,rev:0,roas:0},
+      channels:[],weekly:[],hourly:[],topKeywords:[],insights:[],
+      _empty:true
+    };
+  }
 
   const fmt =n=>n>=1000000?'₩'+(n/1000000).toFixed(1)+'M':n>=1000?'₩'+(n/1000).toFixed(0)+'K':'₩'+n.toLocaleString();
   const fmtN=n=>n.toLocaleString();
   const momStr=v=>v>0?`<span class="up">▲ ${fmtN(Math.abs(v))}</span>`:v<0?`<span class="dn">▼ ${fmtN(Math.abs(v))}</span>`:'<span style="color:var(--text3)">—</span>';
   const $s=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
 
-  $s('rk-imp',   fmtN(data.kpi.totalImp));
-  $s('rk-click', fmtN(data.kpi.totalClick));
-  $s('rk-cost',  fmt(data.kpi.totalCost));
-  $s('rk-rev',   fmt(data.kpi.totalRev));
-  $s('rk-roas',  (data.kpi.roas*100).toFixed(0)+'%');
-  $s('rk-click-sub', momStr(data.mom.click)+' <span style="color:var(--text3);font-size:10px">전월비</span>');
-  $s('rk-cost-sub',  momStr(data.mom.cost) +' <span style="color:var(--text3);font-size:10px">전월비</span>');
-  $s('rk-rev-sub',   momStr(data.mom.rev)  +' <span style="color:var(--text3);font-size:10px">전월비</span>');
-  $s('rk-roas-sub',  (data.mom.roas>=0?'<span class="up">▲</span>':'<span class="dn">▼</span>')+
-    ` <span style="color:var(--text3);font-size:10px">${Math.abs(data.mom.roas).toFixed(2)}x 전월비</span>`);
-  $s('rptSubTitle',`${data.period} · ${data.client} · 담당: ${data.manager}`);
+// 데이터 없는 달은 0 표시 + 안내 문구
+  if(data._empty){
+    $s('rk-imp',   '0');
+    $s('rk-click', '0');
+    $s('rk-cost',  '₩0');
+    $s('rk-rev',   '₩0');
+    $s('rk-roas',  '0%');
+    $s('rk-imp-sub',   '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
+    $s('rk-click-sub', '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
+    $s('rk-cost-sub',  '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
+    $s('rk-rev-sub',   '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
+    $s('rk-roas-sub',  '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
+    $s('rptSubTitle',`${data.period} · 등록된 데이터가 없습니다`);
+  } else {
+    $s('rk-imp',   fmtN(data.kpi.totalImp));
+    $s('rk-click', fmtN(data.kpi.totalClick));
+    $s('rk-cost',  fmt(data.kpi.totalCost));
+    $s('rk-rev',   fmt(data.kpi.totalRev));
+    $s('rk-roas',  (data.kpi.roas*100).toFixed(0)+'%');
+    $s('rk-click-sub', momStr(data.mom.click)+' <span style="color:var(--text3);font-size:10px">전월비</span>');
+    $s('rk-cost-sub',  momStr(data.mom.cost) +' <span style="color:var(--text3);font-size:10px">전월비</span>');
+    $s('rk-rev-sub',   momStr(data.mom.rev)  +' <span style="color:var(--text3);font-size:10px">전월비</span>');
+    $s('rk-roas-sub',  (data.mom.roas>=0?'<span class="up">▲</span>':'<span class="dn">▼</span>')+
+      ` <span style="color:var(--text3);font-size:10px">${Math.abs(data.mom.roas).toFixed(2)}x 전월비</span>`);
+    $s('rptSubTitle',`${data.period} · ${data.client} · 담당: ${data.manager}`);
+  }
 
-  const tb=document.querySelector('#rptChannelTable tbody');
-  if(tb)tb.innerHTML=data.channels.map(ch=>{
+const tb=document.querySelector('#rptChannelTable tbody');
+  if(tb){
+    if(!data.channels||!data.channels.length){
+      tb.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);font-size:13px">📭 해당 월 채널 데이터가 없습니다</td></tr>`;
+    } else {
+      tb.innerHTML=data.channels.map(ch=>{
     const rc=ch.roas>=5?'var(--naver)':ch.roas>=2?'var(--text)':'var(--red)';
     return `<tr>
       <td style="font-size:12.5px;font-weight:600">${ch.name}</td>
       <td>${fmtN(ch.imp)}</td><td>${fmtN(ch.click)}</td>
       <td>${fmt(ch.cost)}</td><td>${ch.conv}건</td><td>${fmt(ch.rev)}</td>
       <td style="font-weight:700;color:${rc}">${(ch.roas*100).toFixed(0)}%</td>
-    </tr>`;
-  }).join('');
+   </tr>`;
+      }).join('');
+    }
+  }
 
   const wEl=document.getElementById('weeklyChart');
   if(wEl){
@@ -1078,11 +1111,17 @@ async function loadReportData(month){
   }).join('');
 
   const ins=document.getElementById('rptInsights');
-  if(ins)ins.innerHTML=data.insights.map(i=>{
+  if(ins){
+    if(!data.insights||!data.insights.length){
+      ins.innerHTML=`<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">📭 인사이트 데이터가 없습니다</div>`;
+    } else {
+      ins.innerHTML=data.insights.map(i=>{
     const cls=i.type==='good'?'ib-good':i.type==='warn'?'ib-warn':'ib-info';
     const ic=i.type==='good'?'✅':i.type==='warn'?'⚠️':'ℹ️';
     return `<div class="insight-box ${cls}"><div class="ib-title">${ic} ${i.title}</div><div class="ib-desc">${i.desc}</div></div>`;
-  }).join('');
+ }).join('');
+    }
+  }
 
   document.querySelectorAll('.month-pill').forEach(el=>{
     const isActive=el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${month}'`);
