@@ -1065,7 +1065,7 @@ async function loadReportData(month){
   });
 
   // ── 빈 차트 표시 ──
-  const wEl=document.getElementById('weeklyChart');
+  let wEl=document.getElementById('weeklyChart');
   if(wEl){
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     reportCharts.weekly=new Chart(wEl,{
