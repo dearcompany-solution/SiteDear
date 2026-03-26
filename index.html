@@ -1932,21 +1932,147 @@ function htmlReq(){
 ════════════════════════════════════════ */
 function htmlAdmin(){
   const cls=ACCOUNTS.filter(a=>a.role==='client');
-  return `<div class="admin-hero"><div><h2>👑 클라이언트 관리</h2><p>광고주 계정을 선택하면 해당 대시보드를 확인할 수 있습니다</p></div>
-    <button class="btn btn-bl" onclick="go('register',null)">+ 계정 등록</button></div>
-  <div class="cl-grid">${cls.map(c=>`
-    <div class="cl-card ${activeClientId===c.id?'sel':''}" onclick="selClient('${c.id}')">
-      <div class="cl-name">${c.company}</div>
-      <div class="cl-id">${c.cid||c.id}</div>
-      <div class="cl-mgr">👤 ${c.manager||'미지정'}</div>
-      <div class="cl-url">${c.url||'URL 미등록'}</div>
-      <div class="cl-st"><div class="sdot"></div>광고 운영 중</div>
+  return `
+  <div class="admin-hero">
+    <div><h2>👑 클라이언트 관리</h2><p>광고주 계정을 선택하면 해당 대시보드를 확인할 수 있습니다</p></div>
+    <button class="btn btn-bl" onclick="go('register',null)">+ 계정 등록</button>
+  </div>
+  <div class="cl-grid">
+    ${cls.map(c=>`
+    <div class="cl-card ${activeClientId===c.id?'sel':''}" style="position:relative">
+      <!-- 선택 클릭 영역 -->
+      <div onclick="selClient('${c.id}')" style="cursor:pointer">
+        <div class="cl-name">${c.company}</div>
+        <div class="cl-id">${c.cid||c.id}</div>
+        <div class="cl-mgr">👤 ${c.manager||'미지정'}</div>
+        <div class="cl-url">${c.url||'URL 미등록'}</div>
+        <div class="cl-st"><div class="sdot"></div>광고 운영 중</div>
+      </div>
+      <!-- 수정/삭제 버튼 -->
+      <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <button class="btn btn-ol btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();openEditClient('${c.id}')">✏️ 수정</button>
+        <button class="btn btn-ol btn-sm" style="flex:1;justify-content:center;color:var(--red);border-color:rgba(239,68,68,.3)" onclick="event.stopPropagation();confirmDeleteClient('${c.id}')">🗑 삭제</button>
+      </div>
     </div>`).join('')}
   </div>
   ${activeClientId?`<div class="sec-lbl"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:
     '<div class="empty"><div class="ei">👆</div><p>위에서 클라이언트를 선택하세요</p></div>'}`;
 }
 function selClient(id){
+  activeClientId=id;
+  const c=ACCOUNTS.find(a=>a.id===id);
+  setSb(c.company,c.cid||c.id,'광고 운영 중');
+  toast(`✅ ${c.company} 선택됨`);
+  renderContent('admin');
+  setTimeout(()=>{
+    const d=document.getElementById('clientDetail');if(!d)return;
+    d.innerHTML=`<div class="card">
+      <div class="card-hd">
+        <div><div class="card-title">${c.company}</div><div class="card-sub">${c.cid||c.id}</div></div>
+        <div style="display:flex;gap:7px">
+          <button class="btn btn-ol btn-sm" onclick="openEditClient('${c.id}')">✏️ 수정</button>
+          <button class="btn btn-ol btn-sm" style="color:var(--red);border-color:rgba(239,68,68,.3)" onclick="confirmDeleteClient('${c.id}')">🗑 삭제</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;font-size:13px">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">업체명</div><b>${c.company}</b></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">담당 매니저</div><b>${c.manager||'미지정'}</b></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.cid||c.id}</b></div>
+        <div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="btn btn-bl" onclick="go('report',null);setActive('report')">📑 보고서 확인</button>
+        <button class="btn btn-ol" onclick="go('combined',null);setActive('combined')">📊 대시보드</button>
+      </div>
+    </div>`;
+  },50);
+}
+
+/* ── 클라이언트 수정 ── */
+function openEditClient(id){
+  const c=ACCOUNTS.find(a=>a.id===id);
+  if(!c)return;
+  document.getElementById('modalTitle').textContent='✏️ 클라이언트 수정';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">업체명 *</label>
+        <input id="ec-name" class="fi" type="text" value="${c.company}">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">담당 매니저</label>
+        <select id="ec-mgr" class="fi">
+          ${MANAGERS.map(m=>`<option ${m===c.manager?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">스토어 URL</label>
+        <input id="ec-url" class="fi" type="text" value="${c.url||''}">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">클라이언트 코드</label>
+        <input id="ec-cid" class="fi" type="text" value="${c.cid||''}">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
+        <input id="ec-pw" class="fi" type="password" placeholder="변경하지 않으면 비워두세요">
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="saveEditClient('${id}')">💾 저장</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveEditClient(id){
+  const c=ACCOUNTS.find(a=>a.id===id);
+  if(!c)return;
+  const name=document.getElementById('ec-name').value.trim();
+  if(!name){toast('⚠️ 업체명을 입력해주세요');return;}
+  c.company=name;
+  c.name=name;
+  c.manager=document.getElementById('ec-mgr').value;
+  c.url=document.getElementById('ec-url').value.trim();
+  c.cid=document.getElementById('ec-cid').value.trim();
+  const pw=document.getElementById('ec-pw').value;
+  if(pw)c.pw=pw;
+  closeModal();
+  toast(`✅ ${name} 정보가 수정되었습니다`);
+  renderContent('admin');
+}
+
+/* ── 클라이언트 삭제 ── */
+function confirmDeleteClient(id){
+  const c=ACCOUNTS.find(a=>a.id===id);
+  if(!c)return;
+  document.getElementById('modalTitle').textContent='🗑 클라이언트 삭제';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="text-align:center;padding:12px 0">
+      <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px">${c.company}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8">
+        이 계정을 삭제하면 복구할 수 없습니다.<br>정말 삭제하시겠습니까?
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--red-l);border-radius:var(--rsm);font-size:12px;color:var(--red)">
+        ID: ${c.id} · 코드: ${c.cid||'—'}
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-rd" onclick="deleteClient('${id}')">🗑 삭제 확인</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function deleteClient(id){
+  const idx=ACCOUNTS.findIndex(a=>a.id===id);
+  if(idx===-1)return;
+  const name=ACCOUNTS[idx].company;
+  ACCOUNTS.splice(idx,1);
+  if(activeClientId===id)activeClientId=null;
+  closeModal();
+  toast(`🗑 ${name} 계정이 삭제되었습니다`);
+  renderContent('admin');
+}
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
   setSb(c.company,c.cid||c.id,'광고 운영 중');
