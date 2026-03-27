@@ -2849,35 +2849,27 @@ function openEditClient(id){
 }
 
 async function saveEditClient(id){
-  // 1. 수정할 클라이언트 찾기
   const c = ACCOUNTS.find(a => a.id === id);
   if(!c) return;
 
-  const name = document.getElementById('ec-name').value.trim();
+  const name  = document.getElementById('ec-name').value.trim();
   const newId = document.getElementById('ec-id').value.trim();
-  const mgr = document.getElementById('ec-mgr').value;
-  const url = document.getElementById('ec-url').value.trim();
-  const pw = document.getElementById('ec-pw').value;
+  const pw    = document.getElementById('ec-pw').value;
+  const mgr   = document.getElementById('ec-mgr').value;
+  const url   = document.getElementById('ec-url').value.trim();
 
-  if(!name){ toast('⚠️ 업체명을 입력해주세요'); return; }
-  if(!newId){ toast('⚠️ 아이디를 입력해주세요'); return; }
+  if(!name)  { toast('⚠️ 업체명을 입력해주세요'); return; }
+  if(!newId) { toast('⚠️ 아이디를 입력해주세요'); return; }
   if(newId !== id && ACCOUNTS.find(a=>a.id===newId)){
     toast('⚠️ 이미 사용 중인 아이디입니다'); return;
   }
 
-  toast('💾 DB 저장 시도 중...');
+  toast('💾 저장 중...');
 
   try {
-    const updateData = {
-      client_key: newId,
-      company_name: name,
-      manager: mgr,
-      store_url: url,
-    };
+    const updateData = { client_key: newId, company_name: name, manager: mgr, store_url: url };
     if(pw) updateData.password = pw;
 
-    // 2. Supabase PATCH 요청 (id를 통해 정확한 행을 타겟팅)
-    // ⚠️ 핵심: client_key=eq.${id} 부분이 DB의 실제 ID와 정확히 일치해야 합니다.
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${encodeURIComponent(id)}`,
       {
@@ -2885,36 +2877,34 @@ async function saveEditClient(id){
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify(updateData)
       }
     );
 
     if(!res.ok) {
-      const errorDetail = await res.text();
-      console.error('DB 응답 에러:', errorDetail);
-      throw new Error('DB 응답 실패');
+      const err = await res.text();
+      console.error('DB 에러:', err);
+      throw new Error(err);
     }
 
-    // 3. DB 저장 성공 확인 후 화면 데이터 업데이트
-    c.id = newId;
+    c.id      = newId;
     c.company = name;
-    c.name = name;
+    c.name    = name;
     c.manager = mgr;
-    c.url = url;
+    c.url     = url;
     if(pw) c.pw = pw;
     if(activeClientId === id) activeClientId = newId;
 
     closeModal();
-    toast(`✅ [${name}] 정보가 DB에 영구 저장되었습니다.`);
-    
-    // 리스트 화면 즉시 갱신
+    toast(`✅ [${name}] 저장 완료`);
     if(typeof renderAdminTable === 'function') renderAdminTable();
 
   } catch(err) {
-    console.error('최종 저장 실패:', err);
-    toast('❌ 저장 실패! (콘솔 에러를 확인하세요)');
+    console.error('저장 실패:', err);
+    toast('❌ 저장 실패: ' + err.message);
   }
 }
 
