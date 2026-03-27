@@ -284,6 +284,21 @@ tbody tr:hover td{background:var(--surface)}
 .cl-name{font-size:14px;font-weight:700;margin-bottom:2px}
 .cl-id{font-size:10.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
 .cl-mgr{font-size:12px;color:var(--text2);margin-top:4px}
+  .cl-table{width:100%;border-collapse:collapse;font-size:13px}
+.cl-table th{background:var(--surface);font-size:11.5px;font-weight:600;color:var(--text2);padding:9px 12px;text-align:left;border-bottom:2px solid var(--border)}
+.cl-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.cl-table tr:hover td{background:var(--blue-l)}
+.cl-table tr.sel-row td{background:var(--blue-l);font-weight:600}
+.cl-table td .act-btns{display:flex;gap:5px}
+.admin-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.admin-toolbar input[type=text]{flex:1;min-width:160px;padding:7px 11px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none}
+.admin-toolbar input[type=text]:focus{border-color:var(--blue)}
+.admin-toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--white);outline:none;cursor:pointer}
+.pg-bar{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--text2)}
+.pg-btns{display:flex;gap:4px}
+.pg-btn{border:1px solid var(--border);background:var(--white);border-radius:var(--rsm);padding:5px 10px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.pg-btn:hover{background:var(--surface)}
+.pg-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .cl-url{font-size:11px;color:var(--blue);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cl-st{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--naver);margin-top:5px;font-weight:600}
 .reg-form{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--sh)}
@@ -468,6 +483,10 @@ let calEvents=[
 let savedData=[];
 let currentUser=null;
 let activeClientId=null;
+let adminSearch='';
+let adminTeamFilter='전체';
+let adminPageSize=20;
+let adminPage=1;
 let charts={};
 let calYear=2026,calMonth=1;
 let selectedCalDate=null;
@@ -879,7 +898,7 @@ function renderContent(id){
   c.innerHTML=htmlReq();
   setTimeout(()=>{ loadRequests(); },50);
   break;
-    case 'admin':    c.innerHTML=htmlAdmin();break;
+    case 'admin':    c.innerHTML=htmlAdmin();setTimeout(renderAdminTable,50);break;
     case 'register': c.innerHTML=htmlRegister();break;
   }
 }
@@ -2667,39 +2686,108 @@ async function updateReqStatus(id,status){
    ADMIN HTML
 ════════════════════════════════════════ */
 function htmlAdmin(){
-  const cls=ACCOUNTS.filter(a=>a.role==='client');
   return `
   <div class="admin-hero">
-    <div><h2>👑 클라이언트 관리</h2><p>광고주 계정을 선택하면 해당 대시보드를 확인할 수 있습니다</p></div>
+    <div><h2>👑 클라이언트 관리</h2><p>업체를 선택하면 해당 대시보드를 확인할 수 있습니다</p></div>
     <button class="btn btn-bl" onclick="go('register',null)">+ 계정 등록</button>
   </div>
-  <div class="cl-grid">
-    ${cls.map(c=>`
-    <div class="cl-card ${activeClientId===c.id?'sel':''}" style="position:relative">
-      <!-- 선택 클릭 영역 -->
-      <div onclick="selClient('${c.id}')" style="cursor:pointer">
-        <div class="cl-name">${c.company}</div>
-        <div class="cl-id">${c.id}</div>
-        <div class="cl-mgr">👤 ${c.manager||'미지정'}</div>
-        <div class="cl-url">${c.url||'URL 미등록'}</div>
-        <div class="cl-st"><div class="sdot"></div>광고 운영 중</div>
-      </div>
-      <!-- 수정/삭제 버튼 -->
-      <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <button class="btn btn-ol btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();openEditClient('${c.id}')">✏️ 수정</button>
-        <button class="btn btn-ol btn-sm" style="flex:1;justify-content:center;color:var(--red);border-color:rgba(239,68,68,.3)" onclick="event.stopPropagation();confirmDeleteClient('${c.id}')">🗑 삭제</button>
-      </div>
-    </div>`).join('')}
+  <div class="admin-toolbar">
+    <input type="text" id="adminSearchInput" placeholder="🔍 업체명 검색..." value="${adminSearch}"
+      oninput="adminSearch=this.value;adminPage=1;renderAdminTable()">
+    <select id="adminTeamSel" onchange="adminTeamFilter=this.value;adminPage=1;renderAdminTable()">
+      <option value="전체" ${adminTeamFilter==='전체'?'selected':''}>👥 전체 팀</option>
+      ${MANAGERS.map(m=>`<option value="${m}" ${adminTeamFilter===m?'selected':''}>${m} 팀</option>`).join('')}
+    </select>
+    <select id="adminPageSizeSel" onchange="adminPageSize=+this.value;adminPage=1;renderAdminTable()">
+      <option value="20" ${adminPageSize===20?'selected':''}>20개씩 보기</option>
+      <option value="50" ${adminPageSize===50?'selected':''}>50개씩 보기</option>
+      <option value="100" ${adminPageSize===100?'selected':''}>100개씩 보기</option>
+    </select>
   </div>
-  ${activeClientId?`<div class="sec-lbl"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:
-    '<div class="empty"><div class="ei">👆</div><p>위에서 클라이언트를 선택하세요</p></div>'}`;
+  <div id="adminTableWrap"></div>
+  <div id="adminPager" class="pg-bar"></div>
+  ${activeClientId?`<div class="sec-lbl" style="margin-top:18px"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:''}`;
+}
+
+function renderAdminTable(){
+  const q = adminSearch.trim().toLowerCase();
+  let list = ACCOUNTS.filter(a=>a.role==='client');
+  if(q) list = list.filter(a=>a.company.toLowerCase().includes(q)||a.id.toLowerCase().includes(q));
+  if(adminTeamFilter!=='전체') list = list.filter(a=>a.manager===adminTeamFilter);
+
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total/adminPageSize));
+  if(adminPage>totalPages) adminPage=totalPages;
+  const paged = list.slice((adminPage-1)*adminPageSize, adminPage*adminPageSize);
+
+  const wrap = document.getElementById('adminTableWrap');
+  if(!wrap) return;
+
+  if(!paged.length){
+    wrap.innerHTML=`<div class="empty"><div class="ei">🔍</div><p>검색 결과가 없습니다</p></div>`;
+    document.getElementById('adminPager').innerHTML='';
+    return;
+  }
+
+  // 팀별 그룹핑
+  const groups={};
+  paged.forEach(c=>{
+    const team = c.manager||'미지정';
+    if(!groups[team]) groups[team]=[];
+    groups[team].push(c);
+  });
+
+  let html='';
+  let rowNum=(adminPage-1)*adminPageSize+1;
+  Object.keys(groups).forEach(team=>{
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--blue);padding:10px 4px 4px;margin-top:8px">👤 ${team} 팀 (${groups[team].length}개)</div>`;
+    html+=`<table class="cl-table"><thead><tr>
+      <th style="width:40px">No</th>
+      <th>업체명</th>
+      <th>아이디</th>
+      <th>스토어 URL</th>
+      <th style="width:80px">상태</th>
+      <th style="width:110px">관리</th>
+    </tr></thead><tbody>`;
+    groups[team].forEach(c=>{
+      html+=`<tr class="${activeClientId===c.id?'sel-row':''}" onclick="selClient('${c.id}')" style="cursor:pointer">
+        <td style="color:var(--text3);font-size:11px">${rowNum++}</td>
+        <td><b>${c.company}</b></td>
+        <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${c.id}</td>
+        <td style="font-size:11.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${c.url?`<a href="${c.url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none">${c.url}</a>`:'—'}
+        </td>
+        <td><div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">운영중</span></div></td>
+        <td><div class="act-btns">
+          <button class="btn btn-ol btn-sm" onclick="event.stopPropagation();openEditClient('${c.id}')">✏️</button>
+          <button class="btn btn-ol btn-sm" style="color:var(--red);border-color:rgba(239,68,68,.3)" onclick="event.stopPropagation();confirmDeleteClient('${c.id}')">🗑</button>
+        </div></td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  });
+  wrap.innerHTML=html;
+
+  // 페이지네이션
+  const pager=document.getElementById('adminPager');
+  if(totalPages<=1){pager.innerHTML='';return;}
+  let pgHtml=`<span>총 ${total}개 업체 · ${adminPage}/${totalPages} 페이지</span><div class="pg-btns">`;
+  pgHtml+=`<button class="pg-btn" onclick="adminPage=1;renderAdminTable()" ${adminPage===1?'disabled':''}>«</button>`;
+  pgHtml+=`<button class="pg-btn" onclick="adminPage--;renderAdminTable()" ${adminPage===1?'disabled':''}>‹</button>`;
+  for(let i=Math.max(1,adminPage-2);i<=Math.min(totalPages,adminPage+2);i++){
+    pgHtml+=`<button class="pg-btn ${i===adminPage?'active':''}" onclick="adminPage=${i};renderAdminTable()">${i}</button>`;
+  }
+  pgHtml+=`<button class="pg-btn" onclick="adminPage++;renderAdminTable()" ${adminPage===totalPages?'disabled':''}>›</button>`;
+  pgHtml+=`<button class="pg-btn" onclick="adminPage=${totalPages};renderAdminTable()" ${adminPage===totalPages?'disabled':''}>»</button>`;
+  pgHtml+=`</div>`;
+  pager.innerHTML=pgHtml;
 }
 function selClient(id){
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
   setSb(c.company,c.id,'광고 운영 중');
   toast(`✅ ${c.company} 선택됨`);
-  renderContent('admin');
+  renderAdminTable();
   setTimeout(()=>{
     const d=document.getElementById('clientDetail');if(!d)return;
     d.innerHTML=`<div class="card">
