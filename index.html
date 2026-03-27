@@ -516,6 +516,8 @@ const MONTHLY_TREND=[];
 ════════════════════════════════════════ */
 const SUPABASE_URL='https://pouqjsolszhntwkaaasj.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_Y9xRQs7ny8tsPr8qEVH1Gg_kADs0sOp';
+// ⚠️ 위 ANON KEY가 틀리면 클라이언트 로그인만 실패합니다. 관리자(dearcompany)는 로컬 계정이라 영향 없음.
+// 올바른 키: Supabase 대시보드 → Settings → API → anon public (eyJ...로 시작하는 JWT)
 
 /* ════════════════════════════════════════
    LOGIN
@@ -534,14 +536,14 @@ async function doLogin(){
     return;
   }
 
-  // 1. 관리자(admin) 등 로컬 계정 먼저 확인
+  // 1. 로컬 계정 먼저 확인 (관리자 포함)
   let acc = ACCOUNTS.find(a => a.id === id && a.pw === pw);
 
-  // 2. 로컬에 없을 경우 Supabase DB에서 확인
+  // 2. 로컬에 없을 경우에만 Supabase DB에서 확인 (클라이언트 계정)
   if(!acc){
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}&select=*`,
+        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${encodeURIComponent(id)}&select=*`,
         {
           method: 'GET',
           headers: {
@@ -552,27 +554,29 @@ async function doLogin(){
         }
       );
 
-      if (!response.ok) throw new Error("네트워크 응답 에러");
-      
-      const rows = await response.json();
-
-      if(rows && rows.length > 0){
-        const row = rows[0];
-        // DB의 password 컬럼과 입력값 비교
-        if(row.password === pw){
-          acc = {
-            id: row.client_key,
-            pw: row.password,
-            role: 'client',
-            name: row.company_name,
-            company: row.company_name,
-            manager: row.manager || '',
-            url: row.store_url || '',
-            
-          };
-          // 세션 유지를 위해 로컬 배열에 임시 추가
-          if(!ACCOUNTS.find(a => a.id === acc.id)) ACCOUNTS.push(acc);
+      if(response.ok){
+        const rows = await response.json();
+        if(rows && rows.length > 0){
+          const row = rows[0];
+          if(row.password === pw){
+            acc = {
+              id: row.client_key,
+              pw: row.password,
+              role: 'client',
+              name: row.company_name,
+              company: row.company_name,
+              manager: row.manager || '',
+              url: row.store_url || '',
+            };
+            if(!ACCOUNTS.find(a => a.id === acc.id)) ACCOUNTS.push(acc);
+          }
         }
+      } else {
+        // Supabase 응답 오류 — 클라이언트 로그인만 실패, 관리자는 이미 위에서 처리됨
+        console.warn('Supabase 응답 오류:', response.status);
+        errEl.textContent = "서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.";
+        errEl.style.display = 'block';
+        return;
       }
     } catch(e) {
       console.error('로그인 중 에러 발생:', e);
@@ -587,14 +591,11 @@ async function doLogin(){
     currentUser = acc;
     sessionStorage.setItem('currentUser', JSON.stringify(acc));
     sessionStorage.setItem('currentPage', acc.role==='admin' ? 'admin' : 'combined');
-    
     errEl.style.display = 'none';
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appShell').style.display = 'block';
-    
     initApp();
   } else {
-    // 계정 정보가 틀린 경우
     errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
     errEl.style.display = 'block';
   }
@@ -2133,37 +2134,6 @@ function saveOneFile(fileObj, client) {
     });
   }
 }
-```
-
----
-
-## 그래도 실패하면: 디버그 방법
-
-저장 실패 시 브라우저 **F12 → Console** 탭에서 오류 메시지를 확인해주세요.
-
-Supabase 쪽 에러라면 주로 2가지 원인입니다:
-
-**① 테이블/컬럼이 없는 경우**
-```
-Error: relation "daily_reports" does not exist
-```
-→ Supabase 대시보드에서 테이블을 직접 만들어야 합니다.
-
-**② RLS(Row Level Security) 차단**
-```
-Error: new row violates row-level security policy
-
-function csvParseLine(line){
-  const result=[];let cur='',inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(ch==='"'){inQ=!inQ;}
-    else if(ch===','&&!inQ){result.push(cur.trim().replace(/^"|"$/g,''));cur='';}
-    else{cur+=ch;}
-  }
-  result.push(cur.trim().replace(/^"|"$/g,''));
-  return result;
-}
 
 function processFiles(files){
   const clientEl = document.getElementById('uploadClient');
@@ -2292,18 +2262,19 @@ function processFiles(files){
   });
 }
 
-function csvParseLine(line) {
-  const result = [];
-  let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { result.push(cur.trim().replace(/^"|"$/g,'')); cur = ''; }
-    else { cur += ch; }
+function csvParseLine(line){
+  const result=[];
+  let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){result.push(cur.trim().replace(/^"|"$/g,''));cur='';}
+    else{cur+=ch;}
   }
   result.push(cur.trim().replace(/^"|"$/g,''));
   return result;
 }
+
 function parseNum(v){
   if(v===''||v===null||v===undefined)return 0;
   if(typeof v==='number')return v;
