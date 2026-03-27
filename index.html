@@ -769,10 +769,9 @@ async function loadClientsFromSupabase(){
       });
     });
 
-    // 관리자 화면이면 클라이언트 목록 새로고침
-    const adminEl = document.getElementById('ni-admin');
-    if(adminEl && adminEl.classList.contains('active')){
-      renderContent('admin');
+    // 관리자 화면이면 테이블만 갱신
+    if(typeof renderAdminTable === 'function'){
+      renderAdminTable();
     }
     console.log(`✅ 계정 ${rows.length}개 로드됨`);
   }catch(e){
@@ -2740,7 +2739,7 @@ function renderAdminTable(){
   if(!wrap) return;
 
   if(!paged.length){
-    wrap.innerHTML=`<div class="empty"><div class="ei">🔍</div><p>검색 결과가 없습니다</p></div>`;
+    wrap.innerHTML=`<div class="empty"><div class="ei">🔍</div><p>${total===0?'등록된 업체가 없습니다':'검색 결과가 없습니다'}</p></div>`;
     document.getElementById('adminPager').innerHTML='';
     return;
   }
