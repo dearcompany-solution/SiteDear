@@ -2009,16 +2009,17 @@ function saveOneFile(fileObj, client) {
             const sheetArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
             let hdrIdx = -1, hdrRow = [];
             const XLSX_TARGET = ['일별','시간대별','검색어','키워드명','키워드'];
-            for (let i = 0; i < Math.min(sheetArr.length, 10); i++) {
-              const row = sheetArr[i].map(v => String(v||'').trim());
-              if (row.some(v => XLSX_TARGET.includes(v))) {
-                hdrIdx = i; hdrRow = row; break;
-              }
-            }
-            if (hdrIdx === -1) {
-              console.warn(`시트 "${sheetName}" — 헤더 인식 실패:`, sheetArr.slice(0,3));
-              return; // 이 시트 스킵
-            }
+for (let i = 0; i < Math.min(sheetArr.length, 30); i++) {  // 10→30행으로 확장
+  const row = sheetArr[i].map(v => String(v||'').trim());
+  if (row.some(v => XLSX_TARGET.includes(v))) {
+    hdrIdx = i; hdrRow = row; break;
+  }
+}
+if (hdrIdx === -1) {
+  console.warn(`시트 "${sheetName}" — 헤더 인식 실패:`, sheetArr.slice(0,5));
+  // 스킵하지 말고 콘솔에만 기록 (다른 시트에서 찾을 수 있음)
+  return;
+}
 
             const isDaily   = hdrRow.includes('일별');
             const isHourly  = hdrRow.includes('시간대별');
