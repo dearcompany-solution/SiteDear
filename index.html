@@ -455,8 +455,8 @@ canvas{max-height:210px}
 ════════════════════════════════════════ */
 const ACCOUNTS=[
   {id:'dearcompany', pw:'dear12341401', role:'admin',  name:'관리자',    company:'DEARCOMPANY', manager:'',    url:''},
-  {id:'brand-a', pw:'pass1234', role:'client', name:'Dear.Isopa',company:'Dear.Isopa',  manager:'이채환',url:'https://smartstore.naver.com/dear-isopa',cid:'CLT-2026-0001'},
-  {id:'brand-b', pw:'pass5678', role:'client', name:'브랜드 B',  company:'브랜드 B',    manager:'김승진',url:'https://brand-b.com',cid:'CLT-2026-0002'},
+  {id:'brand-a', pw:'pass1234', role:'client', name:'Dear.Isopa',company:'Dear.Isopa',  manager:'이채환',url:'https://smartstore.naver.com/dear-isopa'},
+{id:'brand-b', pw:'pass5678', role:'client', name:'브랜드 B',  company:'브랜드 B',    manager:'김승진',url:'https://brand-b.com'},
 ];
 const MANAGERS=['이채환','김승진','이종선','공지수'];
 
@@ -654,7 +654,7 @@ async function doLogin(){
             company: row.company_name,
             manager: row.manager || '',
             url: row.store_url || '',
-            cid: row.client_code || ''
+            
           };
           // 세션 유지를 위해 로컬 배열에 임시 추가
           if(!ACCOUNTS.find(a => a.id === acc.id)) ACCOUNTS.push(acc);
@@ -708,7 +708,7 @@ function initApp(restorePage){
     });
   } else {
     renderClientNav();
-    setSb(currentUser.company,currentUser.cid||currentUser.id,'광고 운영 중');
+    setSb(currentUser.company,currentUser.id,'광고 운영 중');
     const page = restorePage || 'combined';
     renderContent(page);
     setTimeout(renderCharts,100);
@@ -739,7 +739,7 @@ async function loadClientsFromSupabase(){
         company: row.company_name,
         manager: row.manager   || '',
         url:     row.store_url || '',
-        cid:     row.client_code || '',
+        
       };
       if(exists){
         // 기존 계정 정보 업데이트
@@ -2684,7 +2684,7 @@ function htmlAdmin(){
       <!-- 선택 클릭 영역 -->
       <div onclick="selClient('${c.id}')" style="cursor:pointer">
         <div class="cl-name">${c.company}</div>
-        <div class="cl-id">${c.cid||c.id}</div>
+        <div class="cl-id">${c.id}</div>
         <div class="cl-mgr">👤 ${c.manager||'미지정'}</div>
         <div class="cl-url">${c.url||'URL 미등록'}</div>
         <div class="cl-st"><div class="sdot"></div>광고 운영 중</div>
@@ -2702,14 +2702,14 @@ function htmlAdmin(){
 function selClient(id){
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
-  setSb(c.company,c.cid||c.id,'광고 운영 중');
+  setSb(c.company,c.id,'광고 운영 중');
   toast(`✅ ${c.company} 선택됨`);
   renderContent('admin');
   setTimeout(()=>{
     const d=document.getElementById('clientDetail');if(!d)return;
     d.innerHTML=`<div class="card">
       <div class="card-hd">
-        <div><div class="card-title">${c.company}</div><div class="card-sub">${c.cid||c.id}</div></div>
+        <div><div class="card-title">${c.company}</div><div class="card-sub">${c.id}</div></div>
         <div style="display:flex;gap:7px">
           <button class="btn btn-ol btn-sm" onclick="openEditClient('${c.id}')">✏️ 수정</button>
           <button class="btn btn-ol btn-sm" style="color:var(--red);border-color:rgba(239,68,68,.3)" onclick="confirmDeleteClient('${c.id}')">🗑 삭제</button>
@@ -2718,7 +2718,7 @@ function selClient(id){
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;font-size:13px">
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">업체명</div><b>${c.company}</b></div>
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">담당 매니저</div><b>${c.manager||'미지정'}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.cid||c.id}</b></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.id}</b></div>
         <div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px">
@@ -2750,10 +2750,7 @@ function openEditClient(id){
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">스토어 URL</label>
         <input id="ec-url" class="fi" type="text" value="${c.url||''}">
       </div>
-      <div>
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">클라이언트 코드</label>
-        <input id="ec-cid" class="fi" type="text" value="${c.cid||''}">
-      </div>
+      
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
         <input id="ec-pw" class="fi" type="password" placeholder="변경하지 않으면 비워두세요">
@@ -2773,7 +2770,7 @@ async function saveEditClient(id){
   const name = document.getElementById('ec-name').value.trim();
   const mgr = document.getElementById('ec-mgr').value;
   const url = document.getElementById('ec-url').value.trim();
-  const cid = document.getElementById('ec-cid').value.trim();
+  
   const pw = document.getElementById('ec-pw').value;
 
   if(!name){
@@ -2788,7 +2785,7 @@ async function saveEditClient(id){
       company_name: name,
       manager: mgr,
       store_url: url,
-      client_code: cid
+      
     };
     if(pw) updateData.password = pw;
 
@@ -2818,7 +2815,7 @@ async function saveEditClient(id){
     c.name = name;
     c.manager = mgr;
     c.url = url;
-    c.cid = cid;
+    
     if(pw) c.pw = pw;
 
     closeModal();
@@ -2846,7 +2843,7 @@ function confirmDeleteClient(id){
         이 계정을 삭제하면 복구할 수 없습니다.<br>정말 삭제하시겠습니까?
       </div>
       <div style="margin-top:12px;padding:10px;background:var(--red-l);border-radius:var(--rsm);font-size:12px;color:var(--red)">
-        ID: ${c.id} · 코드: ${c.cid||'—'}
+        ID: ${c.id}
       </div>
     </div>`;
   document.getElementById('modalFooter').innerHTML=`
@@ -2894,7 +2891,7 @@ function htmlRegister(){return `
       <div class="rg"><label>비밀번호 *</label><input type="password" id="rg-pw"></div>
       <div class="rg"><label>비밀번호 확인 *</label><input type="password" id="rg-pw2"></div>
       <div class="rg"><label>담당 매니저 *</label><select id="rg-mgr"><option value="">선택하세요</option>${MANAGERS.map(m=>`<option>${m}</option>`).join('')}</select></div>
-      <div class="rg"><label>클라이언트 ID</label><input type="text" id="rg-cid" placeholder="미입력 시 자동 생성"></div>
+      
       <div class="rg full"><label>스토어 URL</label><input type="text" id="rg-url" placeholder="https://..."></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:9px">
@@ -2918,20 +2915,20 @@ async function registerAcc(){
   const pw=document.getElementById('rg-pw').value;
   const pw2=document.getElementById('rg-pw2').value;
   const mgr=document.getElementById('rg-mgr').value;
-  const cid=document.getElementById('rg-cid').value.trim()||`CLT-2026-${String(ACCOUNTS.length+10).padStart(4,'0')}`;
+  
   const url=document.getElementById('rg-url').value.trim();
   if(!name||!id||!pw||!mgr){toast('⚠️ 필수 항목을 입력해주세요');return;}
   if(pw!==pw2){toast('⚠️ 비밀번호가 일치하지 않습니다');return;}
   if(ACCOUNTS.find(a=>a.id===id)){toast('⚠️ 이미 사용 중인 아이디입니다');return;}
   // 로컬 추가
-  ACCOUNTS.push({id,pw,role:'client',name,company:name,manager:mgr,url,cid});
+  ACCOUNTS.push({id,pw,role:'client',name,company:name,manager:mgr,url});
 
   // Supabase에도 저장
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_key:id,password:pw,company_name:name,manager:mgr,store_url:url,client_code:cid,is_active:true})
+      body:JSON.stringify({client_key:id,password:pw,company_name:name,manager:mgr,store_url:url,is_active:true})
     });
     toast(`✅ ${name} 계정 등록 완료! (Supabase 저장됨)`);
   }catch(e){
@@ -2939,7 +2936,7 @@ async function registerAcc(){
   }
   clearReg();renderContent('register');
 }
-function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-cid','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
+function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
 
 /* ════════════════════════════════════════
    CHARTS
