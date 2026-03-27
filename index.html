@@ -424,18 +424,21 @@ canvas{max-height:210px}
   </aside>
 
   <main class="main">
-    <header class="topbar">
+   <header class="topbar">
       <div class="tb-row1">
         <div>
           <div class="tb-title" id="pgTitle">대시보드</div>
           <div class="tb-sub" id="pgSub">—</div>
         </div>
-        <div class="tb-actions">
-          <div id="adminActions" style="display:none">
-            <button class="btn btn-bl btn-sm" onclick="go('register',null)">+ 계정 등록</button>
-          </div>
-          <div id="defaultActions">
+        <div class="tb-actions" id="tbActions">
+          <!-- 일반 페이지 버튼 -->
+          <div id="defaultActions" style="display:flex;gap:8px;align-items:center">
             <button class="btn btn-ol btn-sm" onclick="openDownload()">⬇ 리포트 다운로드</button>
+          </div>
+          <!-- 관리자 페이지 버튼 -->
+          <div id="adminActions" style="display:none;gap:8px;align-items:center">
+            <button class="btn btn-ol btn-sm" onclick="downloadClientList()">⬇ 업체 목록 다운로드</button>
+            <button class="btn btn-bl btn-sm" onclick="go('register',null)">+ 계정 등록</button>
           </div>
         </div>
       </div>
@@ -859,6 +862,15 @@ function go(id,el){
     if(dr) dr.style.display='flex';
     if(aa) aa.style.display='none';
     if(da) da.style.display='flex';
+  }
+  if(id==='admin'||id==='register'){
+    document.getElementById('dateRow').style.display='none';
+    document.getElementById('adminActions').style.display='flex';
+    document.getElementById('defaultActions').style.display='none';
+  } else {
+    document.getElementById('dateRow').style.display='flex';
+    document.getElementById('adminActions').style.display='none';
+    document.getElementById('defaultActions').style.display='flex';
   }
   renderContent(id);
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
@@ -2797,6 +2809,19 @@ function renderAdminTable(){
   pgHtml+=`</div>`;
   pager.innerHTML=pgHtml;
 }
+function downloadClientList(){
+  const list = ACCOUNTS.filter(a=>a.role==='client');
+  if(!list.length){ toast('⚠️ 다운로드할 업체가 없습니다'); return; }
+  const header = ['업체명','아이디','담당 매니저','스토어 URL'];
+  const rows = list.map(c=>[c.company, c.id, c.manager||'미지정', c.url||'']);
+  const csv = [header, ...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `업체목록_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('✅ 업체 목록 다운로드 완료');
+}  
 function selClient(id){
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
