@@ -713,8 +713,53 @@ function initApp(restorePage){
   renderContent(page);
   setTimeout(renderCharts,100);
   setActive(page);
+
+  // Supabase에서 계정 목록 로드
+  loadClientsFromSupabase();
 }
-function setSb(name,id,st){
+/* ── Supabase 계정 목록 로드 ── */
+async function loadClientsFromSupabase(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/clients?select=*&is_active=eq.true&order=created_at.desc`,
+      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+    );
+    const rows = await res.json();
+    if(!Array.isArray(rows)||!rows.length) return;
+
+    rows.forEach(row=>{
+      if(row.client_key==='admin') return; // 관리자는 제외
+      const exists = ACCOUNTS.find(a=>a.id===row.client_key);
+      const acc = {
+        id:      row.client_key,
+        pw:      row.password,
+        role:    'client',
+        name:    row.company_name,
+        company: row.company_name,
+        manager: row.manager   || '',
+        url:     row.store_url || '',
+        cid:     row.client_code || '',
+      };
+      if(exists){
+        // 기존 계정 정보 업데이트
+        Object.assign(exists, acc);
+      } else {
+        // 새 계정 추가
+        ACCOUNTS.push(acc);
+      }
+    });
+
+    // 관리자 화면이면 클라이언트 목록 새로고침
+    const adminEl = document.getElementById('ni-admin');
+    if(adminEl && adminEl.classList.contains('active')){
+      renderContent('admin');
+    }
+    console.log(`✅ 계정 ${rows.length}개 로드됨`);
+  }catch(e){
+    console.warn('계정 목록 로드 실패:', e);
+  }
+}
+  function setSb(name,id,st){
   document.getElementById('sbName').textContent=name;
   document.getElementById('sbId').textContent=id;
   document.getElementById('sbSt').textContent=st;
