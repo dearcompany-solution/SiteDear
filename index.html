@@ -1523,32 +1523,18 @@ function renderUploadTab(){
   <div style="max-width:900px">
     <div class="card" style="margin-bottom:16px">
       <div class="card-title" style="margin-bottom:14px">⚙️ 업로드 설정</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체 선택 *</div>
-         ${currentUser.role==='admin' ? `
-          <select id="uploadClient" class="fi">
-            <option value="">업체를 선택하세요</option>
-            ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${activeClientId===a.id?'selected':''}>${a.company}</option>`).join('')}
-          </select>` : `
-          <select id="uploadClient" class="fi" disabled>
-            <option value="${currentUser.id}" selected>${currentUser.company}</option>
-          </select>
-          <input type="hidden" id="uploadClientHidden" value="${currentUser.id}">`}
-        </div>
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">보고서 월 *</div>
-          <input type="month" id="uploadMonth" class="fi" value="${new Date().toISOString().slice(0,7)}">
-        </div>
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">파일 유형</div>
-          <select id="uploadType" class="fi">
-            <option value="daily">일별_누적</option>
-            <option value="keyword">키워드 보고서</option>
-            <option value="hourly">시간대별 보고서</option>
-          </select>
-        </div>
+      ${currentUser.role==='admin' ? `
+      <div style="max-width:320px">
+        <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체 선택 *</div>
+        <select id="uploadClient" class="fi">
+          <option value="">업체를 선택하세요</option>
+          ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${activeClientId===a.id?'selected':''}>${a.company}</option>`).join('')}
+        </select>
       </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text3)">💡 월·파일 유형은 업로드한 파일에서 자동으로 인식됩니다</div>
+      ` : `
+      <div style="font-size:13px;color:var(--text2)">업체: <b>${currentUser.company}</b> · 월·유형 자동 인식</div>
+      `}
     </div>
     <div class="card" style="margin-bottom:18px">
       <div class="card-title" style="margin-bottom:14px">📁 엑셀 파일 업로드</div>
@@ -1773,10 +1759,103 @@ function processFiles(files){
   const client = currentUser.role==='admin'
     ? (clientEl ? clientEl.value : '')
     : currentUser.id;
-  const month = document.getElementById('uploadMonth')?.value || '';
-  const type  = document.getElementById('uploadType')?.value  || 'daily';
   if(!client){ toast('⚠️ 업체를 먼저 선택해주세요'); return; }
-  if(!month){  toast('⚠️ 보고서 월을 선택해주세요'); return; }
+  toast('📂 파일 읽는 중...');
+
+  Array.from(files).forEach(file=>{
+    loadSheetJS(()=>{
+      const reader = new FileReader();
+      reader.onload = e => {
+        try{
+          const wb   = XLSX.read(e.target.result,{type:'binary',cellDates:true});
+          const rows = [];
+
+          wb.SheetNames.forEach(sheetName=>{
+            const ws   = wb.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(ws,{defval:''});
+            if(!json.length) return;
+
+            // 시트명으로 유형 자동 판단
+            const isDaily   = sheetName==='일별_누적' || sheetName.includes('일별');
+            const isKeyword = sheetName.includes('키워드');
+            const isHourly  = sheetName==='시간대' || sheetName.includes('시간');
+            if(!isDaily && !isKeyword && !isHourly) return;
+
+            if(isDaily){
+              json.forEach(r=>{
+                const date    = r['일자\n(서식 셀)']||r['일자']||r['날짜']||'';
+                const dateStr = date instanceof Date ? date.toISOString().slice(0,10) : String(date).slice(0,10);
+                if(!dateStr||dateStr.length<8) return;
+                // 월 자동 추출
+                const month = dateStr.slice(0,7);
+                rows.push({data_type:'daily',client_key:client,month,date:dateStr,
+                  campaign_type:String(r['캠페인유형']||r['유형']||''),
+                  device:String(r['PC/모바일']||r['기기']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||r['광고비']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
+              });
+            } else if(isKeyword){
+              // 키워드는 월 컬럼이 없으므로 파일명에서 추출 시도, 없으면 이번달
+              const monthMatch = file.name.match(/(\d{4})[.\-_]?(\d{2})/);
+              const month = monthMatch ? `${monthMatch[1]}-${monthMatch[2]}` : new Date().toISOString().slice(0,7);
+              json.forEach(r=>{
+                const kw = r['키워드명']||r['키워드']||'';
+                if(!kw) return;
+                rows.push({data_type:'keyword',client_key:client,month,keyword:String(kw),
+                  campaign_type:String(r['유형']||r['캠페인유형']||''),
+                  device:String(r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용\n(VAT포함,원)']||r['총비용']||r['광고비용']||0),
+                  avg_rank:parseNum(r['평균노출순위']||r['평균\n노출순위']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
+              });
+            } else if(isHourly){
+              const monthMatch = file.name.match(/(\d{4})[.\-_]?(\d{2})/);
+              const month = monthMatch ? `${monthMatch[1]}-${monthMatch[2]}` : new Date().toISOString().slice(0,7);
+              json.forEach(r=>{
+                const t = r['시간대별']||r['시간대']||'';
+                if(!t) return;
+                rows.push({data_type:'hourly',client_key:client,month,time_slot:String(t),
+                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||0)});
+              });
+            }
+          });
+
+          if(!rows.length){ toast('⚠️ 인식된 데이터 없음 — 시트명 확인: 일별_누적 / 키워드 / 시간대'); return; }
+
+          const months = [...new Set(rows.map(r=>r.month))].join(', ');
+          toast(`💾 ${rows.length}개 (${months}) 저장 중...`);
+
+          const tableMap = {daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports'};
+          const byType = {};
+          rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
+
+          Object.entries(byType).forEach(([dtype, drows])=>{
+            fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+              body:JSON.stringify(drows)
+            }).then(res=>{
+              if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+              parsedTableData = parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
+              parsedTableData.push(...drows);
+              toast(`✅ ${file.name} [${dtype}] ${drows.length}개 저장 완료!`);
+            }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
+          });
+
+        }catch(err){ console.error(err); toast('❌ 파일 읽기 실패: '+err.message); }
+      };
+      reader.readAsBinaryString(file);
+    });
+  });
+}
 
   toast('📂 파일 읽는 중...');
 
