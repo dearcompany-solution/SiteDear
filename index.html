@@ -431,10 +431,15 @@ canvas{max-height:210px}
           <div class="tb-sub" id="pgSub">—</div>
         </div>
         <div class="tb-actions">
-          <button class="btn btn-ol btn-sm" onclick="openDownload()">⬇ 리포트 다운로드</button>
+          <div id="adminActions" style="display:none">
+            <button class="btn btn-bl btn-sm" onclick="go('register',null)">+ 계정 등록</button>
+          </div>
+          <div id="defaultActions">
+            <button class="btn btn-ol btn-sm" onclick="openDownload()">⬇ 리포트 다운로드</button>
+          </div>
         </div>
       </div>
-      <div class="date-row">
+      <div class="date-row" id="dateRow">
         <button class="dq-btn" onclick="setQuick('today',this)">오늘</button>
         <button class="dq-btn" onclick="setQuick('yesterday',this)">어제</button>
         <button class="dq-btn" onclick="setQuick('thisweek',this)">이번 주</button>
@@ -847,6 +852,15 @@ function go(id,el){
   const t=pageTitles[id]||['대시보드',''];
   document.getElementById('pgTitle').textContent=t[0];
   document.getElementById('pgSub').textContent=t[1];
+  // admin 아닐 때 topbar 복원
+  if(id !== 'admin' && id !== 'register'){
+    const dr = document.getElementById('dateRow');
+    const aa = document.getElementById('adminActions');
+    const da = document.getElementById('defaultActions');
+    if(dr) dr.style.display='flex';
+    if(aa) aa.style.display='none';
+    if(da) da.style.display='flex';
+  }
   renderContent(id);
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
 }
@@ -898,7 +912,13 @@ function renderContent(id){
   c.innerHTML=htmlReq();
   setTimeout(()=>{ loadRequests(); },50);
   break;
-    case 'admin':    c.innerHTML=htmlAdmin();setTimeout(renderAdminTable,50);break;
+    case 'admin':
+      c.innerHTML=htmlAdmin();
+      setTimeout(renderAdminTable,50);
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='flex';
+      document.getElementById('defaultActions').style.display='none';
+      break;
     case 'register': c.innerHTML=htmlRegister();break;
   }
 }
@@ -2687,10 +2707,6 @@ async function updateReqStatus(id,status){
 ════════════════════════════════════════ */
 function htmlAdmin(){
   return `
-  <div class="admin-hero">
-    <div><h2>👑 클라이언트 관리</h2><p>업체를 선택하면 해당 대시보드를 확인할 수 있습니다</p></div>
-    <button class="btn btn-bl" onclick="go('register',null)">+ 계정 등록</button>
-  </div>
   <div class="admin-toolbar">
     <input type="text" id="adminSearchInput" placeholder="🔍 업체명 검색..." value="${adminSearch}"
       oninput="adminSearch=this.value;adminPage=1;renderAdminTable()">
