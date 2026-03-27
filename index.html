@@ -2824,9 +2824,8 @@ function openEditClient(id){
         <input id="ec-name" class="fi" type="text" value="${c.company}">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">아이디</label>
-        <input id="ec-id" class="fi" type="text" value="${c.id}" style="background:var(--surface);color:var(--text3)" readonly>
-        <div style="font-size:11px;color:var(--text3);margin-top:3px">※ 아이디는 변경할 수 없습니다</div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">아이디 *</label>
+        <input id="ec-id" class="fi" type="text" value="${c.id}">
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
@@ -2855,24 +2854,25 @@ async function saveEditClient(id){
   if(!c) return;
 
   const name = document.getElementById('ec-name').value.trim();
+  const newId = document.getElementById('ec-id').value.trim();
   const mgr = document.getElementById('ec-mgr').value;
   const url = document.getElementById('ec-url').value.trim();
-  
   const pw = document.getElementById('ec-pw').value;
 
-  if(!name){
-    toast('⚠️ 업체명을 입력해주세요');
-    return;
+  if(!name){ toast('⚠️ 업체명을 입력해주세요'); return; }
+  if(!newId){ toast('⚠️ 아이디를 입력해주세요'); return; }
+  if(newId !== id && ACCOUNTS.find(a=>a.id===newId)){
+    toast('⚠️ 이미 사용 중인 아이디입니다'); return;
   }
 
   toast('💾 DB 저장 시도 중...');
 
   try {
     const updateData = {
+      client_key: newId,
       company_name: name,
       manager: mgr,
       store_url: url,
-      
     };
     if(pw) updateData.password = pw;
 
@@ -2898,12 +2898,13 @@ async function saveEditClient(id){
     }
 
     // 3. DB 저장 성공 확인 후 화면 데이터 업데이트
+    c.id = newId;
     c.company = name;
     c.name = name;
     c.manager = mgr;
     c.url = url;
-    
     if(pw) c.pw = pw;
+    if(activeClientId === id) activeClientId = newId;
 
     closeModal();
     toast(`✅ [${name}] 정보가 DB에 영구 저장되었습니다.`);
