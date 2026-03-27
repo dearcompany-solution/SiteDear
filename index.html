@@ -383,11 +383,6 @@ canvas{max-height:210px}
     <div class="lg"><label>비밀번호</label><input id="lpw" type="password" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="lbtn" onclick="doLogin()">로그인</button>
     <div class="lerr" id="lerr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
-    <div class="lhint">
-      <b>🔑 로그인 계정</b><br>
-      관리자: <b>admin</b> / <b>dear2025</b><br>
-      광고주: <b>brand-a</b> / <b>pass1234</b> &nbsp;<span style="color:var(--text3)">(Dear.Isopa)</span>
-    </div>
   </div>
 </div>
 
@@ -459,7 +454,7 @@ canvas{max-height:210px}
    ACCOUNTS & BASE DATA
 ════════════════════════════════════════ */
 const ACCOUNTS=[
-  {id:'admin',   pw:'dear2025', role:'admin',  name:'관리자',    company:'DEARCOMPANY', manager:'',    url:''},
+  {id:'dearcompany', pw:'dear12341401', role:'admin',  name:'관리자',    company:'DEARCOMPANY', manager:'',    url:''},
   {id:'brand-a', pw:'pass1234', role:'client', name:'Dear.Isopa',company:'Dear.Isopa',  manager:'이채환',url:'https://smartstore.naver.com/dear-isopa',cid:'CLT-2026-0001'},
   {id:'brand-b', pw:'pass5678', role:'client', name:'브랜드 B',  company:'브랜드 B',    manager:'김승진',url:'https://brand-b.com',cid:'CLT-2026-0002'},
 ];
@@ -677,7 +672,7 @@ async function doLogin(){
   if(acc){
     currentUser = acc;
     sessionStorage.setItem('currentUser', JSON.stringify(acc));
-    sessionStorage.setItem('currentPage', 'combined');
+    sessionStorage.setItem('currentPage', acc.role==='admin' ? 'admin' : 'combined');
     
     errEl.style.display = 'none';
     document.getElementById('loginPage').style.display = 'none';
@@ -704,20 +699,24 @@ function doLogout(){
 function initApp(restorePage){
   if(currentUser.role==='admin'){
     renderAdminNav();
-    setSb('DEARCOMPANY 관리자','admin','관리자');
+    setSb('DEARCOMPANY 관리자','dearcompany','관리자');
+    // 관리자: 클라이언트 목록 먼저 로드 후 admin 페이지 렌더
+    const page = restorePage || 'admin';
+    loadClientsFromSupabase().then(()=>{
+      renderContent(page);
+      setActive(page);
+    });
   } else {
     renderClientNav();
     setSb(currentUser.company,currentUser.cid||currentUser.id,'광고 운영 중');
+    const page = restorePage || 'combined';
+    renderContent(page);
+    setTimeout(renderCharts,100);
+    setActive(page);
   }
-  const page = restorePage || 'combined';
-  renderContent(page);
-  setTimeout(renderCharts,100);
-  setActive(page);
-// 채팅 뱃지 주기적 업데이트 (30초마다)
+  // 채팅 뱃지 주기적 업데이트 (30초마다)
   setInterval(updateMsgBadge, 30000);
   setTimeout(updateMsgBadge, 2000);
-  // Supabase에서 계정 목록 로드
-  loadClientsFromSupabase();
 }
 /* ── Supabase 계정 목록 로드 ── */
 async function loadClientsFromSupabase(){
@@ -730,7 +729,7 @@ async function loadClientsFromSupabase(){
     if(!Array.isArray(rows)||!rows.length) return;
 
     rows.forEach(row=>{
-      if(row.client_key==='admin') return; // 관리자는 제외
+      if(row.client_key==='dearcompany') return; // 관리자는 제외
       const exists = ACCOUNTS.find(a=>a.id===row.client_key);
       const acc = {
         id:      row.client_key,
@@ -2219,6 +2218,38 @@ function htmlMsg(){
       </div>`;
 
   return `
+  <div class="msg-layout" style="min-height:540px">
+    <div class="msg-sb">
+      <div class="msg-sb-hd">
+        <span style="font-size:13.5px;font-weight:600">💬 대화 목록</span>
+        ${isAdmin?`<button class="btn btn-ol btn-sm" onclick="updateMsgBadge()">🔄</button>`:''}
+      </div>
+      <div>${threadList}</div>
+    </div>
+    <div class="msg-main">
+      <div class="msg-main-hd">
+        <div>
+          <div style="font-size:14px;font-weight:600" id="chatTitle">
+            ${isAdmin?'← 왼쪽에서 클라이언트를 선택하세요':'디어컴퍼니 매니저'}
+          </div>
+          <div style="font-size:11px;color:var(--text3)" id="chatSub">
+            ${isAdmin?'':'담당자와 직접 소통'}
+          </div>
+        </div>
+        <button class="btn btn-ol btn-sm" onclick="refreshChat()" title="새로고침">🔄</button>
+      </div>
+      <div class="chat" id="chatArea">
+        <div style="text-align:center;padding:40px;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:10px">💬</div>
+          <p style="font-size:13px">${isAdmin?'왼쪽에서 클라이언트를 선택하면<br>대화가 시작됩니다':'메시지를 불러오는 중...'}</p>
+        </div>
+      </div>
+      <div class="msg-inp">
+        <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button>
+      </div>
+    </div>
   </div>`;}
 function selT(el,name){
   document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
@@ -2982,7 +3013,9 @@ document.addEventListener('click',e=>{
     currentUser = JSON.parse(saved);
     document.getElementById('loginPage').style.display='none';
     document.getElementById('appShell').style.display='block';
-    initApp(savedPage);
+    // 관리자 기본 페이지는 admin
+    const page = savedPage === 'combined' && currentUser.role === 'admin' ? 'admin' : savedPage;
+    initApp(page);
   }
 })();
 </script>
