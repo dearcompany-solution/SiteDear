@@ -2252,23 +2252,6 @@ function htmlMsg(){
       </div>
     </div>
   </div>`;}
-  <div class="msg-sb">
-    <div class="msg-sb-hd"><span style="font-size:13.5px;font-weight:600">💬 대화 목록</span></div>
-    <div>
-      <div class="msg-thread active unread" onclick="selT(this,'이채환 매니저','2월 성과 분석')">
-        <div style="display:flex;justify-content:space-between"><div class="mt-name">이채환 매니저<span class="ubadge"></span></div><div class="mt-time">10:30</div></div>
-        <div class="mt-prev">2월 보고서 공유드립니다. ROAS가...</div>
-      </div>
-    </div>
-  </div>
-  <div class="msg-main">
-    <div class="msg-main-hd"><div><div style="font-size:14px;font-weight:600" id="chatTitle">이채환 매니저</div></div></div>
-    <div class="chat" id="chatArea">
-      <div class="brow"><div class="bav bav-m">이</div><div><div class="bubble mgr">안녕하세요! 2월 성과 보고서 공유드립니다 📊</div><div class="bmeta">10:30</div></div></div>
-    </div>
-    <div class="msg-inp"><textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea><button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button></div>
-  </div>
-</div>`;}
 function selT(el,name){
   document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
