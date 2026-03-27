@@ -3032,31 +3032,56 @@ function htmlRegister(){return `
 </div>`;}
 
 async function registerAcc(){
-  const name=document.getElementById('rg-name').value.trim();
-  const id=document.getElementById('rg-id').value.trim();
-  const pw=document.getElementById('rg-pw').value;
-  const pw2=document.getElementById('rg-pw2').value;
-  const mgr=document.getElementById('rg-mgr').value;
-  
-  const url=document.getElementById('rg-url').value.trim();
-  if(!name||!id||!pw||!mgr){toast('⚠️ 필수 항목을 입력해주세요');return;}
-  if(pw!==pw2){toast('⚠️ 비밀번호가 일치하지 않습니다');return;}
-  if(ACCOUNTS.find(a=>a.id===id)){toast('⚠️ 이미 사용 중인 아이디입니다');return;}
-  // 로컬 추가
-  ACCOUNTS.push({id,pw,role:'client',name,company:name,manager:mgr,url});
+  const name = document.getElementById('rg-name').value.trim();
+  const id   = document.getElementById('rg-id').value.trim();
+  const pw   = document.getElementById('rg-pw').value;
+  const pw2  = document.getElementById('rg-pw2').value;
+  const mgr  = document.getElementById('rg-mgr').value;
+  const url  = document.getElementById('rg-url')?.value.trim()||'';
 
-  // Supabase에도 저장
+  if(!name||!id||!pw){ toast('⚠️ 업체명, 아이디, 비밀번호는 필수입니다'); return; }
+  if(!mgr){ toast('⚠️ 담당 매니저를 선택해주세요'); return; }
+  if(pw!==pw2){ toast('⚠️ 비밀번호가 일치하지 않습니다'); return; }
+  if(ACCOUNTS.find(a=>a.id===id)){ toast('⚠️ 이미 사용 중인 아이디입니다'); return; }
+
+  toast('💾 저장 중...');
+
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify({client_key:id,password:pw,company_name:name,manager:mgr,store_url:url,is_active:true})
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify({
+        client_key:   id,
+        password:     pw,
+        company_name: name,
+        manager:      mgr,
+        store_url:    url,
+        is_active:    true
+      })
     });
-    toast(`✅ ${name} 계정 등록 완료! (Supabase 저장됨)`);
+
+    if(!res.ok){
+      const errText = await res.text();
+      console.error('Supabase 저장 실패:', errText);
+      toast('❌ 저장 실패: ' + errText);
+      return;
+    }
+
+    // DB 저장 성공 후 로컬에도 추가
+    ACCOUNTS.push({id, pw, role:'client', name, company:name, manager:mgr, url});
+    toast(`✅ ${name} 등록 완료!`);
+    clearReg();
+    renderContent('register');
+
   }catch(e){
-    toast(`✅ ${name} 로컬 등록 완료 (Supabase 저장 실패)`);
+    console.error('등록 오류:', e);
+    toast('❌ 네트워크 오류: ' + e.message);
   }
-  clearReg();renderContent('register');
 }
 function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
 
