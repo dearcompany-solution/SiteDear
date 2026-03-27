@@ -2824,6 +2824,15 @@ function openEditClient(id){
         <input id="ec-name" class="fi" type="text" value="${c.company}">
       </div>
       <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">아이디</label>
+        <input id="ec-id" class="fi" type="text" value="${c.id}" style="background:var(--surface);color:var(--text3)" readonly>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">※ 아이디는 변경할 수 없습니다</div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
+        <input id="ec-pw" class="fi" type="password" placeholder="변경하지 않으면 비워두세요">
+      </div>
+      <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">담당 매니저</label>
         <select id="ec-mgr" class="fi">
           ${MANAGERS.map(m=>`<option ${m===c.manager?'selected':''}>${m}</option>`).join('')}
@@ -2831,12 +2840,7 @@ function openEditClient(id){
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">스토어 URL</label>
-        <input id="ec-url" class="fi" type="text" value="${c.url||''}">
-      </div>
-      
-      <div>
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
-        <input id="ec-pw" class="fi" type="password" placeholder="변경하지 않으면 비워두세요">
+        <input id="ec-url" class="fi" type="text" value="${c.url||''}" placeholder="https://...">
       </div>
     </div>`;
   document.getElementById('modalFooter').innerHTML=`
@@ -2905,7 +2909,7 @@ async function saveEditClient(id){
     toast(`✅ [${name}] 정보가 DB에 영구 저장되었습니다.`);
     
     // 리스트 화면 즉시 갱신
-    if(typeof renderContent === 'function') renderContent('admin');
+    if(typeof renderAdminTable === 'function') renderAdminTable();
 
   } catch(err) {
     console.error('최종 저장 실패:', err);
