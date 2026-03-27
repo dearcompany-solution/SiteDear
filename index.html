@@ -855,8 +855,14 @@ function renderContent(id){
       break;
     case 'input':    c.innerHTML=htmlInput();break;
     case 'msg':      c.innerHTML=htmlMsg();break;
-    case 'cal':      c.innerHTML=htmlCal();setTimeout(renderCal,50);break;
-    case 'req':      c.innerHTML=htmlReq();break;
+    case 'cal':
+  c.innerHTML=htmlCal();
+  setTimeout(()=>{ loadCalEvents(); },50);
+  break;
+    case 'req':
+  c.innerHTML=htmlReq();
+  setTimeout(()=>{ loadRequests(); },50);
+  break;
     case 'admin':    c.innerHTML=htmlAdmin();break;
     case 'register': c.innerHTML=htmlRegister();break;
   }
@@ -2037,7 +2043,59 @@ function sendMsg(){
 /* ════════════════════════════════════════
    CAL HTML & LOGIC
 ════════════════════════════════════════ */
-function htmlCal(){return `
+/* ── 일정 Supabase 저장 ── */
+async function saveEventToSupabase(ev){
+  try{
+    const clientKey = currentUser?.role==='admin' ? (activeClientId||'all') : (currentUser?.id||'');
+    await fetch(`${SUPABASE_URL}/rest/v1/calendar_events`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify({
+        client_key:  clientKey,
+        event_date:  ev.date,
+        type:        ev.type,
+        title:       ev.title,
+        description: ev.desc||'',
+        manager:     ev.manager||''
+      })
+    });
+  }catch(e){ console.warn('일정 저장 실패:',e); }
+}
+
+/* ── 일정 Supabase 로드 ── */
+async function loadCalEvents(){
+  try{
+    const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
+    let url = `${SUPABASE_URL}/rest/v1/calendar_events?select=*&order=event_date.asc`;
+    if(clientKey) url += `&client_key=eq.${clientKey}`;
+
+    const res = await fetch(url,{
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+    });
+    const rows = await res.json();
+    if(!Array.isArray(rows)) return;
+
+    // calEvents 업데이트
+    calEvents = rows.map(r=>({
+      id:      r.id,
+      date:    r.event_date,
+      type:    r.type,
+      title:   r.title,
+      desc:    r.description||'',
+      manager: r.manager||''
+    }));
+
+    // 캘린더 화면이 열려있으면 새로고침
+    const calEl = document.getElementById('calGrid');
+    if(calEl) renderCal();
+  }catch(e){ console.warn('일정 로드 실패:',e); }
+}
+  function htmlCal(){return `
 <div class="cal-layout">
   <div class="cal-wrap">
     <div class="cal-hd">
@@ -2137,13 +2195,22 @@ function showAddEvent(){
     </div>
   </div>`;
 }
-function addEvent(){
+async function addEvent(){
   const date=document.getElementById('ef-date').value;
   const title=document.getElementById('ef-title').value.trim();
   if(!date||!title){toast('⚠️ 날짜와 제목을 입력해주세요');return;}
-  calEvents.push({id:Date.now(),date,type:document.getElementById('ef-type').value,title,desc:document.getElementById('ef-desc').value,manager:document.getElementById('ef-mgr').value});
+  const newEv={
+    id:Date.now(), date,
+    type:    document.getElementById('ef-type').value,
+    title,
+    desc:    document.getElementById('ef-desc').value,
+    manager: document.getElementById('ef-mgr').value
+  };
+  calEvents.push(newEv);
+  await saveEventToSupabase(newEv);
   document.getElementById('evFormWrap').innerHTML='';
-  renderCal();toast('✅ 일정이 추가되었습니다!');
+  renderCal();
+  toast('✅ 일정이 추가되었습니다!');
 }
 
 /* ════════════════════════════════════════
@@ -2153,7 +2220,60 @@ var reqData=[
   {req:'2월 파워링크 Mobile 비효율 키워드 정리',upload:'2026.03.01',done:'2026.03.02',platform:'Naver',content:'층간소음매트 등 비전환 키워드 제외 처리',result:'완료',status:'완료'},
   {req:'아이소파 PC 입찰가 상향 검토',upload:'2026.03.01',done:'-',platform:'Naver',content:'파워링크 PC 아이소파 키워드 +15% 입찰 상향',result:'-',status:'진행중'},
 ];
-function htmlReq(){
+/* ── 요청관리 Supabase 로드 ── */
+async function loadRequests(){
+  try{
+    const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
+    let url = `${SUPABASE_URL}/rest/v1/requests?select=*&order=created_at.desc`;
+    if(clientKey) url += `&client_key=eq.${clientKey}`;
+
+    const res = await fetch(url,{
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+    });
+    const rows = await res.json();
+    if(!Array.isArray(rows)) return;
+
+    reqData = rows.map(r=>({
+      req:      r.title,
+      upload:   r.upload_date || r.created_at?.slice(0,10).replace(/-/g,'.') || '-',
+      done:     r.done_date   || '-',
+      platform: r.platform    || 'Naver',
+      content:  r.content     || '-',
+      result:   r.result      || '-',
+      status:   r.status      || '대기',
+      _id:      r.id
+    }));
+
+    // 요청관리 화면이면 새로고침
+    const reqEl = document.getElementById('reqBody');
+    if(reqEl) renderContent('req');
+  }catch(e){ console.warn('요청 로드 실패:',e); }
+}
+
+/* ── 요청 Supabase 저장 ── */
+async function saveRequestToSupabase(req){
+  try{
+    const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'.');
+    await fetch(`${SUPABASE_URL}/rest/v1/requests`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY
+      },
+      body:JSON.stringify({
+        client_key:  clientKey,
+        title:       req.req,
+        platform:    req.platform,
+        content:     req.content,
+        status:      req.status,
+        upload_date: today
+      })
+    });
+  }catch(e){ console.warn('요청 저장 실패:',e); }
+}
+  function htmlReq(){
   const done=reqData.filter(r=>r.status==='완료').length;
   const rows=reqData.map(r=>{
     const pfC=r.platform==='Naver'?'background:var(--naver-l);color:var(--naver)':'background:var(--blue-l);color:var(--blue)';
