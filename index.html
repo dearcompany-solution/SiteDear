@@ -2824,8 +2824,9 @@ function openEditClient(id){
         <input id="ec-name" class="fi" type="text" value="${c.company}">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">아이디 *</label>
-        <input id="ec-id" class="fi" type="text" value="${c.id}">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">아이디</label>
+        <input id="ec-id" class="fi" type="text" value="${c.id}" style="background:var(--surface);color:var(--text3)" readonly>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">※ 아이디는 연결된 데이터가 있어 변경 불가합니다</div>
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">새 비밀번호 <span style="color:var(--text3);font-weight:400">(변경 시에만 입력)</span></label>
@@ -2859,15 +2860,10 @@ async function saveEditClient(id){
   const url   = document.getElementById('ec-url').value.trim();
 
   if(!name)  { toast('⚠️ 업체명을 입력해주세요'); return; }
-  if(!newId) { toast('⚠️ 아이디를 입력해주세요'); return; }
-  if(newId !== id && ACCOUNTS.find(a=>a.id===newId)){
-    toast('⚠️ 이미 사용 중인 아이디입니다'); return;
-  }
-
   toast('💾 저장 중...');
 
   try {
-    const updateData = { client_key: newId, company_name: name, manager: mgr, store_url: url };
+    const updateData = { company_name: name, manager: mgr, store_url: url };
     if(pw) updateData.password = pw;
 
     const res = await fetch(
@@ -2890,13 +2886,11 @@ async function saveEditClient(id){
       throw new Error(err);
     }
 
-    c.id      = newId;
     c.company = name;
     c.name    = name;
     c.manager = mgr;
     c.url     = url;
     if(pw) c.pw = pw;
-    if(activeClientId === id) activeClientId = newId;
 
     closeModal();
     toast(`✅ [${name}] 저장 완료`);
