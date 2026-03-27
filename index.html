@@ -2245,8 +2245,7 @@ async function loadRequests(){
     }));
 
     // 요청관리 화면이면 새로고침
-    const reqEl = document.getElementById('reqBody');
-    if(reqEl) renderContent('req');
+    renderReqTable();
   }catch(e){ console.warn('요청 로드 실패:',e); }
 }
 
@@ -2274,29 +2273,102 @@ async function saveRequestToSupabase(req){
   }catch(e){ console.warn('요청 저장 실패:',e); }
 }
   function htmlReq(){
+  return `<div style="max-width:1000px" id="reqWrap">
+    <div style="text-align:center;padding:30px;color:var(--text3)">
+      <div style="font-size:24px;margin-bottom:8px">⏳</div>
+      <p>요청 목록 불러오는 중...</p>
+    </div>
+  </div>`;
+}
+
+function renderReqTable(){
   const done=reqData.filter(r=>r.status==='완료').length;
+  const isAdmin=currentUser?.role==='admin';
+  const stMap={완료:'background:var(--naver-l);color:var(--naver)',진행중:'background:var(--gold-l);color:var(--gold)',대기:'background:var(--surface);color:var(--text3)'};
   const rows=reqData.map(r=>{
     const pfC=r.platform==='Naver'?'background:var(--naver-l);color:var(--naver)':'background:var(--blue-l);color:var(--blue)';
-    const stMap={완료:'background:var(--naver-l);color:var(--naver)',진행중:'background:var(--gold-l);color:var(--gold)',대기:'background:var(--surface);color:var(--text3)'};
     return `<tr>
-      <td style="font-size:12.5px;font-weight:600;max-width:160px">${r.req}</td>
+      <td style="font-size:12.5px;font-weight:600">${r.req}</td>
       <td style="font-size:11.5px;color:var(--text3)">${r.upload}</td>
       <td style="font-size:11.5px;color:var(--naver)">${r.done}</td>
       <td><span style="font-size:10.5px;padding:2px 8px;border-radius:20px;font-weight:700;${pfC}">${r.platform}</span></td>
       <td style="font-size:12px;color:var(--text2)">${r.content}</td>
-      <td><span style="font-size:10.5px;padding:1px 7px;border-radius:20px;font-weight:700;${stMap[r.status]||stMap['대기']}">${r.status}</span></td>
+      <td>${isAdmin?`
+        <select style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px" onchange="updateReqStatus('${r._id}',this.value)">
+          <option ${r.status==='대기'?'selected':''}>대기</option>
+          <option ${r.status==='진행중'?'selected':''}>진행중</option>
+          <option ${r.status==='완료'?'selected':''}>완료</option>
+        </select>`:
+        `<span style="font-size:10.5px;padding:1px 7px;border-radius:20px;font-weight:700;${stMap[r.status]||stMap['대기']}">${r.status}</span>`}
+      </td>
     </tr>`;
   }).join('');
-  return `<div style="max-width:1000px">
+
+  const wrap=document.getElementById('reqWrap');
+  if(!wrap)return;
+  wrap.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:20px">
       <div class="card" style="text-align:center;border-top:3px solid var(--blue)"><div style="font-size:28px;font-weight:700;color:var(--blue)">${reqData.length}</div><div style="font-size:12px;color:var(--text2)">전체 요청</div></div>
       <div class="card" style="text-align:center;border-top:3px solid var(--naver)"><div style="font-size:28px;font-weight:700;color:var(--naver)">${done}</div><div style="font-size:12px;color:var(--text2)">완료</div></div>
       <div class="card" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-size:28px;font-weight:700;color:var(--gold)">${reqData.length-done}</div><div style="font-size:12px;color:var(--text2)">진행중/대기</div></div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto">
-      <table class="tbl"><thead><tr><th>요청 내용</th><th>업로드</th><th>완료일</th><th>플랫폼</th><th>상세</th><th>상태</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div></div>`;
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">요청 목록 <span style="font-size:12px;color:var(--text3);font-weight:400">${reqData.length}건</span></div>
+        <button class="btn btn-bl btn-sm" onclick="openAddReq()">+ 요청 추가</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl"><thead><tr><th>요청 내용</th><th>업로드</th><th>완료일</th><th>플랫폼</th><th>상세</th><th>상태</th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">📭 요청 내역이 없습니다</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function openAddReq(){
+  document.getElementById('modalTitle').textContent='📋 요청 추가';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">요청 내용 *</label>
+        <input id="rq-req" class="fi" type="text" placeholder="예: 파워링크 키워드 추가 요청">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">플랫폼</label>
+          <select id="rq-platform" class="fi">
+            <option>Naver</option><option>Kakao</option><option>Google</option><option>Meta</option><option>기타</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">상태</label>
+          <select id="rq-status" class="fi">
+            <option>대기</option><option>진행중</option><option>완료</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">상세 내용</label>
+        <textarea id="rq-content" class="fi" style="height:80px;resize:none" placeholder="상세 내용을 입력해주세요"></textarea>
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="saveReq()">저장</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function updateReqStatus(id,status){
+  try{
+    const doneDate=status==='완료'?new Date().toISOString().slice(0,10).replace(/-/g,'.'):'-';
+    await fetch(`${SUPABASE_URL}/rest/v1/requests?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+      body:JSON.stringify({status,done_date:doneDate})
+    });
+    await loadRequests();
+    toast('✅ 상태가 업데이트되었습니다');
+  }catch(e){toast('❌ 업데이트 실패: '+e.message);}
 }
 
 /* ════════════════════════════════════════
