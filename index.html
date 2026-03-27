@@ -787,7 +787,14 @@ function renderContent(id){
       c.innerHTML=htmlReport();
       setTimeout(()=>{initReportCharts();loadReportData(currentReportMonth);},100);
       break;
-    case 'input':    c.innerHTML=htmlInput();break;
+    case 'input':
+      c.innerHTML=htmlInput();
+      setTimeout(()=>{
+        if(currentInputTab==='upload') renderUploadTab();
+        else if(currentInputTab==='data') renderDataTab();
+        else if(currentInputTab==='edit') renderEditTab();
+      },50);
+      break;
     case 'msg':
   c.innerHTML=htmlMsg();
   stopPolling();
