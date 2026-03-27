@@ -713,7 +713,9 @@ function initApp(restorePage){
   renderContent(page);
   setTimeout(renderCharts,100);
   setActive(page);
-
+// 채팅 뱃지 주기적 업데이트 (30초마다)
+  setInterval(updateMsgBadge, 30000);
+  setTimeout(updateMsgBadge, 2000);
   // Supabase에서 계정 목록 로드
   loadClientsFromSupabase();
 }
@@ -854,7 +856,17 @@ function renderContent(id){
       setTimeout(()=>{initReportCharts();loadReportData(currentReportMonth);},100);
       break;
     case 'input':    c.innerHTML=htmlInput();break;
-    case 'msg':      c.innerHTML=htmlMsg();break;
+    case 'msg':
+  c.innerHTML=htmlMsg();
+  stopPolling();
+  // 광고주는 자동으로 본인 채팅 오픈
+  if(currentUser.role!=='admin'){
+    setTimeout(()=>{ loadMessages(currentUser.id); subscribeMessages(currentUser.id); updateMsgBadge(); },100);
+  } else {
+    // 관리자는 클라이언트 목록 로드 후 표시
+    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{ renderContent('msg'); }); },100);
+  }
+  break;
     case 'cal':
   c.innerHTML=htmlCal();
   setTimeout(()=>{ loadCalEvents(); },50);
@@ -2004,8 +2016,242 @@ function exportCSV(){
 /* ════════════════════════════════════════
    MSG HTML
 ════════════════════════════════════════ */
-function htmlMsg(){return `
-<div class="msg-layout" style="min-height:540px">
+/* ════════════════════════════════════════
+   채팅 — Supabase 실시간 연동
+════════════════════════════════════════ */
+let msgChannel = null;  // Realtime 채널
+let currentChatClient = null;  // 현재 열린 채팅 클라이언트
+
+/* ── 메시지 로드 ── */
+async function loadMessages(clientKey){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/messages?client_key=eq.${clientKey}&order=created_at.asc&limit=100`,
+      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+    );
+    const rows = await res.json();
+    if(!Array.isArray(rows)) return;
+    renderMessages(rows);
+
+    // 읽음 처리 (상대방 메시지)
+    const unreadIds = rows
+      .filter(r=>r.sender_role!==currentUser.role && !r.is_read)
+      .map(r=>r.id);
+    if(unreadIds.length>0){
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/messages?id=in.(${unreadIds.join(',')})`,
+        {method:'PATCH',
+         headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+         body:JSON.stringify({is_read:true})}
+      );
+    }
+  }catch(e){console.warn('메시지 로드 실패:',e);}
+}
+
+/* ── 메시지 렌더 ── */
+function renderMessages(rows){
+  const chat = document.getElementById('chatArea');
+  if(!chat) return;
+
+  if(!rows.length){
+    chat.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3)">
+      <div style="font-size:24px;margin-bottom:8px">💬</div>
+      <p style="font-size:13px">아직 대화 내용이 없습니다.<br>첫 메시지를 보내보세요!</p>
+    </div>`;
+    return;
+  }
+
+  chat.innerHTML = rows.map(r=>{
+    const isMine = r.sender_id === currentUser.id;
+    const time = new Date(r.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const initials = r.sender_name?.charAt(0) || '?';
+    return `<div class="brow ${isMine?'mine':''}">
+      <div class="bav ${isMine?'bav-c':'bav-m'}">${initials}</div>
+      <div>
+        ${!isMine?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px">${r.sender_name}</div>`:''}
+        <div class="bubble ${isMine?'cli':'mgr'}">${r.content}</div>
+        <div class="bmeta">${time}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 맨 아래로 스크롤
+  chat.scrollTop = chat.scrollHeight;
+}
+
+/* ── 메시지 저장 ── */
+async function saveMessage(clientKey, content){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/messages`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify({
+        client_key:  clientKey,
+        sender_id:   currentUser.id,
+        sender_name: currentUser.name || currentUser.company || currentUser.id,
+        sender_role: currentUser.role,
+        content:     content,
+        is_read:     false
+      })
+    });
+    return await res.json();
+  }catch(e){
+    console.warn('메시지 저장 실패:',e);
+    return null;
+  }
+}
+
+/* ── Realtime 구독 시작 ── */
+function subscribeMessages(clientKey){
+  // 기존 채널 해제
+  if(msgChannel){
+    try{ msgChannel.unsubscribe(); }catch(e){}
+    msgChannel = null;
+  }
+
+  // Supabase Realtime WebSocket 연결
+  const wsUrl = SUPABASE_URL.replace('https://','wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_ANON_KEY + '&vsn=1.0.0';
+
+  try{
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      // 채널 join
+      ws.send(JSON.stringify({
+        topic: `realtime:public:messages:client_key=eq.${clientKey}`,
+        event: 'phx_join',
+        payload: {config:{broadcast:{self:false},presence:{key:''},postgres_changes:[{event:'INSERT',schema:'public',table:'messages',filter:`client_key=eq.${clientKey}`}]}},
+        ref: '1'
+      }));
+      console.log('✅ Realtime 연결됨');
+    };
+    ws.onmessage = (e) => {
+      try{
+        const msg = JSON.parse(e.data);
+        if(msg.event === 'postgres_changes' || (msg.payload?.data?.type === 'INSERT')){
+          const newRow = msg.payload?.data?.record || msg.payload?.record;
+          if(newRow && newRow.sender_id !== currentUser.id){
+            // 상대방 메시지 실시간 추가
+            const chat = document.getElementById('chatArea');
+            if(chat){
+              const time = new Date(newRow.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+              const initials = newRow.sender_name?.charAt(0)||'?';
+              chat.insertAdjacentHTML('beforeend',`
+                <div class="brow">
+                  <div class="bav bav-m">${initials}</div>
+                  <div>
+                    <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${newRow.sender_name}</div>
+                    <div class="bubble mgr">${newRow.content}</div>
+                    <div class="bmeta">${time}</div>
+                  </div>
+                </div>`);
+              chat.scrollTop = chat.scrollHeight;
+              // 알림음 효과
+              toast('💬 새 메시지: '+newRow.sender_name);
+            }
+          }
+        }
+      }catch(err){}
+    };
+    ws.onerror = ()=>{ console.warn('Realtime 연결 실패 — 폴링으로 전환'); startPolling(clientKey); };
+    ws.onclose = ()=>{ console.log('Realtime 연결 종료'); };
+    msgChannel = ws;
+  }catch(e){
+    startPolling(clientKey);
+  }
+}
+
+/* ── Realtime 실패 시 폴링 fallback (5초마다) ── */
+let pollingTimer = null;
+function startPolling(clientKey){
+  if(pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(()=>{
+    if(document.getElementById('chatArea')) loadMessages(clientKey);
+    else { clearInterval(pollingTimer); pollingTimer=null; }
+  }, 5000);
+}
+function stopPolling(){ if(pollingTimer){clearInterval(pollingTimer);pollingTimer=null;} }
+
+/* ── 안읽은 메시지 뱃지 ── */
+async function updateMsgBadge(){
+  try{
+    const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
+    if(!clientKey) return;
+    let url = `${SUPABASE_URL}/rest/v1/messages?is_read=eq.false&sender_role=neq.${currentUser.role}&select=id`;
+    if(clientKey) url += `&client_key=eq.${clientKey}`;
+    const res = await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const rows = await res.json();
+    const badge = document.getElementById('msgBadge');
+    if(badge){
+      if(Array.isArray(rows)&&rows.length>0){
+        badge.textContent = rows.length>99?'99+':rows.length;
+        badge.style.display='inline-block';
+      } else {
+        badge.style.display='none';
+      }
+    }
+  }catch(e){}
+}
+function htmlMsg(){
+  const isAdmin = currentUser?.role==='admin';
+  const clients = ACCOUNTS.filter(a=>a.role==='client');
+
+  // 관리자: 클라이언트 목록 사이드바 / 광고주: 담당 매니저와 1:1
+  const threadList = isAdmin
+    ? clients.map(c=>`
+      <div class="msg-thread ${currentChatClient===c.id?'active':''}"
+        onclick="openChat('${c.id}','${c.company}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="mt-name">${c.company}</div>
+          <div class="mt-time" id="lastTime-${c.id}"></div>
+        </div>
+        <div class="mt-prev" id="lastMsg-${c.id}">클릭해서 대화 열기</div>
+      </div>`).join('')
+    : `<div class="msg-thread active">
+        <div style="display:flex;justify-content:space-between">
+          <div class="mt-name">디어컴퍼니 매니저</div>
+        </div>
+        <div class="mt-prev">담당 매니저와 1:1 채팅</div>
+      </div>`;
+
+  return `
+  <div class="msg-layout" style="min-height:540px">
+    <div class="msg-sb">
+      <div class="msg-sb-hd">
+        <span style="font-size:13.5px;font-weight:600">💬 대화 목록</span>
+        ${isAdmin?`<button class="btn btn-ol btn-sm" onclick="updateMsgBadge()">🔄</button>`:''}
+      </div>
+      <div>${threadList}</div>
+    </div>
+    <div class="msg-main">
+      <div class="msg-main-hd">
+        <div>
+          <div style="font-size:14px;font-weight:600" id="chatTitle">
+            ${isAdmin?'← 왼쪽에서 클라이언트를 선택하세요':'디어컴퍼니 매니저'}
+          </div>
+          <div style="font-size:11px;color:var(--text3)" id="chatSub">
+            ${isAdmin?'':'담당자와 직접 소통'}
+          </div>
+        </div>
+        <button class="btn btn-ol btn-sm" onclick="refreshChat()" title="새로고침">🔄</button>
+      </div>
+      <div class="chat" id="chatArea">
+        <div style="text-align:center;padding:40px;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:10px">💬</div>
+          <p style="font-size:13px">${isAdmin?'왼쪽에서 클라이언트를 선택하면<br>대화가 시작됩니다':'메시지를 불러오는 중...'}</p>
+        </div>
+      </div>
+      <div class="msg-inp">
+        <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button>
+      </div>
+    </div>
+  </div>`;}
   <div class="msg-sb">
     <div class="msg-sb-hd"><span style="font-size:13.5px;font-weight:600">💬 대화 목록</span></div>
     <div>
@@ -2025,19 +2271,78 @@ function htmlMsg(){return `
 </div>`;}
 function selT(el,name){
   document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');el.classList.remove('unread');
-  document.getElementById('chatTitle').textContent=name;
+  el.classList.add('active');
 }
-function sendMsg(){
-  const inp=document.getElementById('msgInput');const txt=inp.value.trim();if(!txt)return;
-  const chat=document.getElementById('chatArea');
-  const now=new Date();const t=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  chat.insertAdjacentHTML('beforeend',`<div class="brow mine"><div class="bav bav-c">나</div><div><div class="bubble cli">${txt}</div><div class="bmeta">${t}</div></div></div>`);
-  inp.value='';chat.scrollTop=chat.scrollHeight;
-  setTimeout(()=>{
-    chat.insertAdjacentHTML('beforeend',`<div class="brow"><div class="bav bav-m">이</div><div><div class="bubble mgr">확인했습니다! 검토 후 답변드리겠습니다 😊</div><div class="bmeta">${t}</div></div></div>`);
-    chat.scrollTop=chat.scrollHeight;
-  },1000);
+
+async function openChat(clientKey, clientName){
+  currentChatClient = clientKey;
+  stopPolling();
+
+  // 사이드바 활성화
+  document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
+  const threads = document.querySelectorAll('.msg-thread');
+  threads.forEach(t=>{ if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes(clientKey)) t.classList.add('active'); });
+
+  // 헤더 업데이트
+  const titleEl = document.getElementById('chatTitle');
+  const subEl   = document.getElementById('chatSub');
+  if(titleEl) titleEl.textContent = clientName;
+  if(subEl)   subEl.textContent   = '실시간 채팅';
+
+  // 메시지 로드
+  await loadMessages(clientKey);
+
+  // 실시간 구독
+  subscribeMessages(clientKey);
+  updateMsgBadge();
+}
+
+async function sendMsg(){
+  const inp = document.getElementById('msgInput');
+  const txt = inp.value.trim();
+  if(!txt) return;
+
+  // 채팅 대상 결정
+  const clientKey = currentUser.role==='admin'
+    ? (currentChatClient || activeClientId || '')
+    : currentUser.id;
+
+  if(!clientKey){ toast('⚠️ 채팅할 클라이언트를 먼저 선택해주세요'); return; }
+
+  inp.value = '';
+
+  // 낙관적 UI 업데이트 (즉시 표시)
+  const chat = document.getElementById('chatArea');
+  const now = new Date();
+  const time = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const initials = (currentUser.name||currentUser.id).charAt(0);
+  if(chat){
+    // 빈 화면 메시지 제거
+    const emptyEl = chat.querySelector('div[style*="text-align:center"]');
+    if(emptyEl) emptyEl.remove();
+
+    chat.insertAdjacentHTML('beforeend',`
+      <div class="brow mine">
+        <div class="bav bav-c">${initials}</div>
+        <div>
+          <div class="bubble cli">${txt}</div>
+          <div class="bmeta">${time}</div>
+        </div>
+      </div>`);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Supabase 저장
+  await saveMessage(clientKey, txt);
+}
+
+async function refreshChat(){
+  const clientKey = currentUser.role==='admin'
+    ? (currentChatClient || activeClientId || '')
+    : currentUser.id;
+  if(!clientKey){ toast('⚠️ 클라이언트를 먼저 선택해주세요'); return; }
+  await loadMessages(clientKey);
+  toast('🔄 새로고침 완료');
 }
 
 /* ════════════════════════════════════════
