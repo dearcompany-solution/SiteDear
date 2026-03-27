@@ -1008,6 +1008,7 @@ function htmlReport(){
         ${opts}
       </select>
       <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+      <button class="btn btn-ol btn-sm" onclick="downloadExcelReport()" style="white-space:nowrap">📊 엑셀 다운로드</button>
       <button class="btn btn-ol btn-sm" onclick="go('input',null);setActive('input')" style="white-space:nowrap">📁 파일 업로드</button>
     </div>
   </div>
@@ -1093,61 +1094,106 @@ function htmlReport(){
 ════════════════════════════════════════ */
 async function fetchReportData(month){
   try{
-    // 현재 로그인한 클라이언트 키 가져오기
-    const clientKey = currentUser?.id || '';
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin     = currentUser?.role==='admin';
+    const targetClient= isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+    if(!targetClient) return null;
 
-    // 관리자는 activeClientId 기준, 광고주는 본인 기준
-    const targetClient = isAdmin ? (activeClientId || clientKey) : clientKey;
+    const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-    let url = `${SUPABASE_URL}/rest/v1/ad_reports?month=eq.${month}&select=*`;
-    if(targetClient) url += `&client_key=eq.${targetClient}`;
+    // 3개 테이블 동시 조회
+    const [dailyRes, kwRes, hourlyRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=2000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=500`,{headers:h}),
+    ]);
 
-    const res = await fetch(url, {
-      headers:{
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      }
+    const daily   = await dailyRes.json();
+    const kw      = await kwRes.json();
+    const hourly  = await hourlyRes.json();
+
+    const dailyArr   = Array.isArray(daily)  ? daily  : [];
+    const kwArr      = Array.isArray(kw)     ? kw     : [];
+    const hourlyArr  = Array.isArray(hourly) ? hourly : [];
+
+    if(!dailyArr.length && !kwArr.length && !hourlyArr.length) return null;
+
+    // ── KPI 집계 ──
+    const sum = (arr,key) => arr.reduce((s,r)=>s+(+r[key]||0),0);
+    const totalImp   = sum(dailyArr,'imp');
+    const totalClick = sum(dailyArr,'click');
+    const totalCost  = sum(dailyArr,'cost');
+    const totalConv  = sum(dailyArr,'conv');
+    const totalRev   = sum(dailyArr,'rev');
+    const roas       = totalCost>0 ? totalRev/totalCost : 0;
+    const ctr        = totalImp>0  ? (totalClick/totalImp)*100 : 0;
+    const cpc        = totalClick>0? totalCost/totalClick : 0;
+
+    // ── 채널별 집계 ──
+    const chMap = {};
+    dailyArr.forEach(r=>{
+      const key = `${r.campaign_type||''} (${r.device||''})`;
+      if(!chMap[key]) chMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
+      chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
+      chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
     });
-    const rows = await res.json();
+    const channels = Object.values(chMap).map(c=>({...c, roas:c.cost>0?c.rev/c.cost:0}))
+      .sort((a,b)=>b.cost-a.cost);
 
-    if(rows && rows.length > 0){
-      const row = rows[0];
-      // report_json이 있으면 파싱, 없으면 KPI 컬럼으로 구성
-      let reportJson = {};
-      try{ reportJson = typeof row.report_json === 'string' ? JSON.parse(row.report_json) : (row.report_json || {}); }catch(e){}
+    // ── 주별 집계 ──
+    const weekMap = {};
+    dailyArr.forEach(r=>{
+      const d = new Date(r.date);
+      const day = d.getDate();
+      const wk  = day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
+      if(!weekMap[wk]) weekMap[wk]={week:wk,imp:0,click:0,cost:0,conv:0,rev:0};
+      weekMap[wk].imp+=+r.imp||0; weekMap[wk].click+=+r.click||0;
+      weekMap[wk].cost+=+r.cost||0; weekMap[wk].conv+=+r.conv||0; weekMap[wk].rev+=+r.rev||0;
+    });
+    const weekly = ['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
 
-      return {
-        client:       row.client_key,
-        period:       row.period_label || month.replace('-','년 ')+'월',
-        manager:      row.manager || '—',
-        kpi:{
-          totalImp:   row.total_imp   || 0,
-          totalClick: row.total_click || 0,
-          totalCost:  row.total_cost  || 0,
-          totalConv:  row.total_conv  || 0,
-          totalRev:   row.total_rev   || 0,
-          roas:       row.roas        || 0,
-        },
-        mom:{
-          click: row.mom_click || 0,
-          cost:  row.mom_cost  || 0,
-          rev:   row.mom_rev   || 0,
-          roas:  row.mom_roas  || 0,
-        },
-        channels:    reportJson.channels    || [],
-        weekly:      reportJson.weekly      || [],
-        hourly:      reportJson.hourly      || [],
-        topKeywords: reportJson.topKeywords || [],
-        insights:    reportJson.insights    || [],
-      };
-    }
+    // ── 시간대별 집계 ──
+    const hourMap = {};
+    hourlyArr.forEach(r=>{
+      const t = r.time_slot||'';
+      if(!hourMap[t]) hourMap[t]={time:t,click:0,cost:0,conv:0,rev:0};
+      hourMap[t].click+=+r.click||0; hourMap[t].cost+=+r.cost||0;
+      hourMap[t].conv+=+r.conv||0;   hourMap[t].rev+=+r.rev||0;
+    });
+    const hourly2 = Object.values(hourMap).map(h2=>({...h2,pct:totalClick>0?h2.click/totalClick:0}));
+
+    // ── 상위 키워드 (전환매출 기준 TOP 20) ──
+    const kwMap = {};
+    kwArr.forEach(r=>{
+      const key = `${r.keyword}__${r.campaign_type}__${r.device}`;
+      if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,cost:0,click:0,conv:0,rev:0};
+      kwMap[key].cost+=+r.cost||0; kwMap[key].click+=+r.click||0;
+      kwMap[key].conv+=+r.conv||0; kwMap[key].rev+=+r.rev||0;
+    });
+    const topKeywords = Object.values(kwMap)
+      .sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
+
+    // ── 클라이언트 정보 ──
+    const acc = ACCOUNTS.find(a=>a.id===targetClient);
+    const [y,m2] = month.split('-');
+    const period  = `${y}년 ${parseInt(m2)}월`;
+
+    return {
+      client:      targetClient,
+      period,
+      manager:     acc?.manager||'—',
+      kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,roas,ctr,cpc},
+      mom:{click:0,cost:0,rev:0,roas:0},
+      channels,
+      weekly,
+      hourly:      hourly2,
+      topKeywords,
+      insights:[],
+    };
+
   }catch(e){
-    console.warn('Supabase 보고서 로드 실패, 로컬 데이터 사용:', e);
+    console.warn('데이터 집계 실패:', e);
+    return null;
   }
-
-  // Supabase 실패 시 로컬 데이터 fallback
-  return REPORT_DATA[month] || null;
 }
 
 async function loadReportData(month){
@@ -1458,7 +1504,55 @@ function downloadPDF(){
   w.document.close();
   toast('📥 PDF 저장 창이 열렸습니다');
 }
+async function downloadExcelReport(){
+  const data = await fetchReportData(currentReportMonth);
+  if(!data){ toast('⚠️ 다운로드할 데이터가 없습니다'); return; }
 
+  loadSheetJS(()=>{
+    const wb = XLSX.utils.book_new();
+
+    // ── 시트1: KPI 요약 ──
+    const kpi = data.kpi;
+    const summaryData = [
+      ['항목','수치'],
+      ['기간', data.period],
+      ['업체', data.client],
+      ['담당 매니저', data.manager],
+      ['총 노출수', kpi.totalImp],
+      ['총 클릭수', kpi.totalClick],
+      ['총 광고비', kpi.totalCost],
+      ['총 전환수', kpi.totalConv],
+      ['전환매출', kpi.totalRev],
+      ['ROAS', kpi.roas ? (kpi.roas*100).toFixed(0)+'%' : '0%'],
+      ['CTR', kpi.ctr ? kpi.ctr.toFixed(2)+'%' : '0%'],
+      ['CPC', kpi.cpc ? Math.round(kpi.cpc) : 0],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'KPI 요약');
+
+    // ── 시트2: 채널별 ──
+    const chRows = [['채널','노출수','클릭수','광고비','전환수','전환매출','ROAS']];
+    data.channels.forEach(c=>chRows.push([c.name,c.imp,c.click,c.cost,c.conv,c.rev,c.roas?(c.roas*100).toFixed(0)+'%':'0%']));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(chRows), '채널별');
+
+    // ── 시트3: 주별 ──
+    const wkRows = [['주차','노출수','클릭수','광고비','전환수','전환매출']];
+    data.weekly.forEach(w=>wkRows.push([w.week,w.imp,w.click,w.cost,w.conv,w.rev]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wkRows), '주별');
+
+    // ── 시트4: 시간대별 ──
+    const hrRows = [['시간대','클릭수','광고비','전환수','전환매출']];
+    data.hourly.forEach(h=>hrRows.push([h.time,h.click,h.cost,h.conv,h.rev]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hrRows), '시간대별');
+
+    // ── 시트5: 키워드 TOP20 ──
+    const kwRows = [['키워드','유형','기기','광고비','클릭수','전환수','전환매출']];
+    data.topKeywords.forEach(k=>kwRows.push([k.keyword,k.type,k.device,k.cost,k.click,k.conv,k.rev]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kwRows), '키워드 TOP20');
+
+    XLSX.writeFile(wb, `${data.client}_${data.period}_보고서.xlsx`);
+    toast('✅ 엑셀 보고서 다운로드 완료!');
+  });
+}
 function openUploadReport(){
   closeModal();
   go('input',null);
