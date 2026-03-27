@@ -1867,47 +1867,40 @@ function processFiles(files){
     const ext = file.name.split('.').pop().toLowerCase();
 
     if(ext==='csv'){
-      // ── CSV 처리 ──
       const reader = new FileReader();
       reader.onload = e => {
         try{
-          // BOM 제거
           const text  = e.target.result.replace(/^\uFEFF/,'');
           const lines = text.split(/\r?\n/).filter(l=>l.trim());
-          if(lines.length < 3){ toast(`⚠️ ${file.name} — 데이터가 없습니다`); return; }
+          if(lines.length<3){ toast(`⚠️ ${file.name} — 데이터 없음`); return; }
 
-          // 1행에서 기간 추출 → 월 자동 인식 (예: 2026.02.01.~2026.02.28.)
-          const header1 = lines[0];
-          const pm = header1.match(/(\d{4})\.(\d{2})\.\d{2}/);
+          // 1행에서 월 추출 (2026.02.01. 형태)
+          const pm = lines[0].match(/(\d{4})\.(\d{2})\.\d{2}/);
           const month = pm ? `${pm[1]}-${pm[2]}` : new Date().toISOString().slice(0,7);
 
-          // 2행 컬럼명 파싱 (따옴표 포함 쉼표 처리)
+          // 2행 컬럼명 파싱 (따옴표 처리)
           const cols = csvParseLine(lines[1]);
 
-          // 컬럼명으로 유형 자동 판단
           const hasDaily   = cols.some(c=>c==='일별');
           const hasHourly  = cols.some(c=>c==='시간대별');
           const hasKeyword = cols.some(c=>c==='검색어');
 
-          if(!hasDaily && !hasHourly && !hasKeyword){
-            toast(`⚠️ ${file.name} — 인식 불가 (컬럼: 일별/시간대별/검색어 없음)`); return;
+          if(!hasDaily&&!hasHourly&&!hasKeyword){
+            toast(`⚠️ ${file.name} — 인식 불가 (컬럼 확인 필요)`); return;
           }
 
           const rows = [];
-          for(let i=2; i<lines.length; i++){
+          for(let i=2;i<lines.length;i++){
             const vals = csvParseLine(lines[i]);
-            if(!vals.length || vals.every(v=>!v)) continue;
+            if(!vals.length||vals.every(v=>!v)) continue;
             const row = {};
-            cols.forEach((col,idx)=>{ row[col] = (vals[idx]||'').trim(); });
+            cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
 
             if(hasDaily){
               const rawDate = row['일별']||'';
-              // 2026.02.01. → 2026-02-01
               const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
               if(!dateStr||dateStr.length<8) continue;
-              rows.push({
-                data_type:'daily', client_key:client, month,
-                date:dateStr,
+              rows.push({ data_type:'daily', client_key:client, month, date:dateStr,
                 campaign_type: row['캠페인유형']||'',
                 device:        row['PC/모바일 매체']||row['PC/모바일']||'',
                 imp:   parseNum(row['노출수']),
@@ -1919,9 +1912,7 @@ function processFiles(files){
             } else if(hasHourly){
               const t = row['시간대별']||'';
               if(!t) continue;
-              rows.push({
-                data_type:'hourly', client_key:client, month,
-                time_slot:     t,
+              rows.push({ data_type:'hourly', client_key:client, month, time_slot:t,
                 campaign_type: row['캠페인유형']||'',
                 device:        row['PC/모바일 매체']||row['PC/모바일']||'',
                 imp:   parseNum(row['노출수']),
@@ -1933,9 +1924,7 @@ function processFiles(files){
             } else if(hasKeyword){
               const kw = row['검색어']||'';
               if(!kw) continue;
-              rows.push({
-                data_type:'keyword', client_key:client, month,
-                keyword:       kw,
+              rows.push({ data_type:'keyword', client_key:client, month, keyword:kw,
                 campaign_type: row['캠페인유형']||'',
                 device:        row['PC/모바일 매체']||row['PC/모바일']||'',
                 imp:      parseNum(row['노출수']),
@@ -1948,7 +1937,7 @@ function processFiles(files){
             }
           }
 
-          if(!rows.length){ toast(`⚠️ ${file.name} — 저장할 데이터가 없습니다`); return; }
+          if(!rows.length){ toast(`⚠️ ${file.name} — 저장할 데이터 없음`); return; }
           saveRowsToSupabase(rows, file.name, client);
 
         }catch(err){ console.error(err); toast('❌ CSV 오류: '+err.message); }
@@ -1956,7 +1945,6 @@ function processFiles(files){
       reader.readAsText(file, 'UTF-8');
 
     } else if(ext==='xlsx'||ext==='xls'){
-      // ── XLSX 처리 ──
       loadSheetJS(()=>{
         const reader = new FileReader();
         reader.onload = e => {
@@ -1967,15 +1955,13 @@ function processFiles(files){
 
             wb.SheetNames.filter(n=>targetSheets.includes(n)).forEach(sheetName=>{
               const ws = wb.Sheets[sheetName];
-
-              // 1행에서 월 추출
               const rawVals = Object.values(ws).filter(c=>c&&c.v).map(c=>String(c.v)).slice(0,10);
               let month = new Date().toISOString().slice(0,7);
               for(const val of rawVals){
-                const m1 = val.match(/(\d{4})\.(\d{2})\.\d{2}/);
-                if(m1){ month=`${m1[1]}-${m1[2]}`; break; }
-                const m2 = val.match(/(\d{4})년\s*(\d{1,2})월/);
-                if(m2){ month=`${m2[1]}-${m2[2].padStart(2,'0')}`; break; }
+                const m1=val.match(/(\d{4})\.(\d{2})\.\d{2}/);
+                if(m1){month=`${m1[1]}-${m1[2]}`;break;}
+                const m2=val.match(/(\d{4})년\s*(\d{1,2})월/);
+                if(m2){month=`${m2[1]}-${m2[2].padStart(2,'0')}`;break;}
               }
 
               const json = XLSX.utils.sheet_to_json(ws,{defval:'',range:1});
@@ -1983,15 +1969,11 @@ function processFiles(files){
 
               const rows = [];
               json.forEach(r=>{
-                const hasD = '일별' in r;
-                const hasH = '시간대별' in r;
-                const hasK = '검색어' in r;
-
-                if(hasD){
-                  const rawDate = r['일별']||'';
-                  const dateStr = rawDate instanceof Date
-                    ? rawDate.toISOString().slice(0,10)
-                    : String(rawDate).replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+                if('일별' in r){
+                  const rawDate=r['일별']||'';
+                  const dateStr=rawDate instanceof Date
+                    ?rawDate.toISOString().slice(0,10)
+                    :String(rawDate).replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
                   if(!dateStr||dateStr.length<8) return;
                   rows.push({data_type:'daily',client_key:client,month,date:dateStr,
                     campaign_type:String(r['캠페인유형']||''),
@@ -2000,8 +1982,8 @@ function processFiles(files){
                     cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
                     conv:parseNum(r['총 전환수']||r['전환수']),
                     rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-                } else if(hasH){
-                  const t = String(r['시간대별']||'');
+                } else if('시간대별' in r){
+                  const t=String(r['시간대별']||'');
                   if(!t) return;
                   rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
                     campaign_type:String(r['캠페인유형']||''),
@@ -2010,8 +1992,8 @@ function processFiles(files){
                     cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
                     conv:parseNum(r['총 전환수']||r['전환수']),
                     rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-                } else if(hasK){
-                  const kw = String(r['검색어']||'');
+                } else if('검색어' in r){
+                  const kw=String(r['검색어']||'');
                   if(!kw) return;
                   rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
                     campaign_type:String(r['캠페인유형']||''),
@@ -2024,7 +2006,7 @@ function processFiles(files){
                 }
               });
 
-              if(rows.length){ saveRowsToSupabase(rows, `${file.name}[${sheetName}]`, client); totalSaved+=rows.length; }
+              if(rows.length){saveRowsToSupabase(rows,`${file.name}[${sheetName}]`,client);totalSaved+=rows.length;}
             });
 
             if(!totalSaved) toast(`⚠️ ${file.name} — 인식된 데이터 없음`);
@@ -2035,6 +2017,44 @@ function processFiles(files){
     } else {
       toast(`⚠️ ${file.name} — CSV 또는 XLSX만 지원합니다`);
     }
+  });
+}
+
+function csvParseLine(line){
+  const result=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){ inQ=!inQ; }
+    else if(ch===','&&!inQ){ result.push(cur.trim()); cur=''; }
+    else { cur+=ch; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function saveRowsToSupabase(rows, fileName, client){
+  const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
+  const byType={};
+  rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
+
+  Object.entries(byType).forEach(([dtype,drows])=>{
+    const months=[...new Set(drows.map(r=>r.month))].join(', ');
+    toast(`💾 [${dtype}] ${drows.length}개 저장 중...`);
+    fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify(drows)
+    }).then(res=>{
+      if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+      parsedTableData=parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
+      parsedTableData.push(...drows);
+      toast(`✅ [${dtype}] ${drows.length}개 저장 완료! (${months})`);
+    }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
   });
 }
 
