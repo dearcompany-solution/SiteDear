@@ -863,7 +863,17 @@ function renderContent(id){
     setTimeout(()=>{ loadMessages(currentUser.id); subscribeMessages(currentUser.id); updateMsgBadge(); },100);
   } else {
     // 관리자는 클라이언트 목록 로드 후 표시
-    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{ renderContent('msg'); }); },100);
+    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{ 
+      const sb = document.getElementById('appContent').querySelector('.msg-sb > div');
+      if(sb) sb.innerHTML = ACCOUNTS.filter(a=>a.role==='client').map(c=>`
+        <div class="msg-thread ${currentChatClient===c.id?'active':''}" onclick="openChat('${c.id}','${c.company}')">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="mt-name">${c.company}</div>
+            <div class="mt-time" id="lastTime-${c.id}"></div>
+          </div>
+          <div class="mt-prev" id="lastMsg-${c.id}">클릭해서 대화 열기</div>
+        </div>`).join('');
+    }); },100);
   }
   break;
     case 'cal':
