@@ -832,16 +832,16 @@ function setActive(id){
   if(el)el.classList.add('active');
 }
 const pageTitles={
-  combined:['통합 요약 대시보드','네이버 광고 + 스마트스토어 통합'],
-  naver:   ['성과 대시보드 (네이버 광고)','네이버 광고 상세 지표'],
-  store:   ['스마트스토어 대시보드','스마트스토어 상세 지표'],
-  report:  ['보고서 확인','월별 광고 성과 리포트 · PDF 다운로드'],
+  combined:['통합 요약 대시보드','네이버 광고 + 스마트스토어'],
+  naver:   ['성과 대시보드 (네이버 광고)',''],
+  store:   ['스마트스토어 대시보드',''],
+  report:  ['보고서 확인','광고 성과 리포트 · PDF 다운로드'],
   input:   ['데이터 입력','수동 입력 → CSV → API 자동화'],
-  msg:     ['메시지','담당 매니저와의 소통'],
+  msg:     ['메시지',''],
   req:     ['요청 관리','작업 요청 · 진행 현황 · 완료 내역'],
-  cal:     ['일정 (공지)','미팅 · 보고서 · 공지사항 일정 관리'],
-  admin:   ['클라이언트 관리','전체 광고주 계정'],
-  register:['계정 등록','신규 광고주 계정 생성'],
+  cal:     ['일정 (공지)','미팅 · 공지사항 일정 관리'],
+ admin:   ['클라이언트 관리',''],
+  register:['계정 등록',''],
 };
 function go(id,el){
   const nonClientPanels=['admin','register'];
@@ -863,9 +863,13 @@ function go(id,el){
     if(aa) aa.style.display='none';
     if(da) da.style.display='flex';
   }
-  if(id==='admin'||id==='register'){
+  if(id==='admin'){
     document.getElementById('dateRow').style.display='none';
     document.getElementById('adminActions').style.display='flex';
+    document.getElementById('defaultActions').style.display='none';
+  } else if(id==='register'){
+    document.getElementById('dateRow').style.display='none';
+    document.getElementById('adminActions').style.display='none';
     document.getElementById('defaultActions').style.display='none';
   } else {
     document.getElementById('dateRow').style.display='flex';
@@ -930,7 +934,12 @@ function renderContent(id){
       document.getElementById('adminActions').style.display='flex';
       document.getElementById('defaultActions').style.display='none';
       break;
-    case 'register': c.innerHTML=htmlRegister();break;
+    case 'register':
+      c.innerHTML=htmlRegister();
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
+      document.getElementById('defaultActions').style.display='none';
+      break;
   }
 }
 
