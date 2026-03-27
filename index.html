@@ -710,6 +710,7 @@ function renderAdminNav(){
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서확인
     </div>
+    <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>`;
@@ -733,7 +734,8 @@ const pageTitles={
 };
 function go(id,el){
   const nonClientPanels=['admin','register'];
-  const needsClient=['naver','store','combined','input','req'];
+  const needsClient=['naver','store','combined','req'];
+  const needsClientForAdmin=['input'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트를 선택해주세요');return;
   }
@@ -1526,10 +1528,15 @@ function renderUploadTab(){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div>
           <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체 선택 *</div>
+         ${currentUser.role==='admin' ? `
           <select id="uploadClient" class="fi">
             <option value="">업체를 선택하세요</option>
-            ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}">${a.company}</option>`).join('')}
+            ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${activeClientId===a.id?'selected':''}>${a.company}</option>`).join('')}
+          </select>` : `
+          <select id="uploadClient" class="fi" disabled>
+            <option value="${currentUser.id}" selected>${currentUser.company}</option>
           </select>
+          <input type="hidden" id="uploadClientHidden" value="${currentUser.id}">`}
         </div>
         <div>
           <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">보고서 월 *</div>
@@ -1764,7 +1771,7 @@ function handleDrop(e){
 function handleFileSelect(input){processFiles(input.files);}
 
 function processFiles(files){
-  const client=document.getElementById('uploadClient')?document.getElementById('uploadClient').value:'';
+  const client=document.getElementById('uploadClient')?(currentUser.role==='admin' ? document.getElementById('uploadClient').value : currentUser.id):'';
   const month=document.getElementById('uploadMonth')?document.getElementById('uploadMonth').value:'';
   const type=document.getElementById('uploadType')?document.getElementById('uploadType').value:'daily';
   if(!client){toast('⚠️ 업체를 먼저 선택해주세요');return;}
