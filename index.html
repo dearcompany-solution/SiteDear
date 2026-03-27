@@ -455,8 +455,7 @@ canvas{max-height:210px}
 ════════════════════════════════════════ */
 const ACCOUNTS=[
   {id:'dearcompany', pw:'dear12341401', role:'admin',  name:'관리자',    company:'DEARCOMPANY', manager:'',    url:''},
-  {id:'brand-a', pw:'pass1234', role:'client', name:'Dear.Isopa',company:'Dear.Isopa',  manager:'이채환',url:'https://smartstore.naver.com/dear-isopa'},
-{id:'brand-b', pw:'pass5678', role:'client', name:'브랜드 B',  company:'브랜드 B',    manager:'김승진',url:'https://brand-b.com'},
+
 ];
 const MANAGERS=['이채환','김승진','이종선','공지수'];
 
@@ -739,7 +738,6 @@ async function loadClientsFromSupabase(){
         company: row.company_name,
         manager: row.manager   || '',
         url:     row.store_url || '',
-        
       };
       if(exists){
         // 기존 계정 정보 업데이트
