@@ -2158,10 +2158,10 @@ function csvParseLine(line){
   for(let i=0;i<line.length;i++){
     const ch=line[i];
     if(ch==='"'){inQ=!inQ;}
-    else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+    else if(ch===','&&!inQ){result.push(cur.trim().replace(/^"|"$/g,''));cur='';}
     else{cur+=ch;}
   }
-  result.push(cur.trim());
+  result.push(cur.trim().replace(/^"|"$/g,''));
   return result;
 }
 
