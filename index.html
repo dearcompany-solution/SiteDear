@@ -727,10 +727,14 @@ async function loadClientsFromSupabase(){
     const rows = await res.json();
     if(!Array.isArray(rows)||!rows.length) return;
 
+    // ACCOUNTS를 Supabase 데이터 기준으로 완전히 재구성 (관리자 계정만 유지)
+    const adminAcc = ACCOUNTS.find(a=>a.role==='admin');
+    ACCOUNTS.length = 0;
+    if(adminAcc) ACCOUNTS.push(adminAcc);
+
     rows.forEach(row=>{
-      if(row.client_key==='dearcompany') return; // 관리자는 제외
-      const exists = ACCOUNTS.find(a=>a.id===row.client_key);
-      const acc = {
+      if(row.client_key==='dearcompany') return;
+      ACCOUNTS.push({
         id:      row.client_key,
         pw:      row.password,
         role:    'client',
@@ -738,14 +742,7 @@ async function loadClientsFromSupabase(){
         company: row.company_name,
         manager: row.manager   || '',
         url:     row.store_url || '',
-      };
-      if(exists){
-        // 기존 계정 정보 업데이트
-        Object.assign(exists, acc);
-      } else {
-        // 새 계정 추가
-        ACCOUNTS.push(acc);
-      }
+      });
     });
 
     // 관리자 화면이면 클라이언트 목록 새로고침
