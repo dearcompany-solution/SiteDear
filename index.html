@@ -733,9 +733,7 @@ const pageTitles={
   register:['계정 등록',''],
 };
 function go(id,el){
-  const nonClientPanels=['admin','register'];
   const needsClient=['naver','store','combined','req'];
-  const needsClientForAdmin=['input'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트를 선택해주세요');return;
   }
@@ -744,27 +742,18 @@ function go(id,el){
   const t=pageTitles[id]||['대시보드',''];
   document.getElementById('pgTitle').textContent=t[0];
   document.getElementById('pgSub').textContent=t[1];
-  // admin 아닐 때 topbar 복원
-  if(id !== 'admin' && id !== 'register'){
-    const dr = document.getElementById('dateRow');
-    const aa = document.getElementById('adminActions');
-    const da = document.getElementById('defaultActions');
-    if(dr) dr.style.display='flex';
-    if(aa) aa.style.display='none';
-    if(da) da.style.display='flex';
-  }
-  if(id==='admin'){
-    document.getElementById('dateRow').style.display='none';
-    document.getElementById('adminActions').style.display='flex';
-    document.getElementById('defaultActions').style.display='none';
-  } else if(id==='register'){
-    document.getElementById('dateRow').style.display='none';
-    document.getElementById('adminActions').style.display='none';
-    document.getElementById('defaultActions').style.display='none';
-  } else {
-    document.getElementById('dateRow').style.display='flex';
-    document.getElementById('adminActions').style.display='none';
-    document.getElementById('defaultActions').style.display='flex';
+  // topbar 전환
+  const dr=document.getElementById('dateRow');
+  const aa=document.getElementById('adminActions');
+  const da=document.getElementById('defaultActions');
+  if(dr&&aa&&da){
+    if(id==='admin'){
+      dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
+    } else if(id==='register'||id==='input'){
+      dr.style.display='none'; aa.style.display='none'; da.style.display='none';
+    } else {
+      dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
+    }
   }
   renderContent(id);
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
@@ -794,16 +783,17 @@ function renderContent(id){
         else if(currentInputTab==='data') renderDataTab();
         else if(currentInputTab==='edit') renderEditTab();
       },50);
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
+      document.getElementById('defaultActions').style.display='none';
       break;
     case 'msg':
   c.innerHTML=htmlMsg();
   stopPolling();
-  // 광고주는 자동으로 본인 채팅 오픈
   if(currentUser.role!=='admin'){
     setTimeout(()=>{ loadMessages(currentUser.id); subscribeMessages(currentUser.id); updateMsgBadge(); },100);
   } else {
-    // 관리자는 클라이언트 목록 로드 후 표시
-    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{ 
+    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{
       const sb = document.getElementById('appContent').querySelector('.msg-sb > div');
       if(sb) sb.innerHTML = ACCOUNTS.filter(a=>a.role==='client').map(c=>`
         <div class="msg-thread ${currentChatClient===c.id?'active':''}" onclick="openChat('${c.id}','${c.company}')">
@@ -1101,104 +1091,80 @@ function htmlReport(){
 ════════════════════════════════════════ */
 async function fetchReportData(month){
   try{
-    const isAdmin     = currentUser?.role==='admin';
-    const targetClient= isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+    const isAdmin      = currentUser?.role==='admin';
+    const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
     if(!targetClient) return null;
 
-    const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
-
-    // 3개 테이블 동시 조회
-    const [dailyRes, kwRes, hourlyRes] = await Promise.all([
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const [dailyRes,kwRes,hourlyRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=2000`,{headers:h}),
       fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
       fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=500`,{headers:h}),
     ]);
+    const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
+    const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
+    const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
 
-    const daily   = await dailyRes.json();
-    const kw      = await kwRes.json();
-    const hourly  = await hourlyRes.json();
+    if(!dailyArr.length&&!kwArr.length&&!hourlyArr.length) return null;
 
-    const dailyArr   = Array.isArray(daily)  ? daily  : [];
-    const kwArr      = Array.isArray(kw)     ? kw     : [];
-    const hourlyArr  = Array.isArray(hourly) ? hourly : [];
+    const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
+    const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click');
+    const totalCost=sum(dailyArr,'cost'), totalConv=sum(dailyArr,'conv'), totalRev=sum(dailyArr,'rev');
+    const roas=totalCost>0?totalRev/totalCost:0;
+    const ctr=totalImp>0?(totalClick/totalImp)*100:0;
+    const cpc=totalClick>0?totalCost/totalClick:0;
 
-    if(!dailyArr.length && !kwArr.length && !hourlyArr.length) return null;
-
-    // ── KPI 집계 ──
-    const sum = (arr,key) => arr.reduce((s,r)=>s+(+r[key]||0),0);
-    const totalImp   = sum(dailyArr,'imp');
-    const totalClick = sum(dailyArr,'click');
-    const totalCost  = sum(dailyArr,'cost');
-    const totalConv  = sum(dailyArr,'conv');
-    const totalRev   = sum(dailyArr,'rev');
-    const roas       = totalCost>0 ? totalRev/totalCost : 0;
-    const ctr        = totalImp>0  ? (totalClick/totalImp)*100 : 0;
-    const cpc        = totalClick>0? totalCost/totalClick : 0;
-
-    // ── 채널별 집계 ──
-    const chMap = {};
+    // 채널별 집계
+    const chMap={};
     dailyArr.forEach(r=>{
-      const key = `${r.campaign_type||''} (${r.device||''})`;
+      const key=`${r.campaign_type||''} (${r.device||''})`;
       if(!chMap[key]) chMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
       chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
       chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
     });
-    const channels = Object.values(chMap).map(c=>({...c, roas:c.cost>0?c.rev/c.cost:0}))
-      .sort((a,b)=>b.cost-a.cost);
+    const channels=Object.values(chMap).map(c=>({...c,roas:c.cost>0?c.rev/c.cost:0})).sort((a,b)=>b.cost-a.cost);
 
-    // ── 주별 집계 ──
-    const weekMap = {};
+    // 주별 집계
+    const weekMap={};
     dailyArr.forEach(r=>{
-      const d = new Date(r.date);
-      const day = d.getDate();
-      const wk  = day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
+      const day=new Date(r.date).getDate();
+      const wk=day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
       if(!weekMap[wk]) weekMap[wk]={week:wk,imp:0,click:0,cost:0,conv:0,rev:0};
       weekMap[wk].imp+=+r.imp||0; weekMap[wk].click+=+r.click||0;
       weekMap[wk].cost+=+r.cost||0; weekMap[wk].conv+=+r.conv||0; weekMap[wk].rev+=+r.rev||0;
     });
-    const weekly = ['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
+    const weekly=['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
 
-    // ── 시간대별 집계 ──
-    const hourMap = {};
+    // 시간대별 집계
+    const hourMap={};
     hourlyArr.forEach(r=>{
-      const t = r.time_slot||'';
+      const t=r.time_slot||'';
       if(!hourMap[t]) hourMap[t]={time:t,click:0,cost:0,conv:0,rev:0};
       hourMap[t].click+=+r.click||0; hourMap[t].cost+=+r.cost||0;
-      hourMap[t].conv+=+r.conv||0;   hourMap[t].rev+=+r.rev||0;
+      hourMap[t].conv+=+r.conv||0; hourMap[t].rev+=+r.rev||0;
     });
-    const hourly2 = Object.values(hourMap).map(h2=>({...h2,pct:totalClick>0?h2.click/totalClick:0}));
+    const hourly=Object.values(hourMap).map(h=>({...h,pct:totalClick>0?h.click/totalClick:0}));
 
-    // ── 상위 키워드 (전환매출 기준 TOP 20) ──
-    const kwMap = {};
+    // 상위 키워드 TOP20
+    const kwMap={};
     kwArr.forEach(r=>{
-      const key = `${r.keyword}__${r.campaign_type}__${r.device}`;
+      const key=`${r.keyword}__${r.campaign_type}__${r.device}`;
       if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,cost:0,click:0,conv:0,rev:0};
       kwMap[key].cost+=+r.cost||0; kwMap[key].click+=+r.click||0;
       kwMap[key].conv+=+r.conv||0; kwMap[key].rev+=+r.rev||0;
     });
-    const topKeywords = Object.values(kwMap)
-      .sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
+    const topKeywords=Object.values(kwMap).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
 
-    // ── 클라이언트 정보 ──
-    const acc = ACCOUNTS.find(a=>a.id===targetClient);
-    const [y,m2] = month.split('-');
-    const period  = `${y}년 ${parseInt(m2)}월`;
-
+    const acc=ACCOUNTS.find(a=>a.id===targetClient);
+    const [y,m]=month.split('-');
     return {
-      client:      targetClient,
-      period,
-      manager:     acc?.manager||'—',
+      client:targetClient, period:`${y}년 ${parseInt(m)}월`, manager:acc?.manager||'—',
       kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,roas,ctr,cpc},
       mom:{click:0,cost:0,rev:0,roas:0},
-      channels,
-      weekly,
-      hourly:      hourly2,
-      topKeywords,
-      insights:[],
+      channels, weekly, hourly, topKeywords, insights:[],
     };
-
   }catch(e){
-    console.warn('데이터 집계 실패:', e);
+    console.warn('데이터 집계 실패:',e);
     return null;
   }
 }
@@ -1511,55 +1477,41 @@ function downloadPDF(){
   w.document.close();
   toast('📥 PDF 저장 창이 열렸습니다');
 }
+
 async function downloadExcelReport(){
   const data = await fetchReportData(currentReportMonth);
-  if(!data){ toast('⚠️ 다운로드할 데이터가 없습니다'); return; }
-
+  if(!data||data._empty){ toast('⚠️ 다운로드할 데이터가 없습니다'); return; }
   loadSheetJS(()=>{
     const wb = XLSX.utils.book_new();
-
-    // ── 시트1: KPI 요약 ──
-    const kpi = data.kpi;
-    const summaryData = [
-      ['항목','수치'],
-      ['기간', data.period],
-      ['업체', data.client],
-      ['담당 매니저', data.manager],
-      ['총 노출수', kpi.totalImp],
-      ['총 클릭수', kpi.totalClick],
-      ['총 광고비', kpi.totalCost],
-      ['총 전환수', kpi.totalConv],
-      ['전환매출', kpi.totalRev],
-      ['ROAS', kpi.roas ? (kpi.roas*100).toFixed(0)+'%' : '0%'],
-      ['CTR', kpi.ctr ? kpi.ctr.toFixed(2)+'%' : '0%'],
-      ['CPC', kpi.cpc ? Math.round(kpi.cpc) : 0],
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'KPI 요약');
-
-    // ── 시트2: 채널별 ──
-    const chRows = [['채널','노출수','클릭수','광고비','전환수','전환매출','ROAS']];
-    data.channels.forEach(c=>chRows.push([c.name,c.imp,c.click,c.cost,c.conv,c.rev,c.roas?(c.roas*100).toFixed(0)+'%':'0%']));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(chRows), '채널별');
-
-    // ── 시트3: 주별 ──
-    const wkRows = [['주차','노출수','클릭수','광고비','전환수','전환매출']];
-    data.weekly.forEach(w=>wkRows.push([w.week,w.imp,w.click,w.cost,w.conv,w.rev]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wkRows), '주별');
-
-    // ── 시트4: 시간대별 ──
-    const hrRows = [['시간대','클릭수','광고비','전환수','전환매출']];
-    data.hourly.forEach(h=>hrRows.push([h.time,h.click,h.cost,h.conv,h.rev]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hrRows), '시간대별');
-
-    // ── 시트5: 키워드 TOP20 ──
-    const kwRows = [['키워드','유형','기기','광고비','클릭수','전환수','전환매출']];
-    data.topKeywords.forEach(k=>kwRows.push([k.keyword,k.type,k.device,k.cost,k.click,k.conv,k.rev]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kwRows), '키워드 TOP20');
-
-    XLSX.writeFile(wb, `${data.client}_${data.period}_보고서.xlsx`);
+    const kpi = data.kpi||{};
+    // 시트1: KPI 요약
+    const s1=[['항목','수치'],['기간',data.period],['업체',data.client],['담당 매니저',data.manager],
+      ['총 노출수',kpi.totalImp||0],['총 클릭수',kpi.totalClick||0],['총 광고비',kpi.totalCost||0],
+      ['총 전환수',kpi.totalConv||0],['전환매출',kpi.totalRev||0],
+      ['ROAS',kpi.roas?Math.round(kpi.roas*100)+'%':'0%'],
+      ['CTR',kpi.ctr?kpi.ctr.toFixed(2)+'%':'0%'],['CPC',Math.round(kpi.cpc||0)]];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s1),'KPI 요약');
+    // 시트2: 채널별
+    const s2=[['채널','노출수','클릭수','광고비','전환수','전환매출','ROAS']];
+    (data.channels||[]).forEach(c=>s2.push([c.name,c.imp,c.click,c.cost,c.conv,c.rev,c.roas?Math.round(c.roas*100)+'%':'0%']));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s2),'채널별');
+    // 시트3: 주별
+    const s3=[['주차','노출수','클릭수','광고비','전환수','전환매출']];
+    (data.weekly||[]).forEach(w=>s3.push([w.week,w.imp,w.click,w.cost,w.conv,w.rev]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s3),'주별');
+    // 시트4: 시간대별
+    const s4=[['시간대','클릭수','광고비','전환수','전환매출']];
+    (data.hourly||[]).forEach(h=>s4.push([h.time||h.time_slot,h.click,h.cost,h.conv,h.rev]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s4),'시간대별');
+    // 시트5: 키워드 TOP20
+    const s5=[['키워드','유형','기기','광고비','클릭수','전환수','전환매출']];
+    (data.topKeywords||[]).forEach(k=>s5.push([k.keyword,k.type,k.device,k.cost,k.click,k.conv,k.rev]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s5),'키워드 TOP20');
+    XLSX.writeFile(wb,`${data.client}_${data.period}_보고서.xlsx`);
     toast('✅ 엑셀 보고서 다운로드 완료!');
   });
 }
+
 function openUploadReport(){
   closeModal();
   go('input',null);
@@ -1604,52 +1556,39 @@ function renderUploadTab(){
   if(!el)return;
 
   const fileRows=uploadedFiles.map((f,i)=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--rsm);box-shadow:var(--sh)">
-      <div style="width:36px;height:36px;border-radius:8px;background:var(--naver-l);display:flex;align-items:center;justify-content:center;font-size:18px">
-        ${f.name.endsWith('.csv')?'📄':'📊'}
-      </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border:1.5px solid ${f.status==='저장완료'?'var(--naver)':f.status==='저장실패'?'var(--red)':'var(--border)'};border-radius:var(--rsm);box-shadow:var(--sh)">
+      <div style="font-size:22px">${f.name.endsWith('.csv')?'📄':'📊'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
           <span>${f.size}</span>
-          <span style="font-weight:600;color:${
-            f.status==='저장완료'?'var(--naver)':
-            f.status==='저장실패'?'var(--red)':
-            f.status==='저장중'?'var(--gold)':'var(--text3)'}">
-            ${f.status==='저장완료'?'✅ 저장완료':
-              f.status==='저장실패'?'❌ 저장실패':
-              f.status==='저장중'?'⏳ 저장중':'📎 대기중'}
+          <span style="font-weight:600;color:${f.status==='저장완료'?'var(--naver)':f.status==='저장실패'?'var(--red)':f.status==='저장중'?'var(--gold)':'var(--text2)'}">
+            ${f.status==='저장완료'?'✅ 저장완료':f.status==='저장실패'?'❌ 저장실패':f.status==='저장중'?'⏳ 저장중':'📎 대기중'}
           </span>
-          ${f.savedMonth?`<span style="color:var(--blue)">${f.savedMonth}</span>`:''}
-          ${f.savedType?`<span style="color:var(--text2)">${f.savedType}</span>`:''}
+          ${f.savedMonth?`<span style="color:var(--blue);font-weight:600">${f.savedMonth}</span>`:''}
           ${f.savedCount?`<span>${f.savedCount}건</span>`:''}
         </div>
       </div>
       <button class="btn btn-ol btn-sm" onclick="removeFile(${i})" style="color:var(--red);flex-shrink:0">🗑</button>
     </div>`).join('');
 
-  const pendingCount = uploadedFiles.filter(f=>f.status==='대기중').length;
+  const pendingCount=uploadedFiles.filter(f=>f.status==='대기중').length;
 
   el.innerHTML=`
   <div style="max-width:900px">
     <div class="card" style="margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:14px">⚙️ 업로드 설정</div>
+      <div class="card-title" style="margin-bottom:12px">⚙️ 업체 선택</div>
       ${currentUser.role==='admin'?`
-      <div style="max-width:320px">
-        <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체 선택 *</div>
-        <select id="uploadClient" class="fi">
-          <option value="">업체를 선택하세요</option>
-          ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${activeClientId===a.id?'selected':''}>${a.company}</option>`).join('')}
-        </select>
-      </div>
+      <select id="uploadClient" class="fi" style="max-width:320px">
+        <option value="">업체를 선택하세요</option>
+        ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${activeClientId===a.id?'selected':''}>${a.company}</option>`).join('')}
+      </select>
       <div style="margin-top:8px;font-size:12px;color:var(--text3)">💡 월·유형은 파일 내용에서 자동 인식됩니다</div>
-      `:`
-      <div style="font-size:13px;color:var(--text2)">업체: <b>${currentUser.company}</b> · 월·유형 자동 인식</div>
-      `}
+      `:`<div style="font-size:13px;color:var(--text2)">업체: <b>${currentUser.company}</b> · 월·유형 자동 인식</div>`}
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:14px">📁 파일 선택</div>
+      <div class="card-title" style="margin-bottom:12px">📁 파일 선택</div>
       <div id="dropZone"
         style="border:2.5px dashed var(--border2);border-radius:var(--radius);padding:36px;text-align:center;cursor:pointer;background:var(--surface);transition:all .2s"
         onclick="document.getElementById('xlsxInput').click()"
@@ -1668,7 +1607,7 @@ function renderUploadTab(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:14px;font-weight:600">
           파일 목록
-          <span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:6px">${uploadedFiles.length}개 (대기중 ${pendingCount}개)</span>
+          <span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:6px">${uploadedFiles.length}개 · 대기중 ${pendingCount}개</span>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ol btn-sm" onclick="uploadedFiles=[];renderUploadTab()" style="color:var(--red)">🗑 전체 삭제</button>
@@ -1680,211 +1619,8 @@ function renderUploadTab(){
       <div style="display:flex;flex-direction:column;gap:8px">${fileRows}</div>
     </div>
     `:`<div class="empty"><div class="ei">📭</div><p>파일을 선택하거나 드래그해서 추가하세요</p></div>`}
-  </div>`;
-}
-function saveAllFiles(){
-  const clientEl = document.getElementById('uploadClient');
-  const client = currentUser.role==='admin'
-    ? (clientEl ? clientEl.value : '')
-    : currentUser.id;
-  if(!client){ toast('⚠️ 업체를 먼저 선택해주세요'); return; }
+  </div>`;}
 
-  const pending = uploadedFiles.filter(f=>f.status==='대기중');
-  if(!pending.length){ toast('⚠️ 대기중인 파일이 없습니다'); return; }
-
-  toast(`💾 ${pending.length}개 파일 저장 시작...`);
-  pending.forEach((f,i)=>{
-    setTimeout(()=>saveOneFile(f, client), i*300);
-  });
-}
-
-function saveOneFile(fileObj, client){
-  const ext = fileObj.name.split('.').pop().toLowerCase();
-  fileObj.status='저장중';
-  renderUploadTab();
-
-  if(ext==='csv'){
-    const reader = new FileReader();
-    reader.onload = e => {
-      try{
-        const text  = e.target.result.replace(/^\uFEFF/,'');
-        const lines = text.split(/\r?\n/).filter(l=>l.trim());
-        if(lines.length<3){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
-
-        const pm = lines[0].match(/(\d{4})\.(\d{2})\.\d{2}/);
-        const month = pm ? `${pm[1]}-${pm[2]}` : new Date().toISOString().slice(0,7);
-        const cols = csvParseLine(lines[1]);
-
-        const hasDaily   = cols.some(c=>c==='일별');
-        const hasHourly  = cols.some(c=>c==='시간대별');
-        const hasKeyword = cols.some(c=>c==='검색어');
-
-        if(!hasDaily&&!hasHourly&&!hasKeyword){
-          fileObj.status='저장실패'; renderUploadTab();
-          toast(`⚠️ ${fileObj.name} — 컬럼 인식 실패`); return;
-        }
-
-        const rows=[];
-        for(let i=2;i<lines.length;i++){
-          const vals=csvParseLine(lines[i]);
-          if(!vals.length||vals.every(v=>!v)) continue;
-          const row={};
-          cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
-
-          if(hasDaily){
-            const rawDate=row['일별']||'';
-            const dateStr=rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
-            if(!dateStr||dateStr.length<8) continue;
-            rows.push({data_type:'daily',client_key:client,month,date:dateStr,
-              campaign_type:row['캠페인유형']||'',
-              device:row['PC/모바일 매체']||row['PC/모바일']||'',
-              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
-              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-              conv:parseNum(row['총 전환수']||row['전환수']),
-              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
-          } else if(hasHourly){
-            const t=row['시간대별']||'';
-            if(!t) continue;
-            rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
-              campaign_type:row['캠페인유형']||'',
-              device:row['PC/모바일 매체']||row['PC/모바일']||'',
-              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
-              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-              conv:parseNum(row['총 전환수']||row['전환수']),
-              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
-          } else if(hasKeyword){
-            const kw=row['검색어']||'';
-            if(!kw) continue;
-            rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
-              campaign_type:row['캠페인유형']||'',
-              device:row['PC/모바일 매체']||row['PC/모바일']||'',
-              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
-              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-              avg_rank:parseNum(row['평균노출순위']),
-              conv:parseNum(row['총 전환수']||row['전환수']),
-              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
-          }
-        }
-
-        if(!rows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 저장할 데이터 없음`); return; }
-
-        const dtype=rows[0].data_type;
-        const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
-        fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
-          method:'POST',
-          headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-          body:JSON.stringify(rows)
-        }).then(res=>{
-          if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-          fileObj.status='저장완료';
-          fileObj.savedMonth=month;
-          fileObj.savedType=dtype;
-          fileObj.savedCount=rows.length;
-          renderUploadTab();
-          toast(`✅ ${fileObj.name} — ${rows.length}개 저장 완료!`);
-        }).catch(err=>{
-          fileObj.status='저장실패'; renderUploadTab();
-          console.error(err); toast('❌ 저장 실패: '+err.message);
-        });
-
-      }catch(err){ fileObj.status='저장실패'; renderUploadTab(); console.error(err); toast('❌ 오류: '+err.message); }
-    };
-    reader.readAsText(fileObj.file,'UTF-8');
-
-  } else if(ext==='xlsx'||ext==='xls'){
-    loadSheetJS(()=>{
-      const reader=new FileReader();
-      reader.onload=e=>{
-        try{
-          const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
-          const targetSheets=['일별_누적','키워드_파워링크','키워드_쇼핑검색','시간대'];
-          let totalSaved=0;
-
-          wb.SheetNames.filter(n=>targetSheets.includes(n)).forEach(sheetName=>{
-            const ws=wb.Sheets[sheetName];
-            const rawVals=Object.values(ws).filter(c=>c&&c.v).map(c=>String(c.v)).slice(0,10);
-            let month=new Date().toISOString().slice(0,7);
-            for(const val of rawVals){
-              const m1=val.match(/(\d{4})\.(\d{2})\.\d{2}/);
-              if(m1){month=`${m1[1]}-${m1[2]}`;break;}
-              const m2=val.match(/(\d{4})년\s*(\d{1,2})월/);
-              if(m2){month=`${m2[1]}-${m2[2].padStart(2,'0')}`;break;}
-            }
-            const json=XLSX.utils.sheet_to_json(ws,{defval:'',range:1});
-            if(!json.length) return;
-
-            const rows=[];
-            json.forEach(r=>{
-              if('일별' in r){
-                const rawDate=r['일별']||'';
-                const dateStr=rawDate instanceof Date?rawDate.toISOString().slice(0,10):String(rawDate).replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
-                if(!dateStr||dateStr.length<8) return;
-                rows.push({data_type:'daily',client_key:client,month,date:dateStr,
-                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-              } else if('시간대별' in r){
-                const t=String(r['시간대별']||'');
-                if(!t) return;
-                rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
-                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-              } else if('검색어' in r){
-                const kw=String(r['검색어']||'');
-                if(!kw) return;
-                rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
-                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                  avg_rank:parseNum(r['평균노출순위']),
-                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-              }
-            });
-
-            if(!rows.length) return;
-            const dtype=rows[0].data_type;
-            const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
-            fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
-              method:'POST',
-              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-              body:JSON.stringify(rows)
-            }).then(res=>{
-              if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-              totalSaved+=rows.length;
-              fileObj.status='저장완료';
-              fileObj.savedMonth=month;
-              fileObj.savedType=dtype;
-              fileObj.savedCount=(fileObj.savedCount||0)+rows.length;
-              renderUploadTab();
-              toast(`✅ [${sheetName}] ${rows.length}개 저장 완료!`);
-            }).catch(err=>{ console.error(err); toast(`❌ [${sheetName}] 저장 실패: `+err.message); });
-          });
-
-          if(!wb.SheetNames.some(n=>targetSheets.includes(n))){
-            fileObj.status='저장실패'; renderUploadTab();
-            toast(`⚠️ ${fileObj.name} — 대상 시트 없음`);
-          }
-        }catch(err){ fileObj.status='저장실패'; renderUploadTab(); console.error(err); toast('❌ XLSX 오류: '+err.message); }
-      };
-      reader.readAsBinaryString(fileObj.file);
-    });
-  }
-}
-
-function csvParseLine(line){
-  const result=[]; let cur='', inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(ch==='"'){ inQ=!inQ; }
-    else if(ch===','&&!inQ){ result.push(cur.trim()); cur=''; }
-    else { cur+=ch; }
-  }
-  result.push(cur.trim());
-  return result;
-}
 function renderDataTab(){
   const el=document.getElementById('inputTabContent');
   if(!el)return;
@@ -2082,15 +1818,183 @@ function addFilesToQueue(files){
   Array.from(files).forEach(f=>{
     uploadedFiles.unshift({
       id:Date.now()+Math.random(),
-      name:f.name,
-      file:f,
-      date:today,
+      name:f.name, file:f, date:today,
       size:f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB',
       status:'대기중'
     });
   });
   renderUploadTab();
-  toast(`📎 ${files.length}개 파일 추가됨 — [등록] 버튼을 눌러 저장하세요`);
+  toast(`📎 ${files.length}개 파일 추가됨 — [전체 등록] 버튼을 눌러 저장하세요`);
+}
+
+function saveAllFiles(){
+  const clientEl=document.getElementById('uploadClient');
+  const client=currentUser.role==='admin'?(clientEl?clientEl.value:''):currentUser.id;
+  if(!client){toast('⚠️ 업체를 먼저 선택해주세요');return;}
+  const pending=uploadedFiles.filter(f=>f.status==='대기중');
+  if(!pending.length){toast('⚠️ 대기중인 파일이 없습니다');return;}
+  toast(`💾 ${pending.length}개 파일 저장 시작...`);
+  pending.forEach((f,i)=>{ setTimeout(()=>saveOneFile(f,client),i*300); });
+}
+
+function saveOneFile(fileObj,client){
+  const ext=fileObj.name.split('.').pop().toLowerCase();
+  fileObj.status='저장중'; renderUploadTab();
+
+  if(ext==='csv'){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const text=e.target.result.replace(/^\uFEFF/,'');
+        const lines=text.split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length<3){fileObj.status='저장실패';renderUploadTab();toast(`⚠️ ${fileObj.name} — 데이터 없음`);return;}
+        const pm=lines[0].match(/(\d{4})\.(\d{2})\.\d{2}/);
+        const month=pm?`${pm[1]}-${pm[2]}`:new Date().toISOString().slice(0,7);
+        const cols=csvParseLine(lines[1]);
+        const hasDaily=cols.some(c=>c==='일별');
+        const hasHourly=cols.some(c=>c==='시간대별');
+        const hasKeyword=cols.some(c=>c==='검색어');
+        if(!hasDaily&&!hasHourly&&!hasKeyword){
+          fileObj.status='저장실패';renderUploadTab();
+          toast(`⚠️ ${fileObj.name} — 컬럼 인식 실패 (일별/시간대별/검색어 없음)`);return;
+        }
+        const rows=[];
+        for(let i=2;i<lines.length;i++){
+          const vals=csvParseLine(lines[i]);
+          if(!vals.length||vals.every(v=>!v))continue;
+          const row={};
+          cols.forEach((col,idx)=>{row[col]=(vals[idx]||'').trim();});
+          if(hasDaily){
+            const rawDate=row['일별']||'';
+            const dateStr=rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+            if(!dateStr||dateStr.length<8)continue;
+            rows.push({data_type:'daily',client_key:client,month,date:dateStr,
+              campaign_type:row['캠페인유형']||'',
+              device:row['PC/모바일 매체']||row['PC/모바일']||'',
+              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
+              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
+              conv:parseNum(row['총 전환수']||row['전환수']),
+              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
+          } else if(hasHourly){
+            const t=row['시간대별']||'';
+            if(!t)continue;
+            rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
+              campaign_type:row['캠페인유형']||'',
+              device:row['PC/모바일 매체']||row['PC/모바일']||'',
+              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
+              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
+              conv:parseNum(row['총 전환수']||row['전환수']),
+              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
+          } else if(hasKeyword){
+            const kw=row['검색어']||'';
+            if(!kw)continue;
+            rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
+              campaign_type:row['캠페인유형']||'',
+              device:row['PC/모바일 매체']||row['PC/모바일']||'',
+              imp:parseNum(row['노출수']),click:parseNum(row['클릭수']),
+              cost:parseNum(row['총비용(VAT포함,원)']||row['총비용']),
+              avg_rank:parseNum(row['평균노출순위']),
+              conv:parseNum(row['총 전환수']||row['전환수']),
+              rev:parseNum(row['총 전환매출액(원)']||row['전환매출액'])});
+          }
+        }
+        if(!rows.length){fileObj.status='저장실패';renderUploadTab();toast(`⚠️ ${fileObj.name} — 저장할 데이터 없음`);return;}
+        const dtype=rows[0].data_type;
+        const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
+        fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+          body:JSON.stringify(rows)
+        }).then(res=>{
+          if(!res.ok)return res.text().then(t=>{throw new Error(t);});
+          fileObj.status='저장완료';fileObj.savedMonth=month;fileObj.savedType=dtype;fileObj.savedCount=rows.length;
+          renderUploadTab();
+          toast(`✅ ${fileObj.name} — ${rows.length}개 저장 완료!`);
+        }).catch(err=>{fileObj.status='저장실패';renderUploadTab();console.error(err);toast('❌ 저장 실패: '+err.message);});
+      }catch(err){fileObj.status='저장실패';renderUploadTab();console.error(err);toast('❌ CSV 오류: '+err.message);}
+    };
+    reader.readAsText(fileObj.file,'UTF-8');
+
+  } else if(ext==='xlsx'||ext==='xls'){
+    loadSheetJS(()=>{
+      const reader=new FileReader();
+      reader.onload=e=>{
+        try{
+          const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+          const targetSheets=['일별_누적','키워드_파워링크','키워드_쇼핑검색','시간대'];
+          const matched=wb.SheetNames.filter(n=>targetSheets.includes(n));
+          if(!matched.length){fileObj.status='저장실패';renderUploadTab();toast(`⚠️ ${fileObj.name} — 대상 시트 없음`);return;}
+          matched.forEach(sheetName=>{
+            const ws=wb.Sheets[sheetName];
+            const rawVals=Object.values(ws).filter(c=>c&&c.v).map(c=>String(c.v)).slice(0,10);
+            let month=new Date().toISOString().slice(0,7);
+            for(const val of rawVals){
+              const m1=val.match(/(\d{4})\.(\d{2})\.\d{2}/);if(m1){month=`${m1[1]}-${m1[2]}`;break;}
+              const m2=val.match(/(\d{4})년\s*(\d{1,2})월/);if(m2){month=`${m2[1]}-${m2[2].padStart(2,'0')}`;break;}
+            }
+            const json=XLSX.utils.sheet_to_json(ws,{defval:'',range:1});
+            if(!json.length)return;
+            const rows=[];
+            json.forEach(r=>{
+              if('일별' in r){
+                const rawDate=r['일별']||'';
+                const dateStr=rawDate instanceof Date?rawDate.toISOString().slice(0,10):String(rawDate).replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+                if(!dateStr||dateStr.length<8)return;
+                rows.push({data_type:'daily',client_key:client,month,date:dateStr,
+                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
+                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
+              } else if('시간대별' in r){
+                const t=String(r['시간대별']||'');if(!t)return;
+                rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
+                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
+                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
+              } else if('검색어' in r){
+                const kw=String(r['검색어']||'');if(!kw)return;
+                rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
+                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
+                  avg_rank:parseNum(r['평균노출순위']),
+                  conv:parseNum(r['총 전환수']||r['전환수']),rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
+              }
+            });
+            if(!rows.length)return;
+            const dtype=rows[0].data_type;
+            const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
+            fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+              body:JSON.stringify(rows)
+            }).then(res=>{
+              if(!res.ok)return res.text().then(t=>{throw new Error(t);});
+              fileObj.status='저장완료';fileObj.savedMonth=month;fileObj.savedType=dtype;
+              fileObj.savedCount=(fileObj.savedCount||0)+rows.length;
+              renderUploadTab();toast(`✅ [${sheetName}] ${rows.length}개 저장 완료!`);
+            }).catch(err=>{fileObj.status='저장실패';renderUploadTab();console.error(err);toast(`❌ [${sheetName}] 실패: `+err.message);});
+          });
+        }catch(err){fileObj.status='저장실패';renderUploadTab();console.error(err);toast('❌ XLSX 오류: '+err.message);}
+      };
+      reader.readAsBinaryString(fileObj.file);
+    });
+  } else {
+    fileObj.status='저장실패';renderUploadTab();toast(`⚠️ ${fileObj.name} — CSV/XLSX만 지원합니다`);
+  }
+}
+
+function csvParseLine(line){
+  const result=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+    else{cur+=ch;}
+  }
+  result.push(cur.trim());
+  return result;
 }
 
 function processFiles(files){
@@ -2102,269 +2006,124 @@ function processFiles(files){
   toast('📂 파일 읽는 중...');
 
   Array.from(files).forEach(file=>{
-    const ext = file.name.split('.').pop().toLowerCase();
-
-    if(ext==='csv'){
+    loadSheetJS(()=>{
       const reader = new FileReader();
       reader.onload = e => {
         try{
-          const text  = e.target.result.replace(/^\uFEFF/,'');
-          const lines = text.split(/\r?\n/).filter(l=>l.trim());
-          if(lines.length<3){ toast(`⚠️ ${file.name} — 데이터 없음`); return; }
-
-          // 1행에서 월 추출 (2026.02.01. 형태)
-          const pm = lines[0].match(/(\d{4})\.(\d{2})\.\d{2}/);
-          const month = pm ? `${pm[1]}-${pm[2]}` : new Date().toISOString().slice(0,7);
-
-          // 2행 컬럼명 파싱 (따옴표 처리)
-          const cols = csvParseLine(lines[1]);
-
-          const hasDaily   = cols.some(c=>c==='일별');
-          const hasHourly  = cols.some(c=>c==='시간대별');
-          const hasKeyword = cols.some(c=>c==='검색어');
-
-          if(!hasDaily&&!hasHourly&&!hasKeyword){
-            toast(`⚠️ ${file.name} — 인식 불가 (컬럼 확인 필요)`); return;
-          }
-
+          const wb   = XLSX.read(e.target.result,{type:'binary',cellDates:true});
           const rows = [];
-          for(let i=2;i<lines.length;i++){
-            const vals = csvParseLine(lines[i]);
-            if(!vals.length||vals.every(v=>!v)) continue;
-            const row = {};
-            cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
 
-            if(hasDaily){
-              const rawDate = row['일별']||'';
-              const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
-              if(!dateStr||dateStr.length<8) continue;
-              rows.push({ data_type:'daily', client_key:client, month, date:dateStr,
-                campaign_type: row['캠페인유형']||'',
-                device:        row['PC/모바일 매체']||row['PC/모바일']||'',
-                imp:   parseNum(row['노출수']),
-                click: parseNum(row['클릭수']),
-                cost:  parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-                conv:  parseNum(row['총 전환수']||row['전환수']),
-                rev:   parseNum(row['총 전환매출액(원)']||row['전환매출액'])
+          wb.SheetNames.forEach(sheetName=>{
+            const ws   = wb.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(ws,{defval:''});
+            if(!json.length) return;
+
+            // 시트명으로 유형 자동 판단
+            const isDaily   = sheetName==='일별_누적' || sheetName.includes('일별');
+            const isKeyword = sheetName.includes('키워드');
+            const isHourly  = sheetName==='시간대' || sheetName.includes('시간');
+            if(!isDaily && !isKeyword && !isHourly) return;
+
+            if(isDaily){
+              json.forEach(r=>{
+                const date    = r['일자\n(서식 셀)']||r['일자']||r['날짜']||'';
+                const dateStr = date instanceof Date ? date.toISOString().slice(0,10) : String(date).slice(0,10);
+                if(!dateStr||dateStr.length<8) return;
+                // 월 자동 추출
+                const month = dateStr.slice(0,7);
+                rows.push({data_type:'daily',client_key:client,month,date:dateStr,
+                  campaign_type:String(r['캠페인유형']||r['유형']||''),
+                  device:String(r['PC/모바일']||r['기기']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||r['광고비']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
               });
-            } else if(hasHourly){
-              const t = row['시간대별']||'';
-              if(!t) continue;
-              rows.push({ data_type:'hourly', client_key:client, month, time_slot:t,
-                campaign_type: row['캠페인유형']||'',
-                device:        row['PC/모바일 매체']||row['PC/모바일']||'',
-                imp:   parseNum(row['노출수']),
-                click: parseNum(row['클릭수']),
-                cost:  parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-                conv:  parseNum(row['총 전환수']||row['전환수']),
-                rev:   parseNum(row['총 전환매출액(원)']||row['전환매출액'])
+            } else if(isKeyword){
+              // 키워드는 월 컬럼이 없으므로 파일명에서 추출 시도, 없으면 이번달
+              // 파일 상단 헤더 셀에서 월 추출 (예: '2026년 3월', '2026.03' 등)
+              const rawVals = Object.values(wb.Sheets[sheetName])
+                .filter(cell=>cell&&cell.v)
+                .map(cell=>String(cell.v))
+                .slice(0,30); // 상단 30개 셀만 확인
+              let month = new Date().toISOString().slice(0,7); // 기본값: 이번달
+              for(const val of rawVals){
+                // '2026년 3월' 또는 '2026년 03월' 형태
+                const m1 = val.match(/(\d{4})년\s*(\d{1,2})월/);
+                if(m1){ month=`${m1[1]}-${m1[2].padStart(2,'0')}`; break; }
+                // '2026-03', '2026.03' 형태
+                const m2 = val.match(/(\d{4})[.\-](\d{2})/);
+                if(m2){ month=`${m2[1]}-${m2[2]}`; break; }
+              }
+              json.forEach(r=>{
+                const kw = r['키워드명']||r['키워드']||'';
+                if(!kw) return;
+                rows.push({data_type:'keyword',client_key:client,month,keyword:String(kw),
+                  campaign_type:String(r['유형']||r['캠페인유형']||''),
+                  device:String(r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용\n(VAT포함,원)']||r['총비용']||r['광고비용']||0),
+                  avg_rank:parseNum(r['평균노출순위']||r['평균\n노출순위']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
               });
-            } else if(hasKeyword){
-              const kw = row['검색어']||'';
-              if(!kw) continue;
-              rows.push({ data_type:'keyword', client_key:client, month, keyword:kw,
-                campaign_type: row['캠페인유형']||'',
-                device:        row['PC/모바일 매체']||row['PC/모바일']||'',
-                imp:      parseNum(row['노출수']),
-                click:    parseNum(row['클릭수']),
-                cost:     parseNum(row['총비용(VAT포함,원)']||row['총비용']),
-                avg_rank: parseNum(row['평균노출순위']),
-                conv:     parseNum(row['총 전환수']||row['전환수']),
-                rev:      parseNum(row['총 전환매출액(원)']||row['전환매출액'])
+            } else if(isHourly){
+              // 파일 상단 헤더 셀에서 월 추출 (예: '2026년 3월', '2026.03' 등)
+              const rawVals = Object.values(wb.Sheets[sheetName])
+                .filter(cell=>cell&&cell.v)
+                .map(cell=>String(cell.v))
+                .slice(0,30); // 상단 30개 셀만 확인
+              let month = new Date().toISOString().slice(0,7); // 기본값: 이번달
+              for(const val of rawVals){
+                // '2026년 3월' 또는 '2026년 03월' 형태
+                const m1 = val.match(/(\d{4})년\s*(\d{1,2})월/);
+                if(m1){ month=`${m1[1]}-${m1[2].padStart(2,'0')}`; break; }
+                // '2026-03', '2026.03' 형태
+                const m2 = val.match(/(\d{4})[.\-](\d{2})/);
+                if(m2){ month=`${m2[1]}-${m2[2]}`; break; }
+              }
+              json.forEach(r=>{
+                const t = r['시간대별']||r['시간대']||'';
+                if(!t) return;
+                rows.push({data_type:'hourly',client_key:client,month,time_slot:String(t),
+                  campaign_type:String(r['캠페인유형']||''),device:String(r['PC/모바일']||''),
+                  imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
+                  cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']||0),
+                  conv:parseNum(r['전환수']),
+                  rev:parseNum(r['전환매출액(원)']||r['전환매출액']||0)});
               });
             }
-          }
+          });
 
-          if(!rows.length){ toast(`⚠️ ${file.name} — 저장할 데이터 없음`); return; }
-          saveRowsToSupabase(rows, file.name, client);
+          if(!rows.length){ toast('⚠️ 인식된 데이터 없음 — 시트명 확인: 일별_누적 / 키워드 / 시간대'); return; }
 
-        }catch(err){ console.error(err); toast('❌ CSV 오류: '+err.message); }
+          const months = [...new Set(rows.map(r=>r.month))].join(', ');
+          toast(`💾 ${rows.length}개 (${months}) 저장 중...`);
+
+          const tableMap = {daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports'};
+          const byType = {};
+          rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
+
+          Object.entries(byType).forEach(([dtype, drows])=>{
+            fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+              body:JSON.stringify(drows)
+            }).then(res=>{
+              if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+              parsedTableData = parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
+              parsedTableData.push(...drows);
+              toast(`✅ ${file.name} [${dtype}] ${drows.length}개 저장 완료!`);
+            }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
+          });
+
+        }catch(err){ console.error(err); toast('❌ 파일 읽기 실패: '+err.message); }
       };
-      reader.readAsText(file, 'UTF-8');
-
-    } else if(ext==='xlsx'||ext==='xls'){
-      loadSheetJS(()=>{
-        const reader = new FileReader();
-        reader.onload = e => {
-          try{
-            const wb = XLSX.read(e.target.result,{type:'binary',cellDates:true});
-            const targetSheets = ['일별_누적','키워드_파워링크','키워드_쇼핑검색','시간대'];
-            let totalSaved = 0;
-
-            wb.SheetNames.filter(n=>targetSheets.includes(n)).forEach(sheetName=>{
-              const ws = wb.Sheets[sheetName];
-              const rawVals = Object.values(ws).filter(c=>c&&c.v).map(c=>String(c.v)).slice(0,10);
-              let month = new Date().toISOString().slice(0,7);
-              for(const val of rawVals){
-                const m1=val.match(/(\d{4})\.(\d{2})\.\d{2}/);
-                if(m1){month=`${m1[1]}-${m1[2]}`;break;}
-                const m2=val.match(/(\d{4})년\s*(\d{1,2})월/);
-                if(m2){month=`${m2[1]}-${m2[2].padStart(2,'0')}`;break;}
-              }
-
-              const json = XLSX.utils.sheet_to_json(ws,{defval:'',range:1});
-              if(!json.length) return;
-
-              const rows = [];
-              json.forEach(r=>{
-                if('일별' in r){
-                  const rawDate=r['일별']||'';
-                  const dateStr=rawDate instanceof Date
-                    ?rawDate.toISOString().slice(0,10)
-                    :String(rawDate).replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
-                  if(!dateStr||dateStr.length<8) return;
-                  rows.push({data_type:'daily',client_key:client,month,date:dateStr,
-                    campaign_type:String(r['캠페인유형']||''),
-                    device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                    imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                    cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                    conv:parseNum(r['총 전환수']||r['전환수']),
-                    rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-                } else if('시간대별' in r){
-                  const t=String(r['시간대별']||'');
-                  if(!t) return;
-                  rows.push({data_type:'hourly',client_key:client,month,time_slot:t,
-                    campaign_type:String(r['캠페인유형']||''),
-                    device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                    imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                    cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                    conv:parseNum(r['총 전환수']||r['전환수']),
-                    rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-                } else if('검색어' in r){
-                  const kw=String(r['검색어']||'');
-                  if(!kw) return;
-                  rows.push({data_type:'keyword',client_key:client,month,keyword:kw,
-                    campaign_type:String(r['캠페인유형']||''),
-                    device:String(r['PC/모바일 매체']||r['PC/모바일']||''),
-                    imp:parseNum(r['노출수']),click:parseNum(r['클릭수']),
-                    cost:parseNum(r['총비용(VAT포함,원)']||r['총비용']),
-                    avg_rank:parseNum(r['평균노출순위']),
-                    conv:parseNum(r['총 전환수']||r['전환수']),
-                    rev:parseNum(r['총 전환매출액(원)']||r['전환매출액'])});
-                }
-              });
-
-              if(rows.length){saveRowsToSupabase(rows,`${file.name}[${sheetName}]`,client);totalSaved+=rows.length;}
-            });
-
-            if(!totalSaved) toast(`⚠️ ${file.name} — 인식된 데이터 없음`);
-          }catch(err){ console.error(err); toast('❌ XLSX 오류: '+err.message); }
-        };
-        reader.readAsBinaryString(file);
-      });
-    } else {
-      toast(`⚠️ ${file.name} — CSV 또는 XLSX만 지원합니다`);
-    }
+      reader.readAsBinaryString(file);
+    });
   });
 }
 
-function csvParseLine(line){
-  const result=[]; let cur='', inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(ch==='"'){ inQ=!inQ; }
-    else if(ch===','&&!inQ){ result.push(cur.trim()); cur=''; }
-    else { cur+=ch; }
-  }
-  result.push(cur.trim());
-  return result;
-}
-
-function saveRowsToSupabase(rows, fileName, client){
-  const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
-  const byType={};
-  rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
-
-  Object.entries(byType).forEach(([dtype,drows])=>{
-    const months=[...new Set(drows.map(r=>r.month))].join(', ');
-    toast(`💾 [${dtype}] ${drows.length}개 저장 중...`);
-    fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-        'Prefer':'resolution=merge-duplicates'
-      },
-      body:JSON.stringify(drows)
-    }).then(res=>{
-      if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-      parsedTableData=parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
-      parsedTableData.push(...drows);
-      toast(`✅ [${dtype}] ${drows.length}개 저장 완료! (${months})`);
-    }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
-  });
-}
-
-// 따옴표 포함 CSV 한 줄 파싱
-function csvParseLine(line){
-  const result=[]; let cur='', inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(ch==='"'){ inQ=!inQ; }
-    else if(ch===','&&!inQ){ result.push(cur.trim()); cur=''; }
-    else { cur+=ch; }
-  }
-  result.push(cur.trim());
-  return result;
-}
-
-// Supabase 저장 공통
-function saveRowsToSupabase(rows, fileName, client){
-  const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
-  const byType={};
-  rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
-
-  Object.entries(byType).forEach(([dtype,drows])=>{
-    const months=[...new Set(drows.map(r=>r.month))].join(', ');
-    fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify(drows)
-    }).then(res=>{
-      if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-      parsedTableData=parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
-      parsedTableData.push(...drows);
-      toast(`✅ [${dtype}] ${drows.length}개 저장 완료! (${months})`);
-    }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
-  });
-}
-
-// CSV 한 줄 파싱 (쉼표+따옴표 처리)
-function parseCSVLine(line){
-  const result = [];
-  let cur = '', inQ = false;
-  for(let i=0;i<line.length;i++){
-    const ch = line[i];
-    if(ch==='"'){ inQ=!inQ; }
-    else if(ch===','&&!inQ){ result.push(cur); cur=''; }
-    else { cur+=ch; }
-  }
-  result.push(cur);
-  return result;
-}
-
-// Supabase 저장 공통 함수
-function saveRowsToSupabase(rows, fileName, client){
-  const tableMap = {daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports'};
-  const byType   = {};
-  rows.forEach(r=>{ if(!byType[r.data_type]) byType[r.data_type]=[]; byType[r.data_type].push(r); });
-
-  Object.entries(byType).forEach(([dtype, drows])=>{
-    const months = [...new Set(drows.map(r=>r.month))].join(', ');
-    toast(`💾 [${dtype}] ${drows.length}개 (${months}) 저장 중...`);
-    fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
-      body:JSON.stringify(drows)
-    }).then(res=>{
-      if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-      parsedTableData = parsedTableData.filter(r=>!(r.client_key===client&&r.data_type===dtype&&drows.some(d=>d.month===r.month)));
-      parsedTableData.push(...drows);
-      toast(`✅ [${dtype}] ${drows.length}개 저장 완료! (${months})`);
-    }).catch(err=>{ console.error(err); toast('❌ 저장 실패: '+err.message); });
-  });
-}
 
 function parseNum(v){
   if(v===''||v===null||v===undefined)return 0;
