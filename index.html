@@ -507,120 +507,8 @@ let reportCharts={};
 /* ════════════════════════════════════════
    REPORT DATA (Dear.Isopa 26년 2월 엑셀 기준)
 ════════════════════════════════════════ */
-const REPORT_DATA={
-  '2026-02':{
-    client:'Dear.Isopa',period:'2026년 2월',manager:'이채환',
-    kpi:{totalImp:509050,totalClick:3759,totalCost:3593700,totalConv:2,totalRev:14081410,roas:3.92,ctr:0.74,cpc:956},
-    mom:{click:-485,cost:-350020,rev:1611070,roas:0.76},
-    channels:[
-      {name:'N쇼핑 (Mobile)',imp:133430,click:656, cost:508233, conv:16, rev:1267380, roas:2.49},
-      {name:'N쇼핑 (PC)',    imp:17681, click:122, cost:100133, conv:3,  rev:781430,  roas:7.80},
-      {name:'파워링크 (Mo)',  imp:289628,click:2180,cost:2317150,conv:43, rev:1716100, roas:0.74},
-      {name:'파워링크 (PC)',  imp:68311, click:801, cost:668184, conv:154,rev:10316500,roas:15.44},
-    ],
-    weekly:[
-      {week:'1주',imp:39177,click:203,cost:164967,conv:3, rev:27030},
-      {week:'2주',imp:28545,click:143,cost:107679,conv:2, rev:102630},
-      {week:'3주',imp:30628,click:125,cost:97504, conv:3, rev:314310},
-      {week:'4주',imp:28774,click:154,cost:117051,conv:8, rev:823410},
-    ],
-    hourly:[
-      {time:'새벽(00~06시)',click:310,cost:487212,conv:1, rev:93330,  pct:0.109},
-      {time:'오전(06~12시)',click:670,cost:880682,conv:17,rev:699820, pct:0.236},
-      {time:'오후(12~18시)',click:979,cost:832183,conv:33,rev:1618540,pct:0.345},
-      {time:'야간(18~24시)',click:877,cost:625306,conv:8, rev:571790, pct:0.309},
-    ],
-    topKeywords:[
-      {keyword:'층간소음매트',type:'파워링크',device:'모바일',cost:1018314,click:195,conv:0, rev:0},
-      {keyword:'아이소파',   type:'파워링크',device:'PC',    cost:102850, click:245,conv:64,rev:7204880},
-      {keyword:'유아체육교구',type:'쇼핑검색',device:'모바일',cost:51359,  click:59, conv:0, rev:0},
-      {keyword:'아이짐',     type:'파워링크',device:'PC',    cost:7997,   click:30, conv:41,rev:487900},
-      {keyword:'유아체육교구',type:'쇼핑검색',device:'PC',    cost:16489,  click:15, conv:1, rev:342600},
-    ],
-    insights:[
-      {type:'good',title:'파워링크 PC 고효율',desc:'ROAS 1,544%로 채널 내 최고 성과. 아이소파 키워드가 전환 64건·매출 720만원 기여.'},
-      {type:'warn',title:'파워링크 Mobile 효율 저하',desc:'ROAS 74%로 광고비 대비 매출 미달. 층간소음매트 등 비전환 키워드 예산 점검 필요.'},
-      {type:'good',title:'N쇼핑 PC ROAS 양호',desc:'ROAS 780%로 안정적. 유아체육교구·아이소파 중심 운영 유지 권장.'},
-      {type:'info',title:'오후 시간대 전환 집중',desc:'오후(12~18시) 전환 33건으로 전체의 56%. 해당 시간대 입찰가 강화 검토.'},
-    ],
-  },
-  '2026-01':{
-    client:'Dear.Isopa',period:'2026년 1월',manager:'이채환',
-    kpi:{totalImp:420255,totalClick:4244,totalCost:3943720,totalConv:1,totalRev:12470340,roas:3.16,ctr:1.01,cpc:929},
-    mom:{click:143,cost:225654,rev:-28321130,roas:-7.81},
-    channels:[
-      {name:'N쇼핑 (Mobile)',imp:168102,click:848, cost:623931, conv:10, rev:1736180,roas:2.78},
-      {name:'N쇼핑 (PC)',    imp:18000, click:130, cost:110000, conv:4,  rev:900000, roas:8.18},
-      {name:'파워링크 (Mo)',  imp:170663,click:2311,cost:2283402,conv:139,rev:1679840,roas:0.74},
-      {name:'파워링크 (PC)',  imp:63490, click:955, cost:926387, conv:148,rev:8154320,roas:8.80},
-    ],
-    weekly:[
-      {week:'1주',imp:38000,click:210,cost:150000,conv:2,rev:100000},
-      {week:'2주',imp:42000,click:220,cost:160000,conv:3,rev:300000},
-      {week:'3주',imp:44000,click:230,cost:170000,conv:3,rev:500000},
-      {week:'4주',imp:44102,click:188,cost:143931,conv:2,rev:836180},
-    ],
-    hourly:[
-      {time:'새벽(00~06시)',click:280,cost:450000,conv:2, rev:80000,  pct:0.10},
-      {time:'오전(06~12시)',click:720,cost:920000,conv:20,rev:750000, pct:0.24},
-      {time:'오후(12~18시)',click:1010,cost:860000,conv:35,rev:1700000,pct:0.35},
-      {time:'야간(18~24시)',click:920,cost:650000,conv:10,rev:600000, pct:0.31},
-    ],
-    topKeywords:[
-      {keyword:'아이소파',   type:'파워링크',device:'PC',    cost:95000, click:230,conv:60,rev:6800000},
-      {keyword:'층간소음매트',type:'파워링크',device:'모바일',cost:980000,click:180,conv:0, rev:0},
-      {keyword:'유아체육교구',type:'쇼핑검색',device:'모바일',cost:55000, click:62, conv:1, rev:90000},
-    ],
-    insights:[
-      {type:'good',title:'전월 대비 클릭 증가',desc:'전체 클릭수 143건 증가. 쇼핑검색 모바일 중심 성과 안정.'},
-      {type:'warn',title:'전환매출 감소',desc:'전환매출 2,832만원 감소. 파워링크 PC 전환 비중 축소 영향.'},
-      {type:'info',title:'1월 신규 캠페인',desc:'소파 카테고리 테스트 시작. 데이터 누적 중.'},
-    ],
-  },
-  '2025-12':{
-    client:'Dear.Isopa',period:'2025년 12월',manager:'이채환',
-    kpi:{totalImp:465838,totalClick:4101,totalCost:3718066,totalConv:12,totalRev:40791470,roas:10.97,ctr:0.88,cpc:907},
-    mom:{click:442,cost:687533,rev:30718770,roas:7.65},
-    channels:[
-      {name:'N쇼핑 (Mobile)',imp:191273,click:833,cost:606221,conv:10,rev:1457720,roas:2.40},
-      {name:'N쇼핑 (PC)',    imp:20000, click:90, cost:80000, conv:2, rev:600000, roas:7.50},
-      {name:'파워링크 (Mo)',  imp:181507,click:2133,cost:2076305,conv:66,rev:4561850,roas:2.20},
-      {name:'파워링크 (PC)',  imp:73058, click:1045,cost:955540,conv:100,rev:34171900,roas:35.76},
-    ],
-    weekly:[
-      {week:'1주',imp:110000,click:950,cost:850000,conv:3,rev:2000000},
-      {week:'2주',imp:115000,click:1000,cost:900000,conv:4,rev:8000000},
-      {week:'3주',imp:120000,click:1100,cost:980000,conv:3,rev:12000000},
-      {week:'4주',imp:120838,click:1051,cost:988066,conv:2,rev:18791470},
-    ],
-    hourly:[
-      {time:'새벽(00~06시)',click:300,cost:470000,conv:1, rev:500000,  pct:0.10},
-      {time:'오전(06~12시)',click:750,cost:930000,conv:22,rev:9000000, pct:0.25},
-      {time:'오후(12~18시)',click:1100,cost:900000,conv:40,rev:22000000,pct:0.36},
-      {time:'야간(18~24시)',click:850,cost:650000,conv:15,rev:9291470, pct:0.29},
-    ],
-    topKeywords:[
-      {keyword:'아이소파',   type:'파워링크',device:'PC',    cost:120000,click:300,conv:80,rev:9000000},
-      {keyword:'층간소음매트',type:'파워링크',device:'모바일',cost:1100000,click:200,conv:0,rev:0},
-      {keyword:'유아체육교구',type:'쇼핑검색',device:'PC',   cost:20000, click:20, conv:3,rev:400000},
-    ],
-    insights:[
-      {type:'good',title:'12월 최고 성과 달성',desc:'ROAS 1,097%로 연중 최고치. 파워링크 PC가 전체 매출의 84% 기여.'},
-      {type:'good',title:'연말 시즌 효과',desc:'12월 선물 수요 급증으로 아이소파 전환 폭증.'},
-      {type:'info',title:'예산 증액 검토',desc:'고효율 구간 확인. 1월 파워링크 PC 예산 확대 권장.'},
-    ],
-  },
-};
-
-const MONTHLY_TREND=[
-  {month:'2025-08',label:'8월', roas:3.37,cost:3526578, rev:11873160},
-  {month:'2025-09',label:'9월', roas:4.79,cost:3346805, rev:16029110},
-  {month:'2025-10',label:'10월',roas:1.82,cost:3065920, rev:5588230},
-  {month:'2025-11',label:'11월',roas:3.32,cost:3030533, rev:10072700},
-  {month:'2025-12',label:'12월',roas:10.97,cost:3718066,rev:40791470},
-  {month:'2026-01',label:'1월', roas:3.16,cost:3943720, rev:12470340},
-  {month:'2026-02',label:'2월', roas:3.92,cost:3593700, rev:14081410},
-];
+const REPORT_DATA={};
+const MONTHLY_TREND=[];
 
 /* ════════════════════════════════════════
    SUPABASE CONFIG
@@ -979,6 +867,25 @@ function onCustomDate(){
    HTML PANELS — NAVER
 ════════════════════════════════════════ */
 function htmlNaver(){
+  const d = activeClientId ? (REPORT_DATA[currentReportMonth] || null) : null;
+  const kpi = d?.kpi || {};
+  const fmt  = v => v ? '₩'+Math.round(v/1000).toLocaleString()+'K' : '₩0';
+  const fmtn = v => v ? v.toLocaleString() : '0';
+  const fmtp = v => v ? (v*100).toFixed(1)+'%' : '0%';
+
+  const channels = d?.channels || [];
+  const channelRows = channels.length
+    ? channels.map(c=>`<tr>
+        <td><b>${c.name}</b></td>
+        <td>${fmtn(c.imp)}</td>
+        <td>${fmtn(c.click)}</td>
+        <td>${fmt(c.cost)}</td>
+        <td>${fmtn(c.conv)}건</td>
+        <td>${fmt(c.rev)}</td>
+        <td style="color:var(--naver)">${c.roas?Math.round(c.roas*100)+'%':'0%'}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">데이터 없음</td></tr>`;
+
   return `<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
     <button class="nav-tab active" onclick="switchNaverTab('summary',this)">🚀 요약</button>
     <button class="nav-tab" onclick="switchNaverTab('campaign',this)">📊 캠페인별</button>
@@ -989,85 +896,83 @@ function htmlNaver(){
   <div id="nt-tab-summary">
     <div style="background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:var(--radius);padding:16px 20px;margin-bottom:16px">
       <div style="font-size:11px;color:rgba(255,255,255,.4)">REPORT PERIOD</div>
-      <div style="font-size:15px;font-weight:700;color:#fff;margin-top:2px">2026년 2월 Dear.Isopa 광고 리포트</div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px">2026.02.01 ~ 02.28 · Dear Company Solution</div>
+      <div style="font-size:15px;font-weight:700;color:#fff;margin-top:2px">${d ? d.period+' '+d.client+' 광고 리포트' : '데이터 없음'}</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px">Dear Company Solution</div>
     </div>
     <div class="kpi6">
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">₩3,594K</div><div class="kpi-ch dn">▼ 8.9% <span class="vs">전월</span></div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">3,759</div><div class="kpi-ch dn">▼ 11.4% <span class="vs">전월</span></div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 전환수</div><div class="kpi-val">216건</div><div class="kpi-ch up">▲ 기록 중</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">전환율 (파워링크)</div><div class="kpi-val">7.53%</div><div class="kpi-ch dn">▼ 전월</div></div>
-      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">전환매출</div><div class="kpi-val">₩14.1M</div><div class="kpi-ch up">▲ 13% <span class="vs">전월</span></div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS (통합)</div><div class="kpi-val">392%</div><div class="kpi-ch up">▲ 전월 316%</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(kpi.totalCost)}</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(kpi.totalClick)}</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 전환수</div><div class="kpi-val">${fmtn(kpi.totalConv)}건</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${kpi.ctr ? kpi.ctr.toFixed(2)+'%' : '0%'}</div></div>
+      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">전환매출</div><div class="kpi-val">${fmt(kpi.totalRev)}</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
     </div>
     <div class="row2b">
-      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 비교</div><div class="card-sub">1월 vs 2월</div></div></div><canvas id="naverSummaryBar"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 ROAS</div><div class="card-sub">2월 기준</div></div></div><canvas id="naverRoasBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비</div></div></div><canvas id="naverSummaryBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 ROAS</div></div></div><canvas id="naverRoasBar"></canvas></div>
     </div>
   </div>
   <div id="nt-tab-campaign" style="display:none">
     <div class="card"><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>캠페인</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead><tbody>
-      <tr><td><b>N쇼핑 Mobile</b></td><td>133,430</td><td>656</td><td>₩508K</td><td>16건</td><td>₩1,267K</td><td style="color:var(--gold)">249%</td></tr>
-      <tr><td><b>N쇼핑 PC</b></td><td>17,681</td><td>122</td><td>₩100K</td><td>3건</td><td>₩781K</td><td style="color:var(--naver)">780%</td></tr>
-      <tr><td><b>파워링크 Mobile</b></td><td>289,628</td><td>2,180</td><td>₩2,317K</td><td>43건</td><td>₩1,716K</td><td style="color:var(--red)">74%</td></tr>
-      <tr><td><b>파워링크 PC</b></td><td>68,311</td><td>801</td><td>₩668K</td><td>154건</td><td>₩10,317K</td><td style="color:var(--naver)">1,544%</td></tr>
+      ${channelRows}
     </tbody></table></div></div>
   </div>
   <div id="nt-tab-gfa" style="display:none">
     <div class="empty"><div class="ei">📡</div><p>GFA 데이터 준비 중입니다</p></div>
   </div>
   <div id="nt-tab-device" style="display:none">
-    <div class="row2b">
+    ${d ? `<div class="row2b">
       <div class="card" style="border-top:4px solid var(--blue)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px">💻 PC</div>
-        <div style="font-size:24px;font-weight:700">923건</div><div style="font-size:12px;color:var(--text3)">총 클릭수 · 파워링크+쇼핑</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--text2)">ROAS: <b style="color:var(--naver)">1,544%</b> (파워링크 PC 기준)</div>
+        <div style="font-size:24px;font-weight:700">${fmtn((channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.click,0)))}건</div>
+        <div style="font-size:12px;color:var(--text3)">총 클릭수</div>
       </div>
       <div class="card" style="border-top:4px solid var(--store)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📱 MOBILE</div>
-        <div style="font-size:24px;font-weight:700">2,836건</div><div style="font-size:12px;color:var(--text3)">총 클릭수 · 파워링크+쇼핑</div>
-        <div style="margin-top:10px;font-size:12px;color:var(--text2)">매출 비중: <b style="color:var(--store)">~21%</b> (전체 대비)</div>
+        <div style="font-size:24px;font-weight:700">${fmtn((channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')).reduce((s,c)=>s+c.click,0)))}건</div>
+        <div style="font-size:12px;color:var(--text3)">총 클릭수</div>
       </div>
-    </div>
+    </div>` : '<div class="empty"><div class="ei">📱</div><p>데이터가 없습니다</p></div>'}
   </div>
   <div id="nt-tab-action" style="display:none">
-    <div style="background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:var(--radius);padding:16px 20px;margin-bottom:16px">
-      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">3월 액션플랜</div>
-      <div style="font-size:15px;font-weight:700;color:#fff">파워링크 PC 집중 + Mobile 비효율 키워드 정리</div>
-    </div>
-    <div class="row2b">
-      <div class="card" style="border-top:4px solid var(--naver)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">✅ 파워링크 PC — 유지·확대</div><div style="font-size:12.5px;color:var(--text2);line-height:2">• 아이소파 키워드 입찰가 +15% 상향<br>• 고전환 키워드 중심 예산 집중<br>• 신규 침구 카테고리 테스트 추가</div></div>
-      <div class="card" style="border-top:4px solid var(--red)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">⚠️ 파워링크 Mobile — 구조 점검</div><div style="font-size:12.5px;color:var(--text2);line-height:2">• 층간소음매트 등 비전환 키워드 제외<br>• 모바일 CPA 기준 재설정<br>• 전환 발생 키워드만 선별 운영</div></div>
-    </div>
+    <div class="empty"><div class="ei">🎯</div><p>파일 업로드 후 액션플랜이 표시됩니다</p></div>
   </div>`;
 }
 
 /* ════ STORE ════ */
-function htmlStore(){return `
+function htmlStore(){
+  return `
 <div class="kpi6">
-  <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 주문수</div><div class="kpi-val">1,842건</div><div class="kpi-ch up">▲ 9.2% <span class="vs">전월</span></div></div>
-  <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 매출액</div><div class="kpi-val">₩40,620K</div><div class="kpi-ch up">▲ 18.7% <span class="vs">전월</span></div></div>
-  <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val">₩22,053</div><div class="kpi-ch up">▲ 5.1% <span class="vs">전월</span></div></div>
-  <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">📊</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 전환율</div><div class="kpi-val">4.8%</div><div class="kpi-ch up">▲ 0.6%p <span class="vs">전월</span></div></div>
-  <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">반품·취소율</div><div class="kpi-val">2.6%</div><div class="kpi-ch dn">▲ 0.3%p <span class="vs">전월</span></div></div>
-  <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">🏷️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">수수료</div><div class="kpi-val">₩1,218K</div><div class="kpi-ch dn">3.0% (매출 대비)</div></div>
+  <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 주문수</div><div class="kpi-val">0건</div></div>
+  <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 매출액</div><div class="kpi-val">₩0</div></div>
+  <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val">₩0</div></div>
+  <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">📊</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 전환율</div><div class="kpi-val">0%</div></div>
+  <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">반품·취소율</div><div class="kpi-val">0%</div></div>
+  <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">🏷️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">수수료</div><div class="kpi-val">₩0</div></div>
 </div>
 <div class="row2">
   <div class="card"><div class="card-hd"><div><div class="card-title">일별 매출 · 주문수 추이</div></div></div><canvas id="storeTrend"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">카테고리별 매출 비중</div></div></div><canvas id="storePie"></canvas></div>
-</div>`;}
-
+</div>
+<div class="empty" style="margin-top:16px"><div class="ei">🟠</div><p>스마트스토어 데이터를 파일로 업로드해주세요</p></div>`;}
 /* ════ COMBINED ════ */
-function htmlCombined(){return `
+function htmlCombined(){
+  const d = activeClientId ? (REPORT_DATA[currentReportMonth] || null) : null;
+  const kpi = d?.kpi || {};
+  const fmt  = v => v ? '₩'+Number(v).toLocaleString() : '₩0';
+  const fmtn = v => v ? Number(v).toLocaleString() : '0';
+  return `
 <div class="sum-bar">
-  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">₩3,593,700</div><div class="sum-ch dn">▼ 8.9% 전월</div></div>
-  <div class="sum-item"><div class="sum-lbl">💵 전환매출</div><div class="sum-val" style="color:var(--store)">₩14,081,410</div><div class="sum-ch up">▲ 12.9% 전월</div></div>
-  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">392%</div><div class="sum-ch up">▲ 전월 316%</div></div>
-  <div class="sum-item"><div class="sum-lbl">🎯 총 전환수</div><div class="sum-val" style="color:var(--blue)">216건</div><div class="sum-ch up">▲ 집계 중</div></div>
-  <div class="sum-item"><div class="sum-lbl">👆 총 클릭수</div><div class="sum-val">3,759</div><div class="sum-ch dn">▼ 11.4% 전월</div></div>
+  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(kpi.totalCost)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">💵 전환매출</div><div class="sum-val" style="color:var(--store)">${fmt(kpi.totalRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
+  <div class="sum-item"><div class="sum-lbl">🎯 총 전환수</div><div class="sum-val" style="color:var(--blue)">${fmtn(kpi.totalConv)}건</div></div>
+  <div class="sum-item"><div class="sum-lbl">👆 총 클릭수</div><div class="sum-val">${fmtn(kpi.totalClick)}</div></div>
 </div>
 <div class="row2b">
   <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
-</div>`;}
+</div>
+${!d ? '<div class="empty" style="margin-top:16px"><div class="ei">📊</div><p>데이터가 없습니다. 파일을 업로드해주세요</p></div>' : ''}`;
+}
 
 /* ════════════════════════════════════════
    보고서확인 패널 HTML
