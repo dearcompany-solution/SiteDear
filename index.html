@@ -3508,10 +3508,7 @@ async function registerAcc(){
 function downloadClientExcel(){
   loadSheetJS(()=>{
     const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL'];
-    const data = [
-      header,
-      ['예시업체','example-id','pass1234','이채환','https://example.com']
-    ];
+    const data = [header];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
     // 컬럼 너비 설정
@@ -3581,7 +3578,10 @@ function previewBulkExcel(file){
         const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
         // 헤더 행 건너뛰고 데이터만 추출
-        const dataRows = rows.slice(1).filter(r => r[0] && r[1] && r[2]); // 업체명·아이디·비번 필수
+        const dataRows = rows
+  .slice(1) // 헤더 1행 건너뜀
+  .filter(r => r[0] && r[1] && r[2]) // 업체명·아이디·비번 필수
+  .filter(r => String(r[1]).trim() !== 'example-id'); // 예시 행 자동 제외 // 업체명·아이디·비번 필수
         if(!dataRows.length){
           document.getElementById('bulkPreview').innerHTML =
             `<div style="color:var(--red);font-size:12.5px;padding:10px">⚠️ 유효한 데이터가 없습니다. 업체명·아이디·비밀번호는 필수입니다.</div>`;
