@@ -2843,12 +2843,13 @@ async function loadCalEvents(){
 
     // calEvents 업데이트
     calEvents = rows.map(r=>({
-      id:      r.id,
-      date:    r.event_date,
-      type:    r.type,
-      title:   r.title,
-      desc:    r.description||'',
-      manager: r.manager||''
+      id:       r.id,
+      date:     r.event_date,
+      date_end: r.end_date || r.event_date,
+      type:     r.type,
+      title:    r.title,
+      desc:     r.description||'',
+      manager:  r.manager||''
     }));
 
     // 캘린더 화면이 열려있으면 새로고침
@@ -2935,7 +2936,7 @@ function renderEvList(dateFilter){
   el.innerHTML=evs.map(e=>`<div class="ev-item">
     <span class="ev-tag ${typeClass[e.type]||'et-task'}">${typeLabel[e.type]||e.type}</span>
     <div class="ev-title">${e.title}</div>
-    <div class="ev-meta">${e.date} · ${e.manager}</div>
+    <div class="ev-meta">${e.date_end && e.date_end !== e.date ? e.date+' ~ '+e.date_end : e.date} · ${e.manager}</div>
     ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
   </div>`).join('');
 }
@@ -2944,19 +2945,24 @@ function openAddEventModal(){
   document.getElementById('modalTitle').textContent = '📅 일정 추가';
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:13px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">유형</label>
+        <select id="ef-type" class="fi">
+          <option value="meet">🤝 미팅</option>
+          <option value="report">📊 리포트</option>
+          <option value="notice">📢 공지</option>
+          <option value="task">✅ 작업</option>
+        </select>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">날짜 *</label>
-          <input type="date" id="ef-date" class="fi" value="${selectedCalDate||today}">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">시작일 *</label>
+          <input type="date" id="ef-date-start" class="fi" value="${selectedCalDate||today}"
+            onchange="const e=document.getElementById('ef-date-end');if(!e.value||e.value<this.value)e.value=this.value;">
         </div>
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">유형</label>
-          <select id="ef-type" class="fi">
-            <option value="meet">🤝 미팅</option>
-            <option value="report">📊 리포트</option>
-            <option value="notice">📢 공지</option>
-            <option value="task">✅ 작업</option>
-          </select>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">종료일</label>
+          <input type="date" id="ef-date-end" class="fi" value="${selectedCalDate||today}">
         </div>
       </div>
       <div>
@@ -2981,21 +2987,30 @@ function openAddEventModal(){
   document.getElementById('modalOverlay').classList.add('open');
 }
 async function addEvent(){
-  const date=document.getElementById('ef-date').value;
-  const title=document.getElementById('ef-title').value.trim();
-  if(!date||!title){toast('⚠️ 날짜와 제목을 입력해주세요');return;}
-  const newEv={
-    id:Date.now(), date,
-    type:    document.getElementById('ef-type').value,
-    title,
-    desc:    document.getElementById('ef-desc').value,
-    manager: document.getElementById('ef-mgr').value
-  };
-  calEvents.push(newEv);
-  await saveEventToSupabase(newEv);
+  const dateStart = document.getElementById('ef-date-start').value;
+  const dateEnd   = document.getElementById('ef-date-end').value || dateStart;
+  const title     = document.getElementById('ef-title').value.trim();
+  if(!dateStart||!title){toast('⚠️ 시작일과 제목을 입력해주세요');return;}
+  if(dateEnd < dateStart){toast('⚠️ 종료일이 시작일보다 빠를 수 없습니다');return;}
+  let cur = new Date(dateStart);
+  const end = new Date(dateEnd);
+  while(cur <= end){
+    const dateStr = cur.toISOString().slice(0,10);
+    const newEv = {
+      id: Date.now()+Math.random(), date: dateStr, date_end: dateEnd,
+      type:    document.getElementById('ef-type').value,
+      title,
+      desc:    document.getElementById('ef-desc').value,
+      manager: document.getElementById('ef-mgr').value
+    };
+    calEvents.push(newEv);
+    await saveEventToSupabase(newEv);
+    cur.setDate(cur.getDate()+1);
+  }
   closeModal();
   renderCal();
-  toast('✅ 일정이 추가되었습니다!');
+  const rangeText = dateStart===dateEnd ? dateStart : dateStart+' ~ '+dateEnd;
+  toast('✅ 일정이 추가되었습니다! ('+rangeText+')');
 }
 
 /* ════════════════════════════════════════
@@ -3521,12 +3536,13 @@ async function registerAcc(){
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
-        client_key:   id,
-        password:     pw,
-        company_name: name,
-        manager:      mgr,
-        store_url:    url,
-        is_active:    true
+        client_key:  clientKey,
+        event_date:  ev.date,
+        end_date:    ev.date_end || ev.date,
+        type:        ev.type,
+        title:       ev.title,
+        description: ev.desc||'',
+        manager:     ev.manager||''
       })
     });
 
