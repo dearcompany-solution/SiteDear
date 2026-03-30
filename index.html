@@ -3141,6 +3141,10 @@ function htmlAdmin(){
       <option value="50" ${adminPageSize===50?'selected':''}>50개씩 보기</option>
       <option value="100" ${adminPageSize===100?'selected':''}>100개씩 보기</option>
     </select>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-ol btn-sm" onclick="downloadClientExcel()" style="white-space:nowrap">⬇ 업체목록 엑셀</button>
+      <button class="btn btn-bl btn-sm" onclick="openBulkRegister()" style="white-space:nowrap">📤 엑셀 일괄등록</button>
+    </div>
   </div>
   <div id="adminTableWrap"></div>
   <div id="adminPager" class="pg-bar"></div>
@@ -3414,7 +3418,13 @@ async function deleteClient(id){
    REGISTER HTML
 ════════════════════════════════════════ */
 function htmlRegister(){return `
-<div class="admin-hero"><div><h2>➕ 신규 계정 등록</h2><p>광고주에게 전달할 아이디와 비밀번호를 설정합니다</p></div></div>
+<div class="admin-hero">
+  <div><h2>➕ 신규 계정 등록</h2><p>광고주에게 전달할 아이디와 비밀번호를 설정합니다</p></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn btn-ol" onclick="downloadClientExcel()">⬇ 업체목록 엑셀 다운로드</button>
+    <button class="btn btn-bl" onclick="openBulkRegister()">📤 엑셀 일괄 등록</button>
+  </div>
+</div>
 <div class="row2b" style="align-items:start">
   <div class="reg-form">
     <div style="font-size:14px;font-weight:600;margin-bottom:16px">계정 정보 입력</div>
@@ -3493,6 +3503,189 @@ async function registerAcc(){
     console.error('등록 오류:', e);
     toast('❌ 네트워크 오류: ' + e.message);
   }
+}
+/* ════ 업체 엑셀 다운로드 ════ */
+function downloadClientExcel(){
+  loadSheetJS(()=>{
+    const list = ACCOUNTS.filter(a=>a.role==='client');
+    const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL'];
+    const data = [header, ...list.map(c=>[c.company, c.id, c.pw||'', c.manager||'', c.url||''])];
+    // 빈 행 다음에 양식 안내 추가
+    data.push([]);
+    data.push(['※ 새 업체 추가 시 아래 행에 입력 후 [엑셀 일괄등록] 버튼으로 업로드하세요']);
+    data.push(['예시업체','example-id','pass1234','이채환','https://example.com']);
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    // 컬럼 너비 설정
+    ws['!cols'] = [{wch:20},{wch:20},{wch:15},{wch:12},{wch:40}];
+    // 헤더 스타일
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '업체목록');
+    XLSX.writeFile(wb, `디어컴퍼니_업체목록_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('✅ 엑셀 다운로드 완료!');
+  });
+}
+
+/* ════ 엑셀 일괄등록 모달 ════ */
+function openBulkRegister(){
+  document.getElementById('modalTitle').textContent = '📤 엑셀 일괄 등록';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--blue-l);border:1.5px solid rgba(59,130,246,.2);border-radius:var(--rsm);padding:12px;font-size:12.5px;color:var(--blue);line-height:1.8">
+        📌 <b>엑셀 형식:</b> 업체명 / 아이디 / 비밀번호 / 담당매니저 / 스토어URL<br>
+        📌 첫 번째 행은 헤더로 자동 건너뜁니다<br>
+        📌 기존 아이디와 중복되는 업체는 자동 건너뜁니다
+      </div>
+      <div>
+        <button class="btn btn-ol btn-sm" onclick="downloadClientExcel()" style="margin-bottom:10px">
+          ⬇ 양식 다운로드
+        </button>
+        <div id="bulkDropZone"
+          style="border:2.5px dashed var(--border2);border-radius:var(--radius);padding:30px;text-align:center;cursor:pointer;background:var(--surface);transition:all .2s"
+          onclick="document.getElementById('bulkFileInput').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-l)'"
+          ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'"
+          ondrop="handleBulkDrop(event)">
+          <div style="font-size:28px;margin-bottom:8px">📊</div>
+          <div style="font-size:13px;font-weight:600">엑셀 파일을 드래그하거나 클릭해서 선택</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">.xlsx 파일만 지원</div>
+          <input type="file" id="bulkFileInput" accept=".xlsx,.xls" style="display:none"
+            onchange="previewBulkExcel(this.files[0])">
+        </div>
+      </div>
+      <div id="bulkPreview"></div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" id="bulkRegisterBtn" onclick="executeBulkRegister()" style="display:none">
+      ✅ 일괄 등록하기
+    </button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function handleBulkDrop(e){
+  e.preventDefault();
+  const dz = document.getElementById('bulkDropZone');
+  if(dz){ dz.style.borderColor='var(--border2)'; dz.style.background='var(--surface)'; }
+  const file = e.dataTransfer.files[0];
+  if(file) previewBulkExcel(file);
+}
+
+let bulkData = [];
+function previewBulkExcel(file){
+  if(!file) return;
+  loadSheetJS(()=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+        // 헤더 행 건너뛰고 데이터만 추출
+        const dataRows = rows.slice(1).filter(r => r[0] && r[1] && r[2]); // 업체명·아이디·비번 필수
+        if(!dataRows.length){
+          document.getElementById('bulkPreview').innerHTML =
+            `<div style="color:var(--red);font-size:12.5px;padding:10px">⚠️ 유효한 데이터가 없습니다. 업체명·아이디·비밀번호는 필수입니다.</div>`;
+          return;
+        }
+
+        // 중복 체크
+        bulkData = dataRows.map(r=>({
+          company: String(r[0]||'').trim(),
+          id:      String(r[1]||'').trim(),
+          pw:      String(r[2]||'').trim(),
+          manager: String(r[3]||'').trim(),
+          url:     String(r[4]||'').trim(),
+          dup:     !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
+        })).filter(r=>r.company&&r.id&&r.pw);
+
+        const newCount  = bulkData.filter(r=>!r.dup).length;
+        const dupCount  = bulkData.filter(r=>r.dup).length;
+
+        const previewHtml = `
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">
+            미리보기 — 총 ${bulkData.length}개
+            <span style="color:var(--naver);font-size:12px;margin-left:8px">신규 ${newCount}개</span>
+            ${dupCount>0?`<span style="color:var(--text3);font-size:12px;margin-left:6px">중복 ${dupCount}개 건너뜀</span>`:''}
+          </div>
+          <div style="overflow-x:auto;max-height:240px;overflow-y:auto">
+            <table class="tbl">
+              <thead><tr><th>업체명</th><th>아이디</th><th>담당매니저</th><th>URL</th><th>상태</th></tr></thead>
+              <tbody>
+                ${bulkData.map(r=>`<tr>
+                  <td style="font-size:12.5px;font-weight:600">${r.company}</td>
+                  <td style="font-size:11.5px;font-family:'IBM Plex Mono',monospace">${r.id}</td>
+                  <td style="font-size:12px">${r.manager||'미지정'}</td>
+                  <td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.url||'—'}</td>
+                  <td>${r.dup
+                    ? `<span style="font-size:11px;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px">중복 건너뜀</span>`
+                    : `<span style="font-size:11px;color:var(--naver);background:var(--naver-l);padding:2px 8px;border-radius:20px;font-weight:600">신규 등록</span>`
+                  }</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+        document.getElementById('bulkPreview').innerHTML = previewHtml;
+        const btn = document.getElementById('bulkRegisterBtn');
+        if(btn) btn.style.display = newCount>0 ? 'inline-flex' : 'none';
+
+      }catch(err){
+        document.getElementById('bulkPreview').innerHTML =
+          `<div style="color:var(--red);font-size:12.5px;padding:10px">❌ 파일 읽기 실패: ${err.message}</div>`;
+      }
+    };
+    reader.readAsBinaryString(file);
+  });
+}
+
+async function executeBulkRegister(){
+  const toRegister = bulkData.filter(r=>!r.dup);
+  if(!toRegister.length){ toast('⚠️ 등록할 신규 업체가 없습니다'); return; }
+
+  const btn = document.getElementById('bulkRegisterBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ 등록 중...'; }
+
+  let successCount = 0, failCount = 0;
+
+  for(const c of toRegister){
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'apikey':SUPABASE_ANON_KEY,
+          'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+          'Prefer':'return=representation'
+        },
+        body:JSON.stringify({
+          client_key:   c.id,
+          password:     c.pw,
+          company_name: c.company,
+          manager:      c.manager,
+          store_url:    c.url,
+          is_active:    true
+        })
+      });
+      if(!res.ok) throw new Error(await res.text());
+      ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url});
+      successCount++;
+    }catch(err){
+      console.error(`${c.company} 등록 실패:`, err);
+      failCount++;
+    }
+  }
+
+  closeModal();
+  bulkData = [];
+
+  if(failCount===0){
+    toast(`✅ ${successCount}개 업체 일괄 등록 완료!`);
+  } else {
+    toast(`✅ ${successCount}개 등록 완료 / ❌ ${failCount}개 실패`);
+  }
+  renderContent('admin');
 }
 function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
 
