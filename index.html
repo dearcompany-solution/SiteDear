@@ -383,6 +383,13 @@ canvas{max-height:210px}
   .rpt-compare{grid-template-columns:1fr}
   .monthly-grid{grid-template-columns:repeat(4,1fr)}
 }
+/* ════ CAL 개선 ════ */
+.cal-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.cal-wrap{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--sh)}
+.ev-panel{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--sh)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day{min-height:52px;padding:6px 4px}
+.ev-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:520px}
 </style>
 </head>
 <body>
@@ -2869,20 +2876,23 @@ async function loadCalEvents(){
   }catch(e){ console.warn('일정 로드 실패:',e); }
 }
   function htmlCal(){return `
-<div class="cal-layout">
-  <div class="cal-wrap">
+<div class="cal-layout" style="align-items:stretch">
+  <div class="cal-wrap" style="min-height:520px">
     <div class="cal-hd">
       <div class="cal-nav">
         <button class="cal-nav-btn" onclick="calMove(-1)">‹</button>
         <div class="cal-month" id="calMonthLabel"></div>
         <button class="cal-nav-btn" onclick="calMove(1)">›</button>
       </div>
-      <button class="btn btn-bl btn-sm" onclick="showAddEvent()">+ 일정 추가</button>
+      <button class="btn btn-bl btn-sm" onclick="openAddEventModal()">+ 일정 추가</button>
     </div>
-    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
   </div>
-  <div class="ev-panel">
-    <div class="ev-panel-hd"><div><div style="font-size:14px;font-weight:600" id="evPanelTitle">전체 일정</div></div></div>
+  <div class="ev-panel" style="min-height:520px;display:flex;flex-direction:column">
+    <div class="ev-panel-hd" style="margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600" id="evPanelTitle">전체 일정</div>
+      <button class="btn btn-bl btn-sm" onclick="openAddEventModal()">+ 일정 추가</button>
+    </div>
     <div style="margin-bottom:10px">
       <div class="notice-pinned" onclick="go('report',null);setActive('report')">
         <span class="np-icon">📑</span>
@@ -2890,8 +2900,7 @@ async function loadCalEvents(){
         <span class="np-badge">📊 보기</span>
       </div>
     </div>
-    <div class="ev-list" id="evList"></div>
-    <div id="evFormWrap"></div>
+    <div class="ev-list" id="evList" style="flex:1;overflow-y:auto;max-height:none"></div>
   </div>
 </div>`;}
 
@@ -2949,24 +2958,46 @@ function renderEvList(dateFilter){
     ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
   </div>`).join('');
 }
-function showAddEvent(){
-  const wrap=document.getElementById('evFormWrap');if(!wrap)return;
-  if(wrap.innerHTML){wrap.innerHTML='';return;}
-  const today=new Date().toISOString().split('T')[0];
-  wrap.innerHTML=`<div class="ev-form">
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px">+ 일정 추가</div>
-    <div class="ef-grid">
-      <div class="ef"><label>날짜 *</label><input type="date" id="ef-date" value="${selectedCalDate||today}"></div>
-      <div class="ef"><label>유형</label><select id="ef-type"><option value="meet">🤝 미팅</option><option value="report">📊 리포트</option><option value="notice">📢 공지</option><option value="task">✅ 작업</option></select></div>
-      <div class="ef full"><label>제목 *</label><input type="text" id="ef-title" placeholder="예: 3월 전략 미팅"></div>
-      <div class="ef full"><label>내용</label><textarea id="ef-desc" style="height:50px" placeholder="상세 내용"></textarea></div>
-      <div class="ef"><label>담당자</label><select id="ef-mgr"><option value="">선택</option>${MANAGERS.map(m=>`<option>${m}</option>`).join('')}</select></div>
-    </div>
-    <div style="margin-top:10px;display:flex;gap:8px">
-      <button class="btn btn-bl btn-sm" onclick="addEvent()">저장</button>
-      <button class="btn btn-ol btn-sm" onclick="document.getElementById('evFormWrap').innerHTML=''">취소</button>
-    </div>
-  </div>`;
+function openAddEventModal(){
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('modalTitle').textContent = '📅 일정 추가';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">날짜 *</label>
+          <input type="date" id="ef-date" class="fi" value="${selectedCalDate||today}">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">유형</label>
+          <select id="ef-type" class="fi">
+            <option value="meet">🤝 미팅</option>
+            <option value="report">📊 리포트</option>
+            <option value="notice">📢 공지</option>
+            <option value="task">✅ 작업</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">제목 *</label>
+        <input type="text" id="ef-title" class="fi" placeholder="예: 3월 전략 미팅">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">내용</label>
+        <textarea id="ef-desc" class="fi" style="height:70px;resize:none" placeholder="상세 내용을 입력해주세요"></textarea>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">담당자</label>
+        <select id="ef-mgr" class="fi">
+          <option value="">선택</option>
+          ${MANAGERS.map(m=>`<option>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="addEvent()">✅ 저장</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
 }
 async function addEvent(){
   const date=document.getElementById('ef-date').value;
@@ -2981,7 +3012,7 @@ async function addEvent(){
   };
   calEvents.push(newEv);
   await saveEventToSupabase(newEv);
-  document.getElementById('evFormWrap').innerHTML='';
+  closeModal();
   renderCal();
   toast('✅ 일정이 추가되었습니다!');
 }
