@@ -1957,11 +1957,11 @@ function saveOneFile(fileObj, client) {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Prefer': 'return=minimal,resolution=merge-duplicates'
+            'Prefer': 'resolution=ignore-duplicates'
           },
           body: JSON.stringify(rows)
         }).then(res => {
-          if (!res.ok) return res.text().then(t => { throw new Error(t); });
+          if (!res.ok && res.status !== 409) return res.text().then(t => { throw new Error(t); });
           fileObj.status = '저장완료';
           fileObj.savedMonth = month;
           fileObj.savedType  = dtype;
@@ -2111,11 +2111,11 @@ if (hdrIdx === -1) {
                 'Content-Type': 'application/json',
                 'apikey': SUPABASE_ANON_KEY,
                 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                'Prefer': 'return=minimal,resolution=merge-duplicates'
+                'Prefer': 'resolution=ignore-duplicates'
               },
               body: JSON.stringify(drows)
             }).then(res => {
-              if (!res.ok) return res.text().then(t => { throw new Error(t); });
+              if (!res.ok && res.status !== 409) return res.text().then(t => { throw new Error(t); });
               doneCount++;
               parsedTableData.push(...drows);
               if (doneCount === typeCount) {
