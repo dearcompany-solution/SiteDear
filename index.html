@@ -736,9 +736,11 @@ const pageTitles={
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','req'];
+  const needsClient=['naver','store','combined','req','msg','cal','input','report'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
-    toast('⚠️ 먼저 클라이언트를 선택해주세요');return;
+    toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
+    go('admin',null); setActive('admin');
+    return;
   }
   setActive(id);
   sessionStorage.setItem('currentPage', id);
@@ -794,21 +796,37 @@ function renderContent(id){
   c.innerHTML=htmlMsg();
   stopPolling();
   if(currentUser.role!=='admin'){
+    // 클라이언트: 담당 매니저와 1:1 채팅
     setTimeout(()=>{ loadMessages(currentUser.id); subscribeMessages(currentUser.id); updateMsgBadge(); },100);
   } else {
-    setTimeout(()=>{ loadClientsFromSupabase().then(()=>{
-      const sb = document.getElementById('appContent').querySelector('.msg-sb > div');
-      if(sb) sb.innerHTML = ACCOUNTS.filter(a=>a.role==='client').map(c=>`
-        <div class="msg-thread ${currentChatClient===c.id?'active':''}" onclick="openChat('${c.id}','${c.company}')">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div class="mt-name">${c.company}</div>
-            <div class="mt-time" id="lastTime-${c.id}"></div>
-          </div>
-          <div class="mt-prev" id="lastMsg-${c.id}">클릭해서 대화 열기</div>
-        </div>`).join('');
-    }); },100);
+    // 관리자: 선택된 업체와 1:1 채팅으로 바로 진입
+    setTimeout(()=>{
+      if(activeClientId){
+        const c = ACCOUNTS.find(a=>a.id===activeClientId);
+        if(c) openChat(c.id, c.company);
+      }
+    },100);
   }
   break;
+```
+
+---
+
+## 동작 흐름 정리
+```
+관리자 로그인
+    ↓
+클라이언트 관리 페이지 (기본)
+    ↓
+업체 클릭 → selClient()
+    ↓
+사이드바: "선택된 업체 [업체명]" + [✕ 해제] 버튼 표시
+    ↓
+메시지/일정/요청/대시보드 → 해당 업체 데이터만 표시
+메시지 → 해당 업체와 1:1 채팅 바로 진입
+    ↓
+다른 업체로 변경: 클라이언트 관리로 돌아가서 다시 선택
+또는 [✕ 해제] 클릭 → 전체 관리 모드로 복귀
     case 'cal':
   c.innerHTML=htmlCal();
   setTimeout(()=>{ loadCalEvents(); },50);
@@ -3241,7 +3259,12 @@ function downloadClientList(){
 function selClient(id){
   activeClientId=id;
   const c=ACCOUNTS.find(a=>a.id===id);
-  setSb(c.company,c.id,'광고 운영 중');
+
+  // 사이드바 업체명 + 선택 해제 버튼 표시
+  setSb(c.company, c.id, '광고 운영 중');
+  const lbl = document.getElementById('sbLbl');
+  if(lbl) lbl.innerHTML = `선택된 업체 <span onclick="clearClientSelect()" style="cursor:pointer;color:var(--red);font-size:10px;margin-left:6px;padding:1px 6px;background:var(--red-l);border-radius:10px">✕ 해제</span>`;
+
   toast(`✅ ${c.company} 선택됨`);
   renderAdminTable();
   setTimeout(()=>{
@@ -3267,7 +3290,15 @@ function selClient(id){
     </div>`;
   },50);
 }
-
+function clearClientSelect(){
+  activeClientId = null;
+  setSb('DEARCOMPANY 관리자','dearcompany','관리자');
+  const lbl = document.getElementById('sbLbl');
+  if(lbl) lbl.textContent = '현재 관리자';
+  toast('🔄 업체 선택이 해제되었습니다');
+  go('admin', null);
+  setActive('admin');
+}
 /* ── 클라이언트 수정 ── */
 function openEditClient(id){
   const c=ACCOUNTS.find(a=>a.id===id);
