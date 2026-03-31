@@ -889,7 +889,7 @@ function onCustomDate(){
 function htmlNaver(){
   const d = activeClientId ? (REPORT_DATA[currentReportMonth] || null) : null;
   const kpi = d?.kpi || {};
-  const fmt  = v => v ? '₩'+Math.round(v/1000).toLocaleString()+'K' : '₩0';
+  const fmt  = v => v ? '₩'+Math.round(v).toLocaleString() : '₩0';
   const fmtn = v => v ? v.toLocaleString() : '0';
   const fmtp = v => v ? (v*100).toFixed(1)+'%' : '0%';
 
