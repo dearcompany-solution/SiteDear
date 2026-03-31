@@ -2564,12 +2564,12 @@ async function saveMessage(clientKey, content){
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
-        client_key:  clientKey,
-        sender_id:   currentUser.id,
-        sender_name: currentUser.name || currentUser.company || currentUser.id,
-        sender_role: currentUser.role,
-        content:     content,
-        is_read:     false
+        client_key:   id,
+        password:     pw,
+        company_name: name,
+        manager:      mgr,
+        store_url:    url,
+        is_active:    true
       })
     });
     return await res.json();
