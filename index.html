@@ -700,8 +700,8 @@ async function loadClientsFromSupabase(){
 function renderClientNav(){
   document.getElementById('navMenu').innerHTML=`
     <div class="nsec">대시보드</div>
-    <div class="ni" id="ni-combined" onclick="go('combined',this)"><span class="ic">⚡</span>통합 요약</div>
-    <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>광고 성과</div>
+    <div class="ni" id="ni-combined" onclick="go('combined',this)"><span class="ic">⚡</span>통합 대시보드</div>
+    <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>네이버 검색광고</div>
     <div class="ni" id="ni-store"    onclick="go('store',this)"><span class="ic">🟠</span>스마트스토어</div>
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
@@ -721,8 +721,8 @@ function renderAdminNav(){
     <div class="ni adm" id="ni-admin"    onclick="go('admin',this)"><span class="ic">👑</span>클라이언트 관리</div>
     <div class="ni adm" id="ni-register" onclick="go('register',this)"><span class="ic">➕</span>계정 등록</div>
     <div class="nsec">클라이언트 뷰</div>
-    <div class="ni" id="ni-combined" onclick="go('combined',this)"><span class="ic">⚡</span>통합 요약</div>
-    <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>광고 성과</div>
+    <div class="ni" id="ni-combined" onclick="go('combined',this)"><span class="ic">⚡</span>통합 대시보드</div>
+    <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>네이버 검색광고</div>
     <div class="ni" id="ni-store"    onclick="go('store',this)"><span class="ic">🟠</span>스마트스토어</div>
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
@@ -739,7 +739,7 @@ function setActive(id){
   if(el)el.classList.add('active');
 }
 const pageTitles={
-  combined:['통합 요약 대시보드','네이버 광고 + 스마트스토어'],
+  combined:['통합 대시보드','네이버 광고 + 스마트스토어'],
   naver:   ['성과 대시보드 (네이버 광고)',''],
   store:   ['스마트스토어 대시보드',''],
   report:  ['보고서 확인','광고 성과 리포트 · PDF 다운로드'],
@@ -925,11 +925,7 @@ function htmlNaver(){
     <button class="nav-tab" onclick="switchNaverTab('action',this)">🎯 액션플랜</button>
   </div>
   <div id="nt-tab-summary">
-    <div style="background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:var(--radius);padding:16px 20px;margin-bottom:16px">
-      <div style="font-size:11px;color:rgba(255,255,255,.4)">REPORT PERIOD</div>
-      <div style="font-size:15px;font-weight:700;color:#fff;margin-top:2px">${d ? d.period+' '+d.client+' 광고 리포트' : '데이터 없음'}</div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px">Dear Company Solution</div>
-    </div>
+    
     <div class="kpi6">
       <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(kpi.totalCost)}</div></div>
       <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(kpi.totalClick)}</div></div>
