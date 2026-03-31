@@ -2104,7 +2104,7 @@ function saveOneFile(fileObj, client) {
           },
           body: JSON.stringify(rows)
         }).then(res => {
-          if (!res.ok && res.status !== 409) return res.text().then(t => { throw new Error(t); });
+          if (!res.ok) return res.text().then(t => { throw new Error(t); });
           fileObj.status = '저장완료';
           fileObj.savedMonth = month;
           fileObj.savedType  = dtype;
