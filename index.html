@@ -3326,6 +3326,7 @@ function renderAdminTable(){
       <th style="width:40px">No</th>
       <th>업체명</th>
       <th>아이디</th>
+      <th>메모</th>
       <th>스토어 URL</th>
       <th style="width:80px">상태</th>
       <th style="width:110px">관리</th>
@@ -3335,6 +3336,7 @@ function renderAdminTable(){
         <td style="color:var(--text3);font-size:11px">${rowNum++}</td>
         <td><b>${c.company}</b></td>
         <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${c.id}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
         <td style="font-size:11.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ${c.url?`<a href="${c.url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none">${c.url}</a>`:'—'}
         </td>
