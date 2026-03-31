@@ -950,7 +950,9 @@ function htmlNaver(){
     </tbody></table></div></div>
   </div>
   <div id="nt-tab-gfa" style="display:none">
-    <div class="empty"><div class="ei">📡</div><p>GFA 데이터 준비 중입니다</p></div>
+    <div id="gfaContent">
+      <div class="empty"><div class="ei">📡</div><p>GFA 데이터 불러오는 중...</p></div>
+    </div>
   </div>
   <div id="nt-tab-device" style="display:none">
     ${d ? `<div class="row2b">
@@ -3951,6 +3953,7 @@ function switchNaverTab(id,el){
     const p=document.getElementById('nt-tab-'+t);
     if(p)p.style.display=t===id?'block':'none';
   });
+  if(id==='gfa') loadGFATab();
   if(id==='summary')setTimeout(()=>{
     const mk=(id,cfg)=>{const el=document.getElementById(id);if(!el)return;try{if(charts[id])charts[id].destroy();charts[id]=new Chart(el,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
@@ -3958,7 +3961,78 @@ function switchNaverTab(id,el){
     mk('naverRoasBar',{type:'bar',data:{labels:['N쇼핑Mo','N쇼핑PC','파워링크Mo','파워링크PC'],datasets:[{data:[249,780,74,1544],backgroundColor:['rgba(3,199,90,.7)','rgba(3,199,90,.85)','rgba(239,68,68,.6)','rgba(245,158,11,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
   },80);
 }
+async function loadGFATab(){
+  const el = document.getElementById('gfaContent');
+  if(!el) return;
+  el.innerHTML = `<div class="empty"><div class="ei">📡</div><p>불러오는 중...</p></div>`;
 
+  const isAdmin      = currentUser?.role==='admin';
+  const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!targetClient){ el.innerHTML=`<div class="empty"><div class="ei">📡</div><p>업체를 선택해주세요</p></div>`; return; }
+
+  const fromMonth = currentDateRange?.from?.slice(0,7) || currentReportMonth;
+  const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  try{
+    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=cost.desc`,{headers:h});
+    const rows = await res.json();
+    if(!Array.isArray(rows)||!rows.length){
+      el.innerHTML=`<div class="empty"><div class="ei">📡</div><p>GFA 데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 GFA 파일을 업로드해주세요</span></p></div>`;
+      return;
+    }
+
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => (v||0).toLocaleString();
+    const fmtp = v => (v||0).toFixed(2)+'%';
+    const fmtr = v => (v||0).toFixed(1)+'%';
+
+    const totalCost  = rows.reduce((s,r)=>s+(+r.cost||0),0);
+    const totalImp   = rows.reduce((s,r)=>s+(+r.imp||0),0);
+    const totalClick = rows.reduce((s,r)=>s+(+r.click||0),0);
+    const totalConv  = rows.reduce((s,r)=>s+(+r.conv||0),0);
+    const totalRev   = rows.reduce((s,r)=>s+(+r.rev||0),0);
+    const totalRoas  = totalCost>0 ? (totalRev/totalCost*100).toFixed(1)+'%' : '0%';
+    const totalCtr   = totalImp>0  ? (totalClick/totalImp*100).toFixed(2)+'%' : '0%';
+
+    const tableRows = rows.map(r=>`
+      <tr>
+        <td style="font-size:12.5px;font-weight:600">${r.placement||'—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.ctr)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.conv_rate||0)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${(+r.roas||0)>=300?'var(--naver)':(+r.roas||0)>=100?'var(--gold)':'var(--red)'}">${fmtr(r.roas)}</td>
+      </tr>`).join('');
+
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px">
+        <div class="kpi kn"><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
+        <div class="kpi kb"><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
+        <div class="kpi kg"><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+        <div class="kpi ks"><div class="kpi-lbl">전환수</div><div class="kpi-val">${fmtn(totalConv)}건</div></div>
+        <div class="kpi ki"><div class="kpi-lbl">ROAS</div><div class="kpi-val">${totalRoas}</div></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600">📡 게재 위치별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${rows.length}개 위치</span></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>게재 위치</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>전환수</th><th>전환율</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }catch(e){
+    el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>데이터 로드 실패: ${e.message}</p></div>`;
+  }
+}
 /* ════════════════════════════════════════
    UTILS
 ════════════════════════════════════════ */
