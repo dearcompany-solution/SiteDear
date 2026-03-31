@@ -880,6 +880,7 @@ function setQuick(type,btn){
   currentDateRange={from:fmt(from),to:fmt(to)};
   document.getElementById('drangeLabel').textContent=`${disp(from)} ~ ${disp(to)}`;
   toast('📅 기간이 변경되었습니다');
+  refreshDashboard();
 }
 function onCustomDate(){
   const f=document.getElementById('dtFrom').value;
@@ -889,6 +890,7 @@ function onCustomDate(){
   currentDateRange={from:f,to:t};
   const disp=s=>{const[y,m,d]=s.split('-');return`${y}.${m}.${d}`};
   document.getElementById('drangeLabel').textContent=`${disp(f)} ~ ${disp(t)}`;
+  refreshDashboard();
 }
 
 /* ════════════════════════════════════════
@@ -1120,17 +1122,44 @@ function htmlReport(){
 /* ════════════════════════════════════════
    보고서 데이터 로드 & 렌더
 ════════════════════════════════════════ */
-async function fetchReportData(month){
+async function refreshDashboard(){
+  const activePage = sessionStorage.getItem('currentPage') || 'combined';
+  if(!['combined','naver'].includes(activePage)) return;
+  const c = document.getElementById('appContent');
+  if(!c) return;
+  const d = await fetchReportData(currentReportMonth);
+  if(d){
+    REPORT_DATA[currentReportMonth] = d;
+    if(activePage==='combined'){ c.innerHTML=htmlCombined(); setTimeout(renderCharts,50); }
+    if(activePage==='naver'){    c.innerHTML=htmlNaver();    setTimeout(renderCharts,50); }
+  } else {
+    if(activePage==='combined'){ c.innerHTML=htmlCombined(); setTimeout(renderCharts,50); }
+    if(activePage==='naver'){    c.innerHTML=htmlNaver();    setTimeout(renderCharts,50); }
+  }
+}
+  async function fetchReportData(month){
   try{
     const isAdmin      = currentUser?.role==='admin';
     const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
     if(!targetClient) return null;
 
     const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+    // 날짜 범위 필터 적용 (currentDateRange 우선, 없으면 month 전체)
+    const fromDate = currentDateRange?.from || `${month}-01`;
+    const toDate   = currentDateRange?.to   || `${month}-31`;
+    const fromMonth = fromDate.slice(0,7);
+    const toMonth   = toDate.slice(0,7);
+
+    // 날짜 범위가 여러 달에 걸칠 수 있으므로 month 조건 대신 date 범위로 조회
+    let dailyUrl = `${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`;
+    let kwUrl    = `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`;
+    let hourUrl  = `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=500`;
+
     const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=2000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=500`,{headers:h}),
+      fetch(dailyUrl,  {headers:h}),
+      fetch(kwUrl,     {headers:h}),
+      fetch(hourUrl,   {headers:h}),
     ]);
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
