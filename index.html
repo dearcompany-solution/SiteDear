@@ -794,7 +794,9 @@ function renderContent(id){
       c.innerHTML=htmlNaver();
       setTimeout(async()=>{
         const d=await fetchReportData(currentReportMonth);
-        if(d){REPORT_DATA[currentReportMonth]=d;c.innerHTML=htmlNaver();setTimeout(renderCharts,50);}
+        if(d) REPORT_DATA[currentReportMonth]=d;
+        c.innerHTML=htmlNaver();
+        setTimeout(renderCharts,50);
       },50);
       break;
     case 'store':    c.innerHTML=htmlStore();break;
@@ -802,7 +804,9 @@ function renderContent(id){
       c.innerHTML=htmlCombined();
       setTimeout(async()=>{
         const d=await fetchReportData(currentReportMonth);
-        if(d){REPORT_DATA[currentReportMonth]=d;c.innerHTML=htmlCombined();setTimeout(renderCharts,50);}
+        if(d) REPORT_DATA[currentReportMonth]=d;
+        c.innerHTML=htmlCombined();
+        setTimeout(renderCharts,50);
       },50);
       break;
     case 'report':
