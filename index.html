@@ -1897,7 +1897,7 @@ function saveOneFile(fileObj, client) {
 
         // ① 헤더 행 자동 탐색 (최대 10행 내에서)
         let headerIdx = -1, cols = [];
-        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드'];
+        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드','게재 위치','광고 계정 이름'];
         for (let i = 0; i < Math.min(lines.length, 20); i++) {
           const c = csvParseLine(lines[i]);
           if (c.some(x => TARGET_COLS.includes(x.trim()))) {
@@ -1923,6 +1923,7 @@ function saveOneFile(fileObj, client) {
         const hasDaily   = cols.includes('일별');
         const hasHourly  = cols.includes('시간대별');
         const hasKeyword = cols.some(c => ['검색어','키워드명','키워드'].includes(c));
+        const hasGFA     = cols.includes('게재 위치') || cols.includes('광고 계정 이름');
         const kwCol      = cols.find(c => ['검색어','키워드명','키워드'].includes(c)) || '검색어';
 
         const rows = [];
@@ -1991,6 +1992,45 @@ function saveOneFile(fileObj, client) {
               rev:      parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'])
             });
           }
+        }
+
+        // GFA 파일 처리
+        if(hasGFA){
+          for(let i = headerIdx + 1; i < lines.length; i++){
+            const line = lines[i];
+            if(!line.trim()) continue;
+            const vals = csvParseLine(line);
+            if(vals.every(v=>!v)) continue;
+            const row = {};
+            cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+            rows.push({
+              client_key:   client,
+              month,
+              account_name: row['광고 계정 이름'] || '',
+              account_id:   row['광고 계정 ID']   || '',
+              placement:    row['게재 위치']       || '',
+              cost:         parseNum(row['총비용']),
+              imp:          parseNum(row['노출수']),
+              click:        parseNum(row['클릭수']),
+              cpc:          parseNum(row['평균 CPC']),
+              ctr:          parseNum(row['클릭률(%)'] || row['클릭률']),
+              conv:         parseNum(row['구매완료 수'] || row['전환수']),
+              rev:          parseNum(row['구매완료 전환매출액'] || row['전환매출액']),
+              roas:         parseNum(row['구매완료 광고수익률(%)'] || row['광고수익률']),
+            });
+          }
+          if(!rows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — GFA 데이터 없음`); return; }
+          fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=ignore-duplicates'},
+            body:JSON.stringify(rows)
+          }).then(res=>{
+            if(!res.ok && res.status!==409) return res.text().then(t=>{throw new Error(t);});
+            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=rows.length;
+            renderUploadTab();
+            toast(`✅ ${fileObj.name} GFA — ${rows.length}개 저장 완료!`);
+          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ GFA 저장 실패: '+err.message); });
+          return;
         }
 
         if (!rows.length) {
