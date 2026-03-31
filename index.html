@@ -1312,7 +1312,7 @@ const tb=document.querySelector('#rptChannelTable tbody');
       options:{responsive:true,maintainAspectRatio:false,scales:{
         x:ax,
         y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
-        y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+(v/1000000).toFixed(1)+'M'},position:'right'}
+        y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+Math.round(v).toLocaleString()},position:'right'}
       },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}
     });
   }
@@ -2589,6 +2589,8 @@ function renderMessages(rows){
 /* ── 메시지 저장 ── */
 async function saveMessage(clientKey, content){
   try{
+    const senderName = currentUser?.name || currentUser?.id || '';
+    const isAdmin    = currentUser?.role === 'admin';
     const res = await fetch(`${SUPABASE_URL}/rest/v1/messages`,{
       method:'POST',
       headers:{
@@ -2598,12 +2600,11 @@ async function saveMessage(clientKey, content){
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
-        client_key:   id,
-        password:     pw,
-        company_name: name,
-        manager:      mgr,
-        store_url:    url,
-        is_active:    true
+        client_key:   clientKey,
+        content:      content,
+        sender_role:  isAdmin ? 'admin' : 'client',
+        sender_name:  senderName,
+        is_read:      false
       })
     });
     return await res.json();
@@ -3812,7 +3813,7 @@ function renderCharts(){
 
   mk('storePie',{type:'doughnut',data:{labels:['아이소파','유아체육교구','층간소음매트','기타'],datasets:[{data:[45,22,18,15],backgroundColor:['#03C75A','#3B82F6','#F59E0B','#c5c9d6'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
 
-  mk('combinedBar',{type:'bar',data:{labels:['1월 광고비','2월 광고비','1월 전환매출','2월 전환매출'],datasets:[{data:[3943720,3593700,12470340,14081410],backgroundColor:['rgba(3,199,90,.5)','rgba(3,199,90,.85)','rgba(255,107,53,.5)','rgba(255,107,53,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+(v/1000000).toFixed(1)+'M'}}},plugins:{legend:{display:false}}}});
+  mk('combinedBar',{type:'bar',data:{labels:['1월 광고비','2월 광고비','1월 전환매출','2월 전환매출'],datasets:[{data:[3943720,3593700,12470340,14081410],backgroundColor:['rgba(3,199,90,.5)','rgba(3,199,90,.85)','rgba(255,107,53,.5)','rgba(255,107,53,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
 
   mk('roasLine',{type:'line',data:{labels:['8월','9월','10월','11월','12월','1월','2월'],datasets:[{label:'ROAS(배)',data:[3.37,4.79,1.82,3.32,10.97,3.16,3.92],borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,borderWidth:2.5,pointBackgroundColor:'#F59E0B',pointRadius:5}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'x'}}},plugins:{legend:lg}}});
 }
