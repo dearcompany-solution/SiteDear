@@ -3270,7 +3270,7 @@ async function updateReqStatus(id,status){
 function htmlAdmin(){
   return `
   <div class="admin-toolbar">
-    <input type="text" id="adminSearchInput" placeholder="🔍 업체명 검색..." value="${adminSearch}"
+    <input type="text" id="adminSearchInput" placeholder="🔍 업체명 · 아이디 · 비번 · 메모 검색..." value="${adminSearch}"
       oninput="adminSearch=this.value;adminPage=1;renderAdminTable()">
     <select id="adminTeamSel" onchange="adminTeamFilter=this.value;adminPage=1;renderAdminTable()">
       <option value="전체" ${adminTeamFilter==='전체'?'selected':''}>👥 전체 팀</option>
@@ -3293,7 +3293,12 @@ function htmlAdmin(){
 function renderAdminTable(){
   const q = adminSearch.trim().toLowerCase();
   let list = ACCOUNTS.filter(a=>a.role==='client');
-  if(q) list = list.filter(a=>a.company.toLowerCase().includes(q)||a.id.toLowerCase().includes(q));
+  if(q) list = list.filter(a=>
+    a.company.toLowerCase().includes(q) ||
+    a.id.toLowerCase().includes(q) ||
+    (a.pw||'').toLowerCase().includes(q) ||
+    (a.memo||'').toLowerCase().includes(q)
+  );
   if(adminTeamFilter!=='전체') list = list.filter(a=>a.manager===adminTeamFilter);
 
   const total = list.length;
