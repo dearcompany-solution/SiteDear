@@ -1874,7 +1874,7 @@ function saveOneFile(fileObj, client) {
         // ① 헤더 행 자동 탐색 (최대 10행 내에서)
         let headerIdx = -1, cols = [];
         const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드'];
-        for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        for (let i = 0; i < Math.min(lines.length, 20); i++) {
           const c = csvParseLine(lines[i]);
           if (c.some(x => TARGET_COLS.includes(x.trim()))) {
             headerIdx = i; cols = c.map(x => x.trim()); break;
@@ -1918,12 +1918,26 @@ function saveOneFile(fileObj, client) {
             rows.push({
               data_type: 'daily', client_key: client, month, date: dateStr,
               campaign_type: row['캠페인유형'] || '',
-              device: row['PC/모바일 매체'] || row['PC/모바일'] || '',
-              imp:   parseNum(row['노출수']),
-              click: parseNum(row['클릭수']),
-              cost:  parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
-              conv:  parseNum(row['총 전환수'] || row['전환수']),
-              rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'])
+              campaign:      row['캠페인'] || '',
+              ad_group:      row['광고그룹'] || '',
+              keyword:       row['검색어'] || '',
+              device:        row['PC/모바일 매체'] || row['PC/모바일'] || '',
+              imp:           parseNum(row['노출수']),
+              click:         parseNum(row['클릭수']),
+              ctr:           parseNum(row['클릭률(%)'] || row['클릭률'] || 0),
+              cpc:           parseNum(row['평균 CPC'] || row['평균CPC'] || 0),
+              cost:          parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
+              conv:          parseNum(row['총 전환수'] || row['전환수']),
+              direct_conv:   parseNum(row['직접전환수'] || 0),
+              indirect_conv: parseNum(row['간접전환수'] || 0),
+              conv_rate:     parseNum(row['총 전환율(%)'] || row['전환율'] || 0),
+              rev:           parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액']),
+              direct_rev:    parseNum(row['직접전환매출액(원)'] || 0),
+              indirect_rev:  parseNum(row['간접전환매출액(원)'] || 0),
+              purchase_conv: parseNum(row['구매완료 전환수'] || 0),
+              purchase_rev:  parseNum(row['구매완료 전환매출액(원)'] || 0),
+              avg_rank:      parseNum(row['평균노출순위'] || row['평균 노출순위'] || 0),
+              roas:          parseNum(row['총 광고수익률(%)'] || row['광고수익률'] || 0),
             });
           } else if (hasHourly) {
             const t = row['시간대별'] || '';
