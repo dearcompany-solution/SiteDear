@@ -2817,12 +2817,12 @@ async function saveEventToSupabase(ev){
         'Prefer':'resolution=merge-duplicates'
       },
       body:JSON.stringify({
-        client_key:  clientKey,
-        event_date:  ev.date,
-        type:        ev.type,
-        title:       ev.title,
-        description: ev.desc||'',
-        manager:     ev.manager||''
+        client_key:   id,
+        password:     pw,
+        company_name: name,
+        manager:      mgr,
+        store_url:    url,
+        is_active:    true
       })
     });
   }catch(e){ console.warn('일정 저장 실패:',e); }
