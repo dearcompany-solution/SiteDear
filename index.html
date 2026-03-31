@@ -1873,14 +1873,60 @@ function addFilesToQueue(files){
   toast(`📎 ${files.length}개 파일 추가됨 — [전체 등록] 버튼을 눌러 저장하세요`);
 }
 
-function saveAllFiles() {
-  const clientEl = document.getElementById('uploadClient');
-  const client = currentUser.role === 'admin' ? (clientEl ? clientEl.value : '') : currentUser.id;
-  if (!client) { toast('⚠️ 업체를 먼저 선택해주세요'); return; }
-  const pending = uploadedFiles.filter(f => f.status === '대기중');
-  if (!pending.length) { toast('⚠️ 대기중인 파일이 없습니다'); return; }
-  toast(`💾 ${pending.length}개 파일 Supabase에 저장 시작...`);
-  pending.forEach((f, i) => { setTimeout(() => saveOneFile(f, client), i * 500); });
+function detectClientFromFile(file){
+  const fileName = file.name.toLowerCase().replace(/[_\-\s]/g,'');
+  const clients  = ACCOUNTS.filter(a=>a.role==='client');
+  const matched  = clients.find(a=>
+    fileName.includes(a.id.toLowerCase()) ||
+    fileName.includes(a.company.toLowerCase().replace(/[\s_\-]/g,'')) ||
+    (a.memo && fileName.includes(a.memo.toLowerCase().replace(/[\s_\-]/g,'')))
+  );
+  return matched ? matched.id : null;
+}
+
+async function saveAllFiles() {
+  const clientEl    = document.getElementById('uploadClient');
+  const manualClient = currentUser.role==='admin' ? (clientEl ? clientEl.value : '') : currentUser.id;
+  const pending     = uploadedFiles.filter(f => f.status==='대기중');
+  if(!pending.length){ toast('⚠️ 대기중인 파일이 없습니다'); return; }
+
+  toast(`🔍 파일 업체 확인 중...`);
+  const blocked  = [];
+  const approved = [];
+
+  for(let i=0; i<pending.length; i++){
+    const f = pending[i];
+    let client = null;
+
+    if(currentUser.role==='admin'){
+      const detected = detectClientFromFile(f.file);
+      if(detected){
+        client = detected;
+        const c = ACCOUNTS.find(a=>a.id===detected);
+        toast(`🎯 ${f.name} → ${c?.company||detected} 자동 인식`);
+      } else if(manualClient){
+        client = manualClient;
+      }
+    } else {
+      client = currentUser.id;
+    }
+
+    if(!client){
+      f.status = '저장실패';
+      blocked.push(f.name);
+    } else {
+      approved.push({f, client});
+    }
+  }
+
+  if(blocked.length){
+    renderUploadTab();
+    toast(`🚫 업체 미인식 ${blocked.length}개 차단 — 파일명에 업체명을 포함하거나 드롭다운에서 업체를 선택해주세요`);
+  }
+
+  approved.forEach(({f, client}, i) => {
+    setTimeout(() => saveOneFile(f, client), i * 500);
+  });
 }
 
 function saveOneFile(fileObj, client) {
