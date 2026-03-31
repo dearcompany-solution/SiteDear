@@ -3311,6 +3311,7 @@ function downloadClientList(){
 }  
 function selClient(id){
   activeClientId=id;
+  sessionStorage.setItem('activeClientId', id);  // ← 추가
   const c=ACCOUNTS.find(a=>a.id===id);
 
   // 사이드바 업체명 + 선택 해제 버튼 표시
@@ -3345,6 +3346,7 @@ function selClient(id){
 }
 function clearClientSelect(){
   activeClientId = null;
+  sessionStorage.removeItem('activeClientId');  // ← 추가
   setSb('DEARCOMPANY 관리자','dearcompany','관리자');
   const lbl = document.getElementById('sbLbl');
   if(lbl) lbl.textContent = '현재 관리자';
@@ -3852,11 +3854,13 @@ document.addEventListener('click',e=>{
 (function(){
   const saved = sessionStorage.getItem('currentUser');
   const savedPage = sessionStorage.getItem('currentPage') || 'combined';
+  const savedClientId = sessionStorage.getItem('activeClientId');
   if(saved){
     currentUser = JSON.parse(saved);
+    // 업체 선택 복원
+    if(savedClientId) activeClientId = savedClientId;
     document.getElementById('loginPage').style.display='none';
     document.getElementById('appShell').style.display='block';
-    // 관리자 기본 페이지는 admin
     const page = savedPage === 'combined' && currentUser.role === 'admin' ? 'admin' : savedPage;
     initApp(page);
   }
