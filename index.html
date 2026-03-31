@@ -3319,7 +3319,7 @@ function downloadClientList(){
 }  
 function selClient(id){
   activeClientId=id;
-  sessionStorage.setItem('activeClientId', id);  // ← 추가
+  sessionStorage.setItem('activeClientId', id);
   const c=ACCOUNTS.find(a=>a.id===id);
 
   // 사이드바 업체명 + 선택 해제 버튼 표시
@@ -3354,7 +3354,7 @@ function selClient(id){
 }
 function clearClientSelect(){
   activeClientId = null;
-  sessionStorage.removeItem('activeClientId');  // ← 추가
+  sessionStorage.removeItem('activeClientId');
   setSb('DEARCOMPANY 관리자','dearcompany','관리자');
   const lbl = document.getElementById('sbLbl');
   if(lbl) lbl.textContent = '현재 관리자';
@@ -3860,16 +3860,16 @@ document.addEventListener('click',e=>{
 });
 /* ── 새로고침 시 로그인 상태 복원 ── */
 (function(){
-  const saved = sessionStorage.getItem('currentUser');
-  const savedPage = sessionStorage.getItem('currentPage') || 'combined';
+  const saved         = sessionStorage.getItem('currentUser');
+  const savedPage     = sessionStorage.getItem('currentPage') || 'combined';
   const savedClientId = sessionStorage.getItem('activeClientId');
   if(saved){
     currentUser = JSON.parse(saved);
-    // 업체 선택 복원
+    // activeClientId 먼저 복원 — go()의 업체 미선택 차단보다 앞서야 함
     if(savedClientId) activeClientId = savedClientId;
     document.getElementById('loginPage').style.display='none';
     document.getElementById('appShell').style.display='block';
-    const page = savedPage === 'combined' && currentUser.role === 'admin' ? 'admin' : savedPage;
+    const page = savedPage === 'combined' && currentUser.role === 'admin' && !savedClientId ? 'admin' : savedPage;
     initApp(page);
   }
 })();
