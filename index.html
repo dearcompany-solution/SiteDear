@@ -624,9 +624,17 @@ function initApp(restorePage){
   if(currentUser.role==='admin'){
     renderAdminNav();
     setSb('DEARCOMPANY 관리자','dearcompany','관리자');
-    // 관리자: 클라이언트 목록 먼저 로드 후 admin 페이지 렌더
     const page = restorePage || 'admin';
     loadClientsFromSupabase().then(()=>{
+      // 업체 선택 복원 후 사이드바 업데이트
+      if(activeClientId){
+        const c = ACCOUNTS.find(a=>a.id===activeClientId);
+        if(c){
+          setSb(c.company, c.id, '광고 운영 중');
+          const lbl = document.getElementById('sbLbl');
+          if(lbl) lbl.innerHTML = `선택된 업체 <span onclick="clearClientSelect()" style="cursor:pointer;color:var(--red);font-size:10px;margin-left:6px;padding:1px 6px;background:var(--red-l);border-radius:10px">✕ 해제</span>`;
+        }
+      }
       renderContent(page);
       setActive(page);
     });
@@ -1242,7 +1250,7 @@ async function loadReportData(month){
     });
   }
 
-  const fmt =n=>n>=1000000?'₩'+(n/1000000).toFixed(1)+'M':n>=1000?'₩'+(n/1000).toFixed(0)+'K':'₩'+n.toLocaleString();
+  const fmt =n=>'₩'+Math.round(n).toLocaleString()
   const fmtN=n=>n.toLocaleString();
   const momStr=v=>v>0?`<span class="up">▲ ${fmtN(Math.abs(v))}</span>`:v<0?`<span class="dn">▼ ${fmtN(Math.abs(v))}</span>`:'<span style="color:var(--text3)">—</span>';
   const $s=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
@@ -1303,7 +1311,7 @@ const tb=document.querySelector('#rptChannelTable tbody');
       ]},
       options:{responsive:true,maintainAspectRatio:false,scales:{
         x:ax,
-        y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+(v/1000).toFixed(0)+'K'}},
+        y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
         y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+(v/1000000).toFixed(1)+'M'},position:'right'}
       },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}
     });
@@ -1430,7 +1438,7 @@ function initReportCharts(){
 function openPdfPreview(){
   const data=REPORT_DATA[currentReportMonth];
   if(!data){toast('⚠️ 데이터가 없습니다');return;}
-  const fmt =n=>n>=1000000?'₩'+(n/1000000).toFixed(1)+'M':n>=1000?'₩'+(n/1000).toFixed(0)+'K':'₩'+n.toLocaleString();
+  const fmt =n=>'₩'+Math.round(n).toLocaleString()
   const fmtN=n=>n.toLocaleString();
 
   document.getElementById('pdfTitle').textContent=`${data.period} 광고 성과 보고서`;
@@ -3790,7 +3798,7 @@ function renderCharts(){
   mk('naverSummaryBar',{type:'bar',data:{
     labels:['N쇼핑Mo 1월','N쇼핑Mo 2월','파워링크Mo 1월','파워링크Mo 2월'],
     datasets:[{data:[623931,508233,2283402,2317150],backgroundColor:['rgba(3,199,90,.4)','rgba(3,199,90,.85)','rgba(79,70,229,.4)','rgba(79,70,229,.85)'],borderRadius:6}]
-  },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+(v/1000).toFixed(0)+'K'}}},plugins:{legend:{display:false}}}});
+  },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
 
   mk('naverRoasBar',{type:'bar',data:{
     labels:['N쇼핑Mo','N쇼핑PC','파워링크Mo','파워링크PC'],
@@ -3820,7 +3828,7 @@ function switchNaverTab(id,el){
   if(id==='summary')setTimeout(()=>{
     const mk=(id,cfg)=>{const el=document.getElementById(id);if(!el)return;try{if(charts[id])charts[id].destroy();charts[id]=new Chart(el,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
-    mk('naverSummaryBar',{type:'bar',data:{labels:['N쇼핑Mo 1월','N쇼핑Mo 2월','파워링크Mo 1월','파워링크Mo 2월'],datasets:[{data:[623931,508233,2283402,2317150],backgroundColor:['rgba(3,199,90,.4)','rgba(3,199,90,.85)','rgba(79,70,229,.4)','rgba(79,70,229,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+(v/1000).toFixed(0)+'K'}}},plugins:{legend:{display:false}}}});
+    mk('naverSummaryBar',{type:'bar',data:{labels:['N쇼핑Mo 1월','N쇼핑Mo 2월','파워링크Mo 1월','파워링크Mo 2월'],datasets:[{data:[623931,508233,2283402,2317150],backgroundColor:['rgba(3,199,90,.4)','rgba(3,199,90,.85)','rgba(79,70,229,.4)','rgba(79,70,229,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
     mk('naverRoasBar',{type:'bar',data:{labels:['N쇼핑Mo','N쇼핑PC','파워링크Mo','파워링크PC'],datasets:[{data:[249,780,74,1544],backgroundColor:['rgba(3,199,90,.7)','rgba(3,199,90,.85)','rgba(239,68,68,.6)','rgba(245,158,11,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
   },80);
 }
