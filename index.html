@@ -3536,13 +3536,12 @@ async function registerAcc(){
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
-        client_key:  clientKey,
-        event_date:  ev.date,
-        end_date:    ev.date_end || ev.date,
-        type:        ev.type,
-        title:       ev.title,
-        description: ev.desc||'',
-        manager:     ev.manager||''
+        client_key:   id,
+        password:     pw,
+        company_name: name,
+        manager:      mgr,
+        store_url:    url,
+        is_active:    true
       })
     });
 
