@@ -675,6 +675,7 @@ async function loadClientsFromSupabase(){
         company: row.company_name,
         manager: row.manager   || '',
         url:     row.store_url || '',
+        memo:    row.memo      || '',
       });
     });
 
@@ -2913,6 +2914,7 @@ async function saveEventToSupabase(ev){
         company_name: name,
         manager:      mgr,
         store_url:    url,
+        memo:         memo,
         is_active:    true
       })
     });
@@ -3450,6 +3452,10 @@ function openEditClient(id){
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">스토어 URL</label>
         <input id="ec-url" class="fi" type="text" value="${c.url||''}" placeholder="https://...">
       </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">메모</label>
+        <textarea id="ec-memo" class="fi" style="height:70px;resize:none" placeholder="업체 실제 이름, 특이사항 등 자유롭게 입력">${c.memo||''}</textarea>
+      </div>
     </div>`;
   document.getElementById('modalFooter').innerHTML=`
     <button class="btn btn-ol" onclick="closeModal()">취소</button>
@@ -3466,6 +3472,7 @@ async function saveEditClient(id){
   const pw    = document.getElementById('ec-pw').value;
   const mgr   = document.getElementById('ec-mgr').value;
   const url   = document.getElementById('ec-url').value.trim();
+  const memo  = document.getElementById('ec-memo').value.trim();
 
   if(!name)  { toast('⚠️ 업체명을 입력해주세요'); return; }
  if(currentUser.role==='admin' && newId !== id && ACCOUNTS.find(a=>a.id===newId)){
@@ -3475,7 +3482,7 @@ async function saveEditClient(id){
   toast('💾 저장 중...');
 
   try {
-    const updateData = { company_name: name, manager: mgr, store_url: url };
+    const updateData = { company_name: name, manager: mgr, store_url: url, memo };
     if(currentUser.role==='admin' && newId && newId !== id) updateData.client_key = newId;
     if(pw) updateData.password = pw;
 
@@ -3507,6 +3514,7 @@ async function saveEditClient(id){
     c.name    = name;
     c.manager = mgr;
     c.url     = url;
+    c.memo    = memo;
     if(pw) c.pw = pw;
 
     closeModal();
@@ -3588,6 +3596,7 @@ function htmlRegister(){return `
       <div class="rg"><label>담당 매니저 *</label><select id="rg-mgr"><option value="">선택하세요</option>${MANAGERS.map(m=>`<option>${m}</option>`).join('')}</select></div>
       
       <div class="rg full"><label>스토어 URL</label><input type="text" id="rg-url" placeholder="https://..."></div>
+      <div class="rg full"><label>메모</label><textarea id="rg-memo" class="fi" style="height:60px;resize:none" placeholder="업체 실제 이름, 특이사항 등 자유롭게 입력"></textarea></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:9px">
       <button class="btn btn-in" onclick="registerAcc()">✅ 계정 생성</button>
@@ -3611,6 +3620,7 @@ async function registerAcc(){
   const pw2  = document.getElementById('rg-pw2').value;
   const mgr  = document.getElementById('rg-mgr').value;
   const url  = document.getElementById('rg-url')?.value.trim()||'';
+  const memo = document.getElementById('rg-memo')?.value.trim()||'';
 
   if(!name||!id||!pw){ toast('⚠️ 업체명, 아이디, 비밀번호는 필수입니다'); return; }
   if(!mgr){ toast('⚠️ 담당 매니저를 선택해주세요'); return; }
@@ -3839,7 +3849,7 @@ async function executeBulkRegister(){
   }
   renderContent('admin');
 }
-function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
+function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url','rg-memo'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
 
 /* ════════════════════════════════════════
    CHARTS
