@@ -895,7 +895,8 @@ function onCustomDate(){
    HTML PANELS — NAVER
 ════════════════════════════════════════ */
 function htmlNaver(){
-  const d = activeClientId ? (REPORT_DATA[currentReportMonth] || null) : null;
+  const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
+  const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
   const kpi = d?.kpi || {};
   const fmt  = v => v ? '₩'+Math.round(v).toLocaleString() : '₩0';
   const fmtn = v => v ? v.toLocaleString() : '0';
@@ -983,7 +984,8 @@ function htmlStore(){
 <div class="empty" style="margin-top:16px"><div class="ei">🟠</div><p>스마트스토어 데이터를 파일로 업로드해주세요</p></div>`;}
 /* ════ COMBINED ════ */
 function htmlCombined(){
-  const d = activeClientId ? (REPORT_DATA[currentReportMonth] || null) : null;
+  const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
+  const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
   const kpi = d?.kpi || {};
   const fmt  = v => v ? '₩'+Number(v).toLocaleString() : '₩0';
   const fmtn = v => v ? Number(v).toLocaleString() : '0';
