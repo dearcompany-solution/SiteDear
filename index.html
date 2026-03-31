@@ -781,9 +781,21 @@ function renderContent(id){
   document.getElementById('pgTitle').textContent=t[0];
   document.getElementById('pgSub').textContent=t[1];
   switch(id){
-    case 'naver':    c.innerHTML=htmlNaver();break;
+    case 'naver':
+      c.innerHTML=htmlNaver();
+      setTimeout(async()=>{
+        const d=await fetchReportData(currentReportMonth);
+        if(d){REPORT_DATA[currentReportMonth]=d;c.innerHTML=htmlNaver();setTimeout(renderCharts,50);}
+      },50);
+      break;
     case 'store':    c.innerHTML=htmlStore();break;
-    case 'combined': c.innerHTML=htmlCombined();break;
+    case 'combined':
+      c.innerHTML=htmlCombined();
+      setTimeout(async()=>{
+        const d=await fetchReportData(currentReportMonth);
+        if(d){REPORT_DATA[currentReportMonth]=d;c.innerHTML=htmlCombined();setTimeout(renderCharts,50);}
+      },50);
+      break;
     case 'report':
       c.innerHTML=htmlReport();
       setTimeout(()=>{initReportCharts();loadReportData(currentReportMonth);},100);
