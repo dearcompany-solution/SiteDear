@@ -4162,6 +4162,7 @@ document.addEventListener('click',e=>{
   const savedClientId = sessionStorage.getItem('activeClientId');
   if(saved){
     currentUser = JSON.parse(saved);
+    if(savedClientId) activeClientId = savedClientId;
     // activeClientId 먼저 복원 — go()의 업체 미선택 차단보다 앞서야 함
     if(savedClientId) activeClientId = savedClientId;
     document.getElementById('loginPage').style.display='none';
