@@ -2168,7 +2168,7 @@ function saveOneFile(fileObj, client) {
             // skipHeader 없이 읽어서 직접 헤더 탐색
             const sheetArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 let hdrIdx = -1, hdrRow = [];
-const XLSX_TARGET = ['일별','시간대별','검색어','키워드명','키워드'];
+const XLSX_TARGET = ['일별','시간대별','검색어','키워드명','키워드','날짜'];
 for (let i = 0; i < Math.min(sheetArr.length, 50); i++) {
   const row = sheetArr[i].map(v => String(v||'').trim());
   if (row.some(v => XLSX_TARGET.includes(v))) {
@@ -2184,6 +2184,7 @@ if (hdrIdx === -1) {
             const isDaily   = hdrRow.includes('일별');
             const isHourly  = hdrRow.includes('시간대별');
             const isKeyword = hdrRow.some(v => ['검색어','키워드명','키워드'].includes(v));
+            const isGFADaily = hdrRow.includes('날짜') && sheetName==='NAVER GFA';
             const kwCol     = hdrRow.find(v => ['검색어','키워드명','키워드'].includes(v)) || '검색어';
 
             // 헤더 행 기준으로 JSON 변환
@@ -2222,6 +2223,54 @@ if (hdrIdx === -1) {
                   conv:  parseNum(r['총 전환수'] || r['전환수']),
                   rev:   parseNum(r['총 전환매출액(원)'] || r['전환매출액(원)'] || r['전환매출액'])
                 });
+              } else if (isGFADaily) {
+                const rawDate = r['날짜'];
+                const dateStr = rawDate instanceof Date
+                  ? rawDate.toISOString().slice(0,10)
+                  : String(rawDate||'').slice(0,10);
+                if(!dateStr || dateStr.length<8) return;
+                // 주차 소계 행 제외
+                const weekday = String(r['요일']||'');
+                if(['1주차','2주차','3주차','4주차','5주차','TOTAL'].includes(String(r['날짜']||''))) return;
+                allRows.push({
+                  data_type:   'gfa_daily',
+                  client_key:  client,
+                  month,
+                  date:        dateStr,
+                  weekday,
+                  placement:   'GFA 전체',
+                  imp:         parseNum(r['노출수']),
+                  click:       parseNum(r['클릭수']),
+                  ctr:         parseNum(r['클릭율']||r['클릭률']||0),
+                  cpc:         parseNum(r['평균CPC']||r['평균 CPC']||0),
+                  cost:        parseNum(r['총광고비']||r['총비용']||0),
+                  conv:        parseNum(r['총 전환수']||r['전환수']||0),
+                  rev:         parseNum(r['전환매출액(원)']||r['전환매출액']||0),
+                });
+              } else if (isGFADaily) {
+                const rawDate = r['날짜'];
+                const dateStr = rawDate instanceof Date
+                  ? rawDate.toISOString().slice(0,10)
+                  : String(rawDate||'').slice(0,10);
+                if(!dateStr || dateStr.length<8) return;
+                // 주차 소계 행 제외
+                const weekday = String(r['요일']||'');
+                if(['1주차','2주차','3주차','4주차','5주차','TOTAL'].includes(String(r['날짜']||''))) return;
+                allRows.push({
+                  data_type:   'gfa_daily',
+                  client_key:  client,
+                  month,
+                  date:        dateStr,
+                  weekday,
+                  placement:   'GFA 전체',
+                  imp:         parseNum(r['노출수']),
+                  click:       parseNum(r['클릭수']),
+                  ctr:         parseNum(r['클릭율']||r['클릭률']||0),
+                  cpc:         parseNum(r['평균CPC']||r['평균 CPC']||0),
+                  cost:        parseNum(r['총광고비']||r['총비용']||0),
+                  conv:        parseNum(r['총 전환수']||r['전환수']||0),
+                  rev:         parseNum(r['전환매출액(원)']||r['전환매출액']||0),
+                });
               } else if (isKeyword) {
                 const kw = String(r[kwCol] || '');
                 if (!kw) return;
@@ -2246,7 +2295,7 @@ if (hdrIdx === -1) {
             return;
           }
 
-          const tableMap = { daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports' };
+          const tableMap = { daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports', gfa_daily:'gfa_reports' };
           const byType = {};
           allRows.forEach(r => {
             if (!byType[r.data_type]) byType[r.data_type] = [];
@@ -3996,7 +4045,7 @@ async function loadGFATab(){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
   try{
-    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=cost.desc`,{headers:h});
+    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
     const rows = await res.json();
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML=`<div class="empty"><div class="ei">📡</div><p>GFA 데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 GFA 파일을 업로드해주세요</span></p></div>`;
@@ -4018,14 +4067,17 @@ async function loadGFATab(){
 
     const tableRows = rows.map(r=>`
       <tr>
-        <td style="font-size:12.5px;font-weight:600">${r.placement||'—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date||'—'}</td>
+        <td style="font-size:12px;color:var(--text3)">${r.weekday||'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.ctr)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.conv_rate||0)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${(+r.roas||0)>=300?'var(--naver)':(+r.roas||0)>=100?'var(--gold)':'var(--red)'}">${fmtr(r.roas)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${(+r.cost>0&&+r.rev/+r.cost>=3)?'var(--naver)':(+r.cost>0&&+r.rev/+r.cost>=1)?'var(--gold)':'var(--red)'}">
+          ${+r.cost>0?(+r.rev/+r.cost*100).toFixed(1)+'%':'—'}
+        </td>
       </tr>`).join('');
 
     el.innerHTML=`
@@ -4038,13 +4090,13 @@ async function loadGFATab(){
       </div>
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-          <div style="font-size:14px;font-weight:600">📡 게재 위치별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${rows.length}개 위치</span></div>
+          <div style="font-size:14px;font-weight:600">📡 GFA 일별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${rows.length}일</span></div>
         </div>
-        <div style="overflow-x:auto">
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
           <table class="tbl">
-            <thead><tr>
-              <th>게재 위치</th><th>광고비</th><th>노출수</th><th>클릭수</th>
-              <th>CTR</th><th>전환수</th><th>전환율</th><th>ROAS</th>
+            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+              <th>날짜</th><th>요일</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
             </tr></thead>
             <tbody>${tableRows}</tbody>
           </table>
