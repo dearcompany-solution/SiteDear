@@ -1164,12 +1164,14 @@ async function refreshDashboard(){
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
 
-    const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
-    const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click');
-    const totalCost=sum(dailyArr,'cost'), totalConv=sum(dailyArr,'conv'), totalRev=sum(dailyArr,'rev');
-    const roas=totalCost>0?totalRev/totalCost:0;
-    const ctr=totalImp>0?(totalClick/totalImp)*100:0;
-    const cpc=totalClick>0?totalCost/totalClick:0;
+   const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
+    const totalImp  = sum(dailyArr,'imp');
+    const totalClick= sum(dailyArr,'click');
+    const totalCost = sum(dailyArr,'cost');
+    const totalConv = sum(dailyArr,'conv');
+    const totalRev  = sum(dailyArr,'rev');
+    // DB 저장값 무시하고 재계산
+    const {roas,ctr,cpc,cvr,cpa,roi} = calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev);
 
     const chMap={};
     dailyArr.forEach(r=>{
@@ -1178,7 +1180,10 @@ async function refreshDashboard(){
       chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
       chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
     });
-    const channels=Object.values(chMap).map(c=>({...c,roas:c.cost>0?c.rev/c.cost:0})).sort((a,b)=>b.cost-a.cost);
+    const channels=Object.values(chMap).map(c=>({
+      ...c,
+      ...calcMetrics(c.imp,c.click,c.cost,c.conv,c.rev)
+    })).sort((a,b)=>b.cost-a.cost);
 
     const weekMap={};
     dailyArr.forEach(r=>{
@@ -1206,7 +1211,10 @@ async function refreshDashboard(){
       kwMap[key].cost+=+r.cost||0; kwMap[key].click+=+r.click||0;
       kwMap[key].conv+=+r.conv||0; kwMap[key].rev+=+r.rev||0;
     });
-    const topKeywords=Object.values(kwMap).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
+    const topKeywords=Object.values(kwMap).map(k=>({
+      ...k,
+      ...calcMetrics(k.imp,k.click,k.cost,k.conv,k.rev)
+    })).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
 
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,m]=month.split('-');
@@ -1215,7 +1223,7 @@ async function refreshDashboard(){
       : `${y}년 ${parseInt(m)}월`;
     return {
       client:targetClient, period:periodLabel, manager:acc?.manager||'—',
-      kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,roas,ctr,cpc},
+      kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
       channels, weekly, hourly, topKeywords, insights:[],
     };
@@ -2428,6 +2436,22 @@ function processFiles(files){
                   conv:parseNum(r['전환수']),
                   rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
               });
+              function calcMetrics(imp, click, cost, conv, rev){
+  imp  = +imp  || 0;
+  click= +click|| 0;
+  cost = +cost || 0;
+  conv = +conv || 0;
+  rev  = +rev  || 0;
+  return {
+    imp, click, cost, conv, rev,
+    roas: cost>0  ? rev/cost*100    : 0,
+    ctr:  imp>0   ? click/imp*100   : 0,
+    cpc:  click>0 ? cost/click      : 0,
+    cvr:  click>0 ? conv/click*100  : 0,
+    cpa:  conv>0  ? cost/conv       : 0,
+    roi:  cost>0  ? (rev-cost)/cost*100 : 0,
+  };
+}
             } else if(isHourly){
               // 파일 상단 헤더 셀에서 월 추출 (예: '2026년 3월', '2026.03' 등)
               const rawVals = Object.values(wb.Sheets[sheetName])
