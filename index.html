@@ -2100,15 +2100,20 @@ function saveOneFile(fileObj, client) {
 
         const dtype = rows[0].data_type;
         const tableMap = { daily:'daily_reports', keyword:'keyword_reports', hourly:'hourly_reports' };
-        fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Prefer': 'resolution=merge-duplicates'
-          },
-          body: JSON.stringify(rows)
+        const h = {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        };
+        // 기존 데이터 삭제 후 새로 INSERT (upsert 대신 delete+insert 방식)
+        fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${month}`, {
+          method: 'DELETE', headers: h
+        }).then(() => {
+          return fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
+            method: 'POST',
+            headers: { ...h, 'Prefer': 'return=minimal' },
+            body: JSON.stringify(rows)
+          });
         }).then(res => {
           if (!res.ok) return res.text().then(t => { throw new Error(t); });
           fileObj.status = '저장완료';
@@ -2119,8 +2124,6 @@ function saveOneFile(fileObj, client) {
           toast(`✅ ${fileObj.name} — ${rows.length}개 저장 완료!`);
         }).catch(err => {
           fileObj.status = '저장실패'; renderUploadTab();
-          console.error('Supabase 저장 오류:', err);
-          // Supabase 에러 메시지 파싱해서 보여주기
           let msg = err.message;
           try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e) {}
           toast(`❌ ${fileObj.name} 저장 실패: ${msg}`);
@@ -2253,32 +2256,45 @@ if (hdrIdx === -1) {
           let doneCount = 0;
           const typeCount = Object.keys(byType).length;
 
-          Object.entries(byType).forEach(([dtype, drows]) => {
-            fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                'Prefer': 'resolution=merge-duplicates'
-              },
-              body: JSON.stringify(drows)
-            }).then(res => {
-              if (!res.ok) return res.text().then(t => { throw new Error(t); });
-              doneCount++;
-              parsedTableData.push(...drows);
-              if (doneCount === typeCount) {
-                fileObj.status = '저장완료';
-                fileObj.savedCount = allRows.length;
-                renderUploadTab();
-                toast(`✅ ${fileObj.name} — ${allRows.length}개 저장 완료!`);
-              }
-            }).catch(err => {
-              fileObj.status = '저장실패'; renderUploadTab();
-              console.error('Supabase XLSX 저장 오류:', err);
-              let msg = err.message;
-              try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e2) {}
-              toast(`❌ ${fileObj.name} [${dtype}] 저장 실패: ${msg}`);
+         const h2 = {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+          };
+          // 월별로 그룹핑해서 delete+insert
+          const months = [...new Set(allRows.map(r=>r.month))];
+          const deletePromises = [];
+          Object.keys(byType).forEach(dtype => {
+            months.forEach(m => {
+              deletePromises.push(
+                fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${m}`, {
+                  method: 'DELETE', headers: h2
+                })
+              );
+            });
+          });
+          Promise.all(deletePromises).then(() => {
+            Object.entries(byType).forEach(([dtype, drows]) => {
+              fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
+                method: 'POST',
+                headers: { ...h2, 'Prefer': 'return=minimal' },
+                body: JSON.stringify(drows)
+              }).then(res => {
+                if (!res.ok) return res.text().then(t => { throw new Error(t); });
+                doneCount++;
+                parsedTableData.push(...drows);
+                if (doneCount === typeCount) {
+                  fileObj.status = '저장완료';
+                  fileObj.savedCount = allRows.length;
+                  renderUploadTab();
+                  toast(`✅ ${fileObj.name} — ${allRows.length}개 저장 완료!`);
+                }
+              }).catch(err => {
+                fileObj.status = '저장실패'; renderUploadTab();
+                let msg = err.message;
+                try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e2) {}
+                toast(`❌ ${fileObj.name} [${dtype}] 저장 실패: ${msg}`);
+              });
             });
           });
 
