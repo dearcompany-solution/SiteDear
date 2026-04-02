@@ -1937,7 +1937,7 @@ async function saveAllFiles() {
   }
 
   approved.forEach(({f, client}, i) => {
-    setTimeout(() => saveOneFile(f, client), i * 500);
+    setTimeout(() => saveOneFile(f, client), i * 2000);
   });
 }
 
