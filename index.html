@@ -4078,57 +4078,104 @@ async function loadGFATab(){
 
     const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
     const fmtn = v => (v||0).toLocaleString();
-    const fmtp = v => (v||0).toFixed(2)+'%';
-    const fmtr = v => (v||0).toFixed(1)+'%';
+    const fmtp = v => Number(v||0).toFixed(2)+'%';
+    const calcR= (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+    const roasColor = (cost,rev) => cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
 
+    // ── 종합 집계 ──
     const totalCost  = rows.reduce((s,r)=>s+(+r.cost||0),0);
     const totalImp   = rows.reduce((s,r)=>s+(+r.imp||0),0);
     const totalClick = rows.reduce((s,r)=>s+(+r.click||0),0);
     const totalConv  = rows.reduce((s,r)=>s+(+r.conv||0),0);
     const totalRev   = rows.reduce((s,r)=>s+(+r.rev||0),0);
-    const totalRoas  = totalCost>0 ? (totalRev/totalCost*100).toFixed(1)+'%' : '0%';
     const totalCtr   = totalImp>0  ? (totalClick/totalImp*100).toFixed(2)+'%' : '0%';
+    const totalCpc   = totalClick>0? Math.round(totalCost/totalClick).toLocaleString() : '0';
 
-    const tableRows = rows.map(r=>`
+    // ── 게재위치별 집계 ──
+    const placementMap = {};
+    rows.forEach(r=>{
+      const p = r.placement||'기타';
+      if(!placementMap[p]) placementMap[p]={placement:p,cost:0,imp:0,click:0,conv:0,rev:0};
+      placementMap[p].cost +=+r.cost||0;
+      placementMap[p].imp  +=+r.imp ||0;
+      placementMap[p].click+=+r.click||0;
+      placementMap[p].conv +=+r.conv||0;
+      placementMap[p].rev  +=+r.rev ||0;
+    });
+    const placements = Object.values(placementMap).sort((a,b)=>b.cost-a.cost);
+
+    const placementRows = placements.map(p=>`
+      <tr>
+        <td style="font-size:12.5px;font-weight:600">${p.placement}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(p.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(p.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(p.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${p.imp>0?(p.click/p.imp*100).toFixed(2)+'%':'—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(p.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(p.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(p.cost,p.rev)}">${calcR(p.cost,p.rev)}</td>
+      </tr>`).join('');
+
+    // ── 일별 데이터 ──
+    const dailyRows = rows.map(r=>`
       <tr>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date||'—'}</td>
-        <td style="font-size:12px;color:var(--text3)">${r.weekday||'—'}</td>
+        <td style="font-size:12px;color:var(--text3);text-align:center">${r.weekday||'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.ctr)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${(+r.cost>0&&+r.rev/+r.cost>=3)?'var(--naver)':(+r.cost>0&&+r.rev/+r.cost>=1)?'var(--gold)':'var(--red)'}">
-          ${+r.cost>0?(+r.rev/+r.cost*100).toFixed(1)+'%':'—'}
-        </td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(+r.cost,+r.rev)}">${calcR(+r.cost,+r.rev)}</td>
       </tr>`).join('');
 
     el.innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px">
+      <!-- 종합 KPI -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px">
         <div class="kpi kn"><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
         <div class="kpi kb"><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
-        <div class="kpi kg"><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+        <div class="kpi kb"><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+        <div class="kpi kg"><div class="kpi-lbl">CTR</div><div class="kpi-val">${totalCtr}</div></div>
         <div class="kpi ks"><div class="kpi-lbl">전환수</div><div class="kpi-val">${fmtn(totalConv)}건</div></div>
-        <div class="kpi ki"><div class="kpi-lbl">ROAS</div><div class="kpi-val">${totalRoas}</div></div>
+        <div class="kpi ki"><div class="kpi-lbl">ROAS</div><div class="kpi-val">${calcR(totalCost,totalRev)}</div></div>
       </div>
+
+      <!-- 게재위치별 -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600">📍 게재위치별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${placements.length}개</span></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>게재위치</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>${placementRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 일별 -->
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-          <div style="font-size:14px;font-weight:600">📡 GFA 일별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${rows.length}일</span></div>
+          <div style="font-size:14px;font-weight:600">📅 일별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${rows.length}일</span></div>
         </div>
-        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+        <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
           <table class="tbl">
             <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
               <th>날짜</th><th>요일</th><th>광고비</th><th>노출수</th><th>클릭수</th>
               <th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
             </tr></thead>
-            <tbody>${tableRows}</tbody>
+            <tbody>${dailyRows}</tbody>
           </table>
         </div>
       </div>`;
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>데이터 로드 실패: ${e.message}</p></div>`;
   }
+}
 }
 /* ════════════════════════════════════════
    UTILS
