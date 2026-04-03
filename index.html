@@ -546,22 +546,24 @@ canvas{max-height:210px}
 </div>
     </header>
     <div class="content" id="appContent"></div>
-  <div class="pdf-overlay" id="pdfOverlay">
-    <div class="pdf-modal">
-      <div class="pdf-header">
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#fff" id="pdfTitle">리포트 미리보기</div>
-          <div style="font-size:11.5px;color:rgba(255,255,255,.45)" id="pdfSubTitle"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 저장</button>
-          <button class="pdf-close" onclick="closePdfOverlay()">✕</button>
-        </div>
+  </main>
+</div>
+
+<!-- PDF Overlay -->
+<div class="pdf-overlay" id="pdfOverlay">
+  <div class="pdf-modal">
+    <div class="pdf-header">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff" id="pdfTitle">리포트 미리보기</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.45)" id="pdfSubTitle"></div>
       </div>
-      <div class="pdf-body" id="pdfContent"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 저장</button>
+        <button class="pdf-close" onclick="closePdfOverlay()">✕</button>
+      </div>
     </div>
+    <div class="pdf-body" id="pdfContent"></div>
   </div>
-</main>
 </div>
 
 <!-- Toast / Modal -->
@@ -1501,30 +1503,12 @@ function htmlReport(){
         </table>
       </div>
     </div>
-  </div>`;
-
   <div class="card" style="background:linear-gradient(135deg,rgba(79,70,229,.04),rgba(59,130,246,.04));border-color:rgba(79,70,229,.2)">
     <div style="font-size:13px;font-weight:600;color:var(--indigo);margin-bottom:8px">📌 보고서 데이터 관리 안내</div>
     <div style="font-size:12.5px;color:var(--text2);line-height:1.9">
       • 매월 새 보고서 데이터는 REPORT_DATA 객체에 추가하거나 Supabase에 INSERT하세요<br>
       • Supabase 연동 후 fetchReportData() 함수의 주석을 해제하면 실시간 연동됩니다<br>
       • PDF 다운로드 시 현재 화면의 성과 데이터가 자동 포맷되어 저장됩니다
-    </div>
-  </div>
-
-  <div class="pdf-overlay" id="pdfOverlay">
-    <div class="pdf-modal">
-      <div class="pdf-header">
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#fff" id="pdfTitle">리포트 미리보기</div>
-          <div style="font-size:11.5px;color:rgba(255,255,255,.45)" id="pdfSubTitle"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 저장</button>
-          <button class="pdf-close" onclick="closePdfOverlay()">✕</button>
-        </div>
-      </div>
-      <div class="pdf-body" id="pdfContent"></div>
     </div>
   </div>`;
 }
