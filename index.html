@@ -1286,20 +1286,16 @@ function htmlReport(){
   }).join('');
 
   return `
-  <div class="rpt-hero">
-    <div class="rpt-hero-left">
-      <h2>📑 광고 성과 보고서</h2>
-      <p id="rptSubTitle">월별 네이버 광고 통합 성과 · PDF 다운로드 가능</p>
+ <div class="card" style="margin-bottom:18px">
+    <div class="card-hd">
+      <div><div class="card-title">📈 월별 ROAS 트렌드</div><div class="card-sub">최근 7개월 · 클릭 시 해당 월 보고서로 이동</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
+        <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+        <button class="btn-pdf" onclick="downloadExcelReport()" style="background:#16a34a">📊 엑셀 다운로드</button>
+        <button class="btn-pdf" onclick="go('input',null);setActive('input')" style="background:#f59e0b">📁 파일 업로드</button>
+      </div>
     </div>
-    <div class="rpt-actions">
-      <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-      <button class="btn-pdf" onclick="downloadExcelReport()" style="background:#16a34a">📊 엑셀 다운로드</button>
-      <button class="btn-pdf" onclick="go('input',null);setActive('input')" style="background:#f59e0b">📁 파일 업로드</button>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:18px">
-    <div class="card-hd"><div><div class="card-title">📈 월별 ROAS 트렌드</div><div class="card-sub">최근 7개월 · 클릭 시 해당 월 보고서로 이동</div></div></div>
     <div class="monthly-grid">${pills}</div>
   </div>
 
