@@ -1554,7 +1554,7 @@ async function refreshDashboard(){
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-  fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*`,{headers:h}),
+  fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&select=*`,{headers:h})
   fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
   fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
 ]);
@@ -1572,7 +1572,16 @@ async function refreshDashboard(){
     const totalPurchaseConv = sum(dailyArr,'purchase_conv');
     const totalPurchaseRev  = sum(dailyArr,'purchase_rev');
     const totalCartRev      = sum(dailyArr,'cart_rev');
-    const {roas,ctr,cpc,cvr,cpa,roi} = calcMetrics ? calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev) : {roas:0,ctr:0,cpc:0,cvr:0,cpa:0,roi:0};
+    function calcMetrics(imp, click, cost, conv, rev){
+  return {
+    roas: cost > 0 ? (rev / cost * 100) : 0,
+    ctr: imp > 0 ? (click / imp * 100) : 0,
+    cpc: click > 0 ? (cost / click) : 0,
+    cvr: click > 0 ? (conv / click * 100) : 0,
+    cpa: conv > 0 ? (cost / conv) : 0,
+    roi: cost > 0 ? ((rev - cost) / cost * 100) : 0
+  };
+}
 
     const chMap={};
     dailyArr.forEach(r=>{
