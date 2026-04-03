@@ -4067,14 +4067,14 @@ async function registerAcc(){
 /* ════ 업체 엑셀 다운로드 ════ */
 function downloadClientExcel(){
   loadSheetJS(()=>{
-    const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL'];
+    const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL','메모(한글명)'];
     const data = [
-  [...header, '※ 1행(이 줄)은 자동으로 건너뜁니다. 2행부터 업체 정보를 입력하세요.']
-];
+      [...header],
+      ['예시: 한스데이','hansdaycs','password123','공지수','https://smartstore.naver.com/hansday','한스데이'],
+    ];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
-    // 컬럼 너비 설정
-    ws['!cols'] = [{wch:20},{wch:20},{wch:15},{wch:12},{wch:40}];
+    ws['!cols'] = [{wch:20},{wch:20},{wch:15},{wch:12},{wch:40},{wch:20}];
     // 헤더 스타일
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '업체목록');
@@ -4089,7 +4089,7 @@ function openBulkRegister(){
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px">
       <div style="background:var(--blue-l);border:1.5px solid rgba(59,130,246,.2);border-radius:var(--rsm);padding:12px;font-size:12.5px;color:var(--blue);line-height:1.8">
-        📌 <b>엑셀 형식:</b> 업체명 / 아이디 / 비밀번호 / 담당매니저 / 스토어URL<br>
+        📌 <b>엑셀 형식:</b> 업체명 / 아이디 / 비밀번호 / 담당매니저 / 스토어URL / 메모(한글명)<br>
         📌 첫 번째 행은 헤더로 자동 건너뜁니다<br>
         📌 기존 아이디와 중복되는 업체는 자동 건너뜁니다
       </div>
