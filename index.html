@@ -602,7 +602,7 @@ let adminPage=1;
 let charts={};
 let calYear=2026,calMonth=1;
 let selectedCalDate=null;
-let currentDateRange={from:'2026-02-01',to:'2026-02-28'};
+let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:'2026-02-01',to:'2026-02-28'};
 
 /* ════ 보고서 상태 ════ */
 let currentReportMonth='2026-02';
@@ -718,6 +718,11 @@ document.addEventListener('DOMContentLoaded',function(){
    INIT
 ════════════════════════════════════════ */
 function initApp(restorePage){
+  if(currentDateRange) {
+    const disp = s => s.replace(/-/g,'.').slice(0,10);
+    const label = document.getElementById('drangeLabel');
+    if(label) label.textContent = `${disp(currentDateRange.from)} ~ ${disp(currentDateRange.to)}`;
+  }
   if(currentUser.role==='admin'){
     renderAdminNav();
     setSb('DEARCOMPANY 관리자','dearcompany','관리자');
@@ -1146,6 +1151,10 @@ function dpApply(){
     toast('⚠️ 시작일과 종료일을 모두 선택해주세요'); return;
   }
   currentDateRange = {from: dpState.start, to: dpState.end};
+  
+  // 추가: 세션 스토리지에 날짜 저장
+  sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
+  
   const disp = s => s.replace(/-/g,'.').slice(0,10);
   document.getElementById('drangeLabel').textContent = `${disp(dpState.start)} ~ ${disp(dpState.end)}`;
   closeDatePicker();
