@@ -4157,6 +4157,7 @@ function previewBulkExcel(file){
           pw:      String(r[2]||'').trim(),
           manager: String(r[3]||'').trim(),
           url:     String(r[4]||'').trim(),
+          memo:    String(r[5]||'').trim(),
           dup:     !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
         })).filter(r=>r.company&&r.id&&r.pw);
 
@@ -4235,11 +4236,12 @@ async function executeBulkRegister(){
           company_name: c.company,
           manager:      c.manager,
           store_url:    c.url,
+          memo:         c.memo||'',
           is_active:    true
         })
       });
       if(!res.ok) throw new Error(await res.text());
-      ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url});
+      ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url, memo:c.memo||''});
       successCount++;
     }catch(err){
       console.error(`${c.company} 등록 실패:`, err);
