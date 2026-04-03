@@ -1309,6 +1309,18 @@ function htmlReport(){
     <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="rk-roas">—</div><div class="rpt-kpi-sub" id="rk-roas-sub"></div></div>
   </div>
 
+  <!-- 보고서 탭 -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
+    <button class="nav-tab" onclick="switchRptTab('daily',this)">📅 일별 성과</button>
+    <button class="nav-tab" onclick="switchRptTab('dow',this)">📆 요일별 성과</button>
+    <button class="nav-tab" onclick="switchRptTab('channel',this)">📡 채널별 성과</button>
+    <button class="nav-tab" onclick="switchRptTab('keyword',this)">🔑 키워드 TOP20</button>
+    <button class="nav-tab" onclick="switchRptTab('hourly',this)">🕐 시간대별 성과</button>
+  </div>
+
+  <!-- 통합 요약 탭 -->
+  <div id="rpt-tab-summary">
   <div class="rpt-compare">
     <div class="rpt-section">
       <div class="rpt-section-title">📡 채널별 성과 <span>광고비 · 전환매출 · ROAS</span></div>
@@ -1343,6 +1355,85 @@ function htmlReport(){
     <div class="rpt-section">
       <div class="rpt-section-title">💡 핵심 인사이트</div>
       <div id="rptInsights"></div>
+  </div><!-- /rpt-tab-summary -->
+
+  <!-- 일별 성과 탭 -->
+  <div id="rpt-tab-daily" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">📅 일별 성과</div>
+      </div>
+      <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
+        <table class="tbl">
+          <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+            <th>날짜</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody id="rptDailyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 요일별 성과 탭 -->
+  <div id="rpt-tab-dow" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">📆 요일별 성과</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>요일</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody id="rptDowTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 채널별 성과 탭 -->
+  <div id="rpt-tab-channel" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">📡 채널별 성과</div>
+      </div>
+      <div style="overflow-x:auto" id="rptChannelTab2"></div>
+    </div>
+  </div>
+
+  <!-- 키워드 탭 -->
+  <div id="rpt-tab-keyword" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">🔑 키워드 TOP 20 <span style="font-size:12px;color:var(--text3);font-weight:400">#NAME? 등 오류 키워드 자동 제외</span></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>순위</th><th>키워드</th><th>유형</th><th>디바이스</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody id="rptKwTbody2"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시간대별 탭 -->
+  <div id="rpt-tab-hourly" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">🕐 시간대별 성과</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>시간대</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody id="rptHourlyTbody2"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
     </div>
   </div>
 
@@ -1464,6 +1555,40 @@ async function refreshDashboard(){
       ...calcMetrics(k.imp,k.click,k.cost,k.conv,k.rev)
     })).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
 
+    // 일별 데이터 배열 (날짜별 집계)
+    const dailyMap = {};
+    dailyArr.forEach(r=>{
+      const d = r.date||'';
+      if(!d) return;
+      if(!dailyMap[d]) dailyMap[d]={date:d,imp:0,click:0,cost:0,conv:0,rev:0};
+      dailyMap[d].imp  +=+r.imp||0;
+      dailyMap[d].click+=+r.click||0;
+      dailyMap[d].cost +=+r.cost||0;
+      dailyMap[d].conv +=+r.conv||0;
+      dailyMap[d].rev  +=+r.rev||0;
+    });
+    const dailyList = Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+
+    // 요일별 집계
+    const dowMap = {0:{day:'일',imp:0,click:0,cost:0,conv:0,rev:0},1:{day:'월',imp:0,click:0,cost:0,conv:0,rev:0},2:{day:'화',imp:0,click:0,cost:0,conv:0,rev:0},3:{day:'수',imp:0,click:0,cost:0,conv:0,rev:0},4:{day:'목',imp:0,click:0,cost:0,conv:0,rev:0},5:{day:'금',imp:0,click:0,cost:0,conv:0,rev:0},6:{day:'토',imp:0,click:0,cost:0,conv:0,rev:0}};
+    dailyArr.forEach(r=>{
+      if(!r.date) return;
+      const dow = new Date(r.date).getDay();
+      dowMap[dow].imp  +=+r.imp||0;
+      dowMap[dow].click+=+r.click||0;
+      dowMap[dow].cost +=+r.cost||0;
+      dowMap[dow].conv +=+r.conv||0;
+      dowMap[dow].rev  +=+r.rev||0;
+    });
+    const dowList = Object.values(dowMap);
+
+    // PC/Mobile 분리
+    const pcArr  = dailyArr.filter(r=>(r.device||'').includes('PC'));
+    const moArr  = dailyArr.filter(r=>(r.device||''||'').toLowerCase().includes('모바일')||(r.device||'').toLowerCase().includes('mobile'));
+    const pcCost = sum(pcArr,'cost'), moCost = sum(moArr,'cost');
+    const pcConv = sum(pcArr,'conv'), moConv = sum(moArr,'conv');
+    const pcRev  = sum(pcArr,'rev'),  moRev  = sum(moArr,'rev');
+
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,m]=month.split('-');
     const periodLabel = currentDateRange?.from
@@ -1474,6 +1599,8 @@ async function refreshDashboard(){
       kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
       channels, weekly, hourly, topKeywords, insights:[],
+      dailyList, dowList,
+      device:{pcCost,moCost,pcConv,moConv,pcRev,moRev},
     };
   }catch(e){
     console.warn('데이터 집계 실패:',e);
@@ -1503,6 +1630,105 @@ async function loadReportData(month){
 
   // ── 테이블/인사이트 전체 초기화 ──
   const clearEls=['rptChannelTable','rptKwTable','rptHourly','rptInsights'];
+  // 일별 탭 렌더링
+  const renderDailyTab = (d) => {
+    const tb = document.getElementById('rptDailyTbody');
+    if(!tb) return;
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => (v||0).toLocaleString();
+    const fmtp = (a,b) => b>0 ? (a/b*100).toFixed(2)+'%' : '0%';
+    const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+    if(!d.dailyList || !d.dailyList.length){
+      tb.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">📭 일별 데이터 없음</td></tr>`;
+      return;
+    }
+    tb.innerHTML = d.dailyList.map(r=>`<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap">${r.date}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.click,r.imp)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${r.cost>0&&r.rev/r.cost>=3?'var(--naver)':r.cost>0&&r.rev/r.cost>=1?'var(--gold)':'var(--red)'}">${fmtr(r.cost,r.rev)}</td>
+    </tr>`).join('');
+  };
+
+  // 요일별 탭 렌더링
+  const renderDowTab = (d) => {
+    const tb = document.getElementById('rptDowTbody');
+    if(!tb) return;
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => (v||0).toLocaleString();
+    const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+    if(!d.dowList || !d.dowList.length){
+      tb.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">📭 요일별 데이터 없음</td></tr>`;
+      return;
+    }
+    tb.innerHTML = d.dowList.map(r=>`<tr>
+      <td style="font-weight:600">${r.day}요일</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtr(r.cost,r.rev)}</td>
+    </tr>`).join('');
+  };
+
+  // 키워드 탭 렌더링
+  const renderKwTab = (d) => {
+    const tb = document.getElementById('rptKwTbody2');
+    if(!tb) return;
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => (v||0).toLocaleString();
+    const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+    const kws = (d.topKeywords||[]).filter(k=>k.keyword && !k.keyword.startsWith('#') && k.keyword !== '#N/A');
+    if(!kws.length){
+      tb.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">📭 키워드 데이터 없음</td></tr>`;
+      return;
+    }
+    tb.innerHTML = kws.map((k,i)=>`<tr>
+      <td style="color:var(--text3);font-size:11px;text-align:center">${i+1}</td>
+      <td style="font-weight:600;font-size:13px">${k.keyword}</td>
+      <td style="font-size:12px;color:var(--text2)">${k.type||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${k.device||'—'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${k.cost>0&&k.rev/k.cost>=3?'var(--naver)':k.cost>0&&k.rev/k.cost>=1?'var(--gold)':'var(--red)'}">${fmtr(k.cost,k.rev)}</td>
+    </tr>`).join('');
+  };
+
+  // 시간대별 탭 렌더링
+  const renderHourlyTab = (d) => {
+    const tb = document.getElementById('rptHourlyTbody2');
+    if(!tb) return;
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => (v||0).toLocaleString();
+    const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+    if(!d.hourly || !d.hourly.length){
+      tb.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">📭 시간대별 데이터 없음</td></tr>`;
+      return;
+    }
+    tb.innerHTML = [...d.hourly].sort((a,b)=>String(a.time).localeCompare(String(b.time))).map(r=>`<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.time}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtr(r.cost,r.rev)}</td>
+    </tr>`).join('');
+  };
+
+  // 탭 렌더링 실행
+  setTimeout(()=>{
+    renderDailyTab(data);
+    renderDowTab(data);
+    renderKwTab(data);
+    renderHourlyTab(data);
+  }, 100);
   clearEls.forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -2293,11 +2519,13 @@ function saveOneFile(fileObj, client) {
               rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'])
             });
           } else if (hasKeyword) {
-            const kw = row[kwCol] || '';
+            const kw = String(row[kwCol] || '').trim();
             if (!kw) continue;
+            // #NAME?, #REF!, #VALUE! 등 엑셀 오류값 필터링
+            if (/^#[A-Z]+[!?]?$/.test(kw) || kw === '#N/A' || kw.startsWith('#')) continue;
             rows.push({
-              data_type: 'keyword', client_key: client, month, keyword: kw,
-              campaign_type: row['캠페인유형'] || row['유형'] || '',
+              data_type: 'keyword', client_key: client, month, keyword: String(kw).trim(),
+                  campaign_type: row['유형'] || row['캠페인유형'] || '',
               device: row['PC/모바일 매체'] || row['PC/모바일'] || '',
               imp:      parseNum(row['노출수']),
               click:    parseNum(row['클릭수']),
@@ -2528,8 +2756,9 @@ if (hdrIdx === -1) {
                   rev:         parseNum(r['전환매출액(원)']||r['전환매출액']||0),
                 });
               } else if (isKeyword) {
-                const kw = String(r[kwCol] || '');
-                if (!kw) return;
+                const kw = String(r[kwCol]||'').trim();
+                  if (!kw) return;
+                  if (/^#[A-Z]+[!?]?$/.test(kw) || kw === '#N/A' || kw.startsWith('#')) return;
                 allRows.push({
                   data_type: 'keyword', client_key: client, month, keyword: kw,
                   campaign_type: String(r['캠페인유형'] || r['유형'] || ''),
@@ -4299,7 +4528,17 @@ function renderCharts(){
 }
 
 /* ════ NAVER TAB ════ */
-function switchNaverTab(id,el){
+function switchRptTab(id, el){
+  document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
+    if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
+  });
+  if(el) el.classList.add('active');
+  ['summary','daily','dow','channel','keyword','hourly'].forEach(t=>{
+    const p = document.getElementById('rpt-tab-'+t);
+    if(p) p.style.display = t===id ? 'block' : 'none';
+  });
+}
+  function switchNaverTab(id,el){
   sessionStorage.setItem('currentNaverTab', id);
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
