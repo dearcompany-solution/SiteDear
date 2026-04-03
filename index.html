@@ -1182,6 +1182,17 @@ async function naverAutoSync(){
   toast('🔄 네이버 데이터 수집 시작...');
 
   try{
+    try{
+    const targetAcc = ACCOUNTS.find(a => a.id === targetClient);
+    const naverCustomerId = targetAcc?.pw || undefined;
+
+    if(targetClient && !naverCustomerId){
+      toast('⚠️ 선택된 업체의 네이버 고객ID(비밀번호)를 찾을 수 없습니다');
+      btn.disabled = false;
+      btn.textContent = '🔄 네이버 데이터 자동수집';
+      return;
+    }
+
     const res = await fetch(
       'https://pouqjsolszhntwkaaasj.supabase.co/functions/v1/naver-sync',
       {
@@ -1193,7 +1204,8 @@ async function naverAutoSync(){
         },
         body: JSON.stringify({
           month,
-          client_key: targetClient || undefined,
+          client_key:        targetClient      || undefined,
+          naver_customer_id: naverCustomerId   || undefined,
         })
       }
     );
