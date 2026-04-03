@@ -1544,35 +1544,28 @@ async function refreshDashboard(){
 }
   async function fetchReportData(month){
   try{
-    const isAdmin      = currentUser?.role==='admin';
-    const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
-
-    if(!targetClient) return null;
-
     const h={
       'apikey':SUPABASE_ANON_KEY,
       'Authorization':'Bearer '+SUPABASE_ANON_KEY
     };
 
-    const fromDate  = currentDateRange?.from || `${month}-01`;
-    const toDate    = currentDateRange?.to   || `${month}-31`;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?select=*`,{headers:h});
+    const data = await res.json();
 
-    const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
-    ]);
+    console.log('데이터:', data);
 
-    const dailyArr  = await dailyRes.json();
-    const kwArr     = await kwRes.json();
-    const hourlyArr = await hourlyRes.json();
-
-    return {dailyArr,kwArr,hourlyArr};
+    return data;
 
   }catch(e){
-    console.error('fetchReportData 에러:',e);
+    console.error(e);
     return null;
   }
+}
+  function calcMetrics(){
+  return {roas:0,ctr:0,cpc:0,cvr:0,cpa:0,roi:0};
+}
+  function dLogin(){
+  console.log('로그인 클릭됨');
 }
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     console.log('dailyArr 확인:', dailyArr);
