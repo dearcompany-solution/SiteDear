@@ -546,7 +546,22 @@ canvas{max-height:210px}
 </div>
     </header>
     <div class="content" id="appContent"></div>
-  </main>
+  <div class="pdf-overlay" id="pdfOverlay">
+    <div class="pdf-modal">
+      <div class="pdf-header">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff" id="pdfTitle">리포트 미리보기</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.45)" id="pdfSubTitle"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 저장</button>
+          <button class="pdf-close" onclick="closePdfOverlay()">✕</button>
+        </div>
+      </div>
+      <div class="pdf-body" id="pdfContent"></div>
+    </div>
+  </div>
+</main>
 </div>
 
 <!-- Toast / Modal -->
