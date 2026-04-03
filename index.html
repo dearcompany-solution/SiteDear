@@ -496,7 +496,6 @@ canvas{max-height:210px}
         <div class="tb-actions" id="tbActions">
           <!-- 일반 페이지 버튼 -->
           <div id="defaultActions" style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-ol btn-sm" onclick="openDownload()">⬇ 리포트 다운로드</button>
           </div>
           <!-- 관리자 페이지 버튼 -->
           <div id="adminActions" style="display:none;gap:8px;align-items:center">
@@ -1293,12 +1292,9 @@ function htmlReport(){
       <p id="rptSubTitle">월별 네이버 광고 통합 성과 · PDF 다운로드 가능</p>
     </div>
     <div class="rpt-actions">
-      <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">
-        ${opts}
-      </select>
       <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-      <button class="btn btn-ol btn-sm" onclick="downloadExcelReport()" style="white-space:nowrap">📊 엑셀 다운로드</button>
-      <button class="btn btn-ol btn-sm" onclick="go('input',null);setActive('input')" style="white-space:nowrap">📁 파일 업로드</button>
+      <button class="btn-pdf" onclick="downloadExcelReport()" style="background:#16a34a">📊 엑셀 다운로드</button>
+      <button class="btn-pdf" onclick="go('input',null);setActive('input')" style="background:#f59e0b">📁 파일 업로드</button>
     </div>
   </div>
 
