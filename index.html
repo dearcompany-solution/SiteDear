@@ -2599,7 +2599,7 @@ function saveOneFile(fileObj, client) {
         }
 
        
-        // GFA 파일 처리
+                // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
         if(hasGFA){
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i];
@@ -2608,18 +2608,20 @@ function saveOneFile(fileObj, client) {
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
-            
-            // 날짜 포맷 정규화 (2026.03.31. -> 2026-03-31)
+
+            // 1. 날짜 데이터 변환 (예: 2026.03.31. -> 2026-03-31)
             let rawDate = row['기간'] || '';
             let dateStr = rawDate.replace(/\./g, '-').replace(/-+$/, '').slice(0, 10);
-            
+            if(!dateStr || dateStr.length < 8) continue;
+
+            // 2. 대시보드 일별 성과(daily_reports) 규격에 맞춰 데이터 삽입
             rows.push({
+              data_type:    'daily',  // 필수: 이 값이 'daily'여야 대시보드에 나옵니다.
               client_key:   client,
-              data_type:    'daily', // 일별 성과 탭에 노출되도록 타입 지정
-              month:        month,
+              month:        dateStr.slice(0, 7),
               date:         dateStr,
               campaign_type: 'GFA',
-              device:       '모바일', // GFA는 주로 모바일 비중이 높으므로 기본값 설정
+              device:       '모바일',
               account_name: row['광고 계정 이름'] || '',
               cost:         parseNum(row['총비용']),
               imp:          parseNum(row['노출수']),
@@ -2631,20 +2633,36 @@ function saveOneFile(fileObj, client) {
               roas:         parseNum(row['구매완료 광고수익률(%)'] || row['광고수익률']),
             });
           }
-          
-          if(!rows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
-          
-          // daily_reports 테이블에 저장 (일별 성과 탭 연동을 위해)
+
+          if(!rows.length){ 
+            fileObj.status='저장실패'; 
+            renderUploadTab(); 
+            toast(`⚠️ ${fileObj.name} — GFA 데이터 없음`); 
+            return; 
+          }
+
+          // 3. gfa_reports가 아닌 daily_reports 테이블로 데이터 전송
           fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
             method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+            headers:{
+              'Content-Type':'application/json',
+              'apikey':SUPABASE_ANON_KEY,
+              'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+              'Prefer':'resolution=merge-duplicates'
+            },
             body:JSON.stringify(rows)
           }).then(res=>{
             if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=rows.length;
+            fileObj.status='저장완료'; 
+            fileObj.savedMonth=month; 
+            fileObj.savedCount=rows.length;
             renderUploadTab();
-            toast(`✅ GFA 데이터 ${rows.length}건이 일별 성과에 등록되었습니다!`);
-          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 저장 실패: '+err.message); });
+            toast(`✅ ${fileObj.name} GFA — ${rows.length}개 일별 성과 등록 완료!`);
+          }).catch(err=>{ 
+            fileObj.status='저장실패'; 
+            renderUploadTab(); 
+            toast('❌ GFA 저장 실패: '+err.message); 
+          });
           return;
         }
 
