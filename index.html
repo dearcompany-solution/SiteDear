@@ -1186,7 +1186,11 @@ async function naverAutoSync(){
       'https://pouqjsolszhntwkaaasj.supabase.co/functions/v1/naver-sync',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'apikey': SUPABASE_ANON_KEY,
+        },
         body: JSON.stringify({
           month,
           client_key: targetClient || undefined,
