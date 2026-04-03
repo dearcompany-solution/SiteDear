@@ -390,6 +390,23 @@ canvas{max-height:210px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal-day{min-height:52px;padding:6px 4px}
 .ev-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:520px}
+/* ════ DATE PICKER DROPDOWN ════ */
+.date-picker-wrap{position:relative;display:inline-block}
+.date-picker-btn{display:flex;align-items:center;gap:8px;padding:6px 14px;border:1.5px solid var(--border2);border-radius:20px;background:var(--white);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .15s;white-space:nowrap}
+.date-picker-btn:hover{border-color:var(--blue);color:var(--blue)}
+.date-picker-btn.active{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.date-picker-dropdown{position:absolute;top:calc(100% + 8px);left:0;z-index:500;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shm);padding:12px;min-width:320px;display:none}
+.date-picker-dropdown.open{display:block;animation:fadeIn .15s ease}
+.dp-presets{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.dp-preset{padding:7px 12px;border-radius:var(--rsm);font-size:12.5px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .12s;border:none;background:transparent;text-align:left;font-family:'Noto Sans KR',sans-serif}
+.dp-preset:hover{background:var(--blue-l);color:var(--blue)}
+.dp-preset.active{background:var(--blue);color:#fff;font-weight:700}
+.dp-divider{height:1px;background:var(--border);margin:8px 0}
+.dp-custom{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+.dp-custom input{border:1.5px solid var(--border2);border-radius:var(--rsm);padding:6px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text);background:var(--white);outline:none;width:100%}
+.dp-custom input:focus{border-color:var(--blue)}
+.dp-apply{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.dp-apply:hover{background:#2563eb}
 </style>
 </head>
 <body>
@@ -452,19 +469,28 @@ canvas{max-height:210px}
         </div>
       </div>
       <div class="date-row" id="dateRow">
-        <button class="dq-btn" onclick="setQuick('today',this)">오늘</button>
-        <button class="dq-btn" onclick="setQuick('yesterday',this)">어제</button>
-        <button class="dq-btn" onclick="setQuick('thisweek',this)">이번 주</button>
-        <button class="dq-btn" onclick="setQuick('lastweek',this)">지난 주</button>
-        <button class="dq-btn active" onclick="setQuick('thismonth',this)">이번 달</button>
-        <button class="dq-btn" onclick="setQuick('lastmonth',this)">지난 달</button>
-        <div class="date-sep"></div>
-        <div class="date-custom">
-          <input type="date" id="dtFrom" onchange="onCustomDate()">
-          <span>~</span>
-          <input type="date" id="dtTo" onchange="onCustomDate()">
+        <div class="date-picker-wrap" id="datePickerWrap">
+          <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker()">
+            📅 <span id="drangeLabel">2026.02.01 ~ 2026.02.28</span> ▾
+          </button>
+          <div class="date-picker-dropdown" id="datePickerDropdown">
+            <div class="dp-presets">
+              <button class="dp-preset" onclick="setQuick('today')">오늘</button>
+              <button class="dp-preset" onclick="setQuick('yesterday')">어제</button>
+              <button class="dp-preset" onclick="setQuick('thisweek')">이번 주</button>
+              <button class="dp-preset" onclick="setQuick('lastweek')">지난 주</button>
+              <button class="dp-preset active" onclick="setQuick('lastmonth')">지난 달</button>
+              <button class="dp-preset" onclick="setQuick('thismonth')">이번 달</button>
+            </div>
+            <div class="dp-divider"></div>
+            <div class="dp-custom">
+              <input type="date" id="dtFrom">
+              <span style="color:var(--text3);font-size:12px">~</span>
+              <input type="date" id="dtTo">
+            </div>
+            <button class="dp-apply" onclick="applyCustomDate()">적용</button>
+          </div>
         </div>
-        <div class="drange-label" id="drangeLabel">2026.02.01 ~ 02.28</div>
       </div>
     </header>
     <div class="content" id="appContent"></div>
@@ -770,7 +796,7 @@ function go(id,el){
   if(dr&&aa&&da){
     if(id==='admin'){
       dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
-    } else if(id==='register'||id==='input'){
+    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'){
       dr.style.display='none'; aa.style.display='none'; da.style.display='none';
     } else {
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
@@ -871,11 +897,25 @@ function renderContent(id){
 /* ════════════════════════════════════════
    DATE PICKER
 ════════════════════════════════════════ */
-function setQuick(type,btn){
-  document.querySelectorAll('.dq-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('dtFrom').value='';
-  document.getElementById('dtTo').value='';
+function toggleDatePicker(){
+  const dd = document.getElementById('datePickerDropdown');
+  const btn = document.getElementById('datePickerBtn');
+  if(!dd) return;
+  dd.classList.toggle('open');
+  btn.classList.toggle('active');
+}
+function closeDatePicker(){
+  const dd = document.getElementById('datePickerDropdown');
+  const btn = document.getElementById('datePickerBtn');
+  if(dd) dd.classList.remove('open');
+  if(btn) btn.classList.remove('active');
+}
+// 외부 클릭 시 닫기
+document.addEventListener('click', e=>{
+  const wrap = document.getElementById('datePickerWrap');
+  if(wrap && !wrap.contains(e.target)) closeDatePicker();
+});
+  function setQuick(type){
   const today=new Date();
   let from,to;
   const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -888,19 +928,27 @@ function setQuick(type,btn){
   else if(type==='lastmonth'){from=new Date(today.getFullYear(),today.getMonth()-1,1);to=new Date(today.getFullYear(),today.getMonth(),0);}
   currentDateRange={from:fmt(from),to:fmt(to)};
   document.getElementById('drangeLabel').textContent=`${disp(from)} ~ ${disp(to)}`;
+  // 활성 preset 표시
+  document.querySelectorAll('.dp-preset').forEach(b=>b.classList.remove('active'));
+  event?.target?.classList.add('active');
+  closeDatePicker();
   toast('📅 기간이 변경되었습니다');
   refreshDashboard();
 }
-function onCustomDate(){
+function applyCustomDate(){
   const f=document.getElementById('dtFrom').value;
   const t=document.getElementById('dtTo').value;
-  if(!f||!t)return;
-  document.querySelectorAll('.dq-btn').forEach(b=>b.classList.remove('active'));
+  if(!f||!t){toast('⚠️ 시작일과 종료일을 모두 선택해주세요');return;}
+  if(f>t){toast('⚠️ 종료일이 시작일보다 빠릅니다');return;}
+  document.querySelectorAll('.dp-preset').forEach(b=>b.classList.remove('active'));
   currentDateRange={from:f,to:t};
   const disp=s=>{const[y,m,d]=s.split('-');return`${y}.${m}.${d}`};
   document.getElementById('drangeLabel').textContent=`${disp(f)} ~ ${disp(t)}`;
+  closeDatePicker();
+  toast('📅 기간이 변경되었습니다');
   refreshDashboard();
 }
+function onCustomDate(){}
 
 /* ════════════════════════════════════════
    HTML PANELS — NAVER
