@@ -460,7 +460,7 @@ canvas{max-height:210px}
     <div class="lg"><label>아이디</label><input id="lid" type="text" placeholder="아이디를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="lg"><label>비밀번호</label><input id="lpw" type="password" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="lbtn" onclick="doLogin()">로그인</button>
-    <div class="lerr" id="lerr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="lerr" id="lerr"></div>
   </div>
 </div>
 
@@ -1542,37 +1542,29 @@ async function refreshDashboard(){
     if(activePage==='naver'){    c.innerHTML=htmlNaver();    setTimeout(renderCharts,50); }
   }
 }
-  async function fetchReportData(month){
+async function fetchReportData(month){
   try{
+    const isAdmin      = currentUser?.role==='admin';
+    const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+    if(!targetClient) return null;
+
+    const fromDate = currentDateRange?.from || (month+'-01');
+    const toDate   = currentDateRange?.to   || (month+'-31');
     const h={
       'apikey':SUPABASE_ANON_KEY,
       'Authorization':'Bearer '+SUPABASE_ANON_KEY
     };
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?select=*`,{headers:h});
-    const data = await res.json();
-
-    console.log('데이터:', data);
-
-    return data;
-
-  }catch(e){
-    console.error(e);
-    return null;
-  }
-}
-  function calcMetrics(){
-  return {roas:0,ctr:0,cpc:0,cvr:0,cpa:0,roi:0};
-}
-  function dLogin(){
-  console.log('로그인 클릭됨');
-}
+    const [dailyRes,kwRes,hourlyRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
+    ]);
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
-    console.log('dailyArr 확인:', dailyArr);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
 
-   const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
+    const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp      = sum(dailyArr,'imp');
     const totalClick    = sum(dailyArr,'click');
     const totalCost     = sum(dailyArr,'cost');
@@ -1582,15 +1574,17 @@ async function refreshDashboard(){
     const totalPurchaseRev  = sum(dailyArr,'purchase_rev');
     const totalCartRev      = sum(dailyArr,'cart_rev');
     function calcMetrics(imp, click, cost, conv, rev){
-  return {
-    roas: cost > 0 ? (rev / cost * 100) : 0,
-    ctr: imp > 0 ? (click / imp * 100) : 0,
-    cpc: click > 0 ? (cost / click) : 0,
-    cvr: click > 0 ? (conv / click * 100) : 0,
-    cpa: conv > 0 ? (cost / conv) : 0,
-    roi: cost > 0 ? ((rev - cost) / cost * 100) : 0
-  };
-}
+      imp=+imp||0; click=+click||0; cost=+cost||0; conv=+conv||0; rev=+rev||0;
+      return {
+        imp,click,cost,conv,rev,
+        roas: cost>0 ? rev/cost*100    : 0,
+        ctr:  imp>0  ? click/imp*100   : 0,
+        cpc:  click>0? cost/click      : 0,
+        cvr:  click>0? conv/click*100  : 0,
+        cpa:  conv>0 ? cost/conv       : 0,
+        roi:  cost>0 ? (rev-cost)/cost*100 : 0,
+      };
+    }
 
     const chMap={};
     dailyArr.forEach(r=>{
@@ -1668,6 +1662,9 @@ async function refreshDashboard(){
     const pcCost = sum(pcArr,'cost'), moCost = sum(moArr,'cost');
     const pcConv = sum(pcArr,'conv'), moConv = sum(moArr,'conv');
     const pcRev  = sum(pcArr,'rev'),  moRev  = sum(moArr,'rev');
+
+    const m0 = calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev);
+    const roas=m0.roas, ctr=m0.ctr, cpc=m0.cpc, cvr=m0.cvr, cpa=m0.cpa, roi=m0.roi;
 
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,m]=month.split('-');
@@ -3036,16 +3033,7 @@ function processFiles(files){
                   conv:parseNum(r['전환수']),
                   rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
               });
-              function function calcMetrics(imp, click, cost, conv, rev){
-  return {
-    roas: cost > 0 ? (rev / cost * 100) : 0,
-    ctr: imp > 0 ? (click / imp * 100) : 0,
-    cpc: click > 0 ? (cost / click) : 0,
-    cvr: click > 0 ? (conv / click * 100) : 0,
-    cpa: conv > 0 ? (cost / conv) : 0,
-    roi: cost > 0 ? ((rev - cost) / cost * 100) : 0
-  };
-}imp, click, cost, conv, rev){
+              function calcMetrics(imp, click, cost, conv, rev){
   imp  = +imp  || 0;
   click= +click|| 0;
   cost = +cost || 0;
