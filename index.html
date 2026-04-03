@@ -1554,11 +1554,12 @@ async function refreshDashboard(){
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=500`,{headers:h}),
-    ]);
+  fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*`,{headers:h}),
+  fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
+  fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
+]);
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
+    console.log('dailyArr 확인:', dailyArr);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
 
@@ -1571,7 +1572,7 @@ async function refreshDashboard(){
     const totalPurchaseConv = sum(dailyArr,'purchase_conv');
     const totalPurchaseRev  = sum(dailyArr,'purchase_rev');
     const totalCartRev      = sum(dailyArr,'cart_rev');
-    const {roas,ctr,cpc,cvr,cpa,roi} = calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev);
+    const {roas,ctr,cpc,cvr,cpa,roi} = calcMetrics ? calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev) : {roas:0,ctr:0,cpc:0,cvr:0,cpa:0,roi:0};
 
     const chMap={};
     dailyArr.forEach(r=>{
@@ -1716,7 +1717,9 @@ async function loadReportData(month){
   }
 
   tb.innerHTML = d.dailyList.map(r=>`<tr>
-    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap">${fmtDate(r.date)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap">
+  ${r.date || r['기간'] || '-'}
+</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.click,r.imp)}</td>
