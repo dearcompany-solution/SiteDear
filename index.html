@@ -501,6 +501,7 @@ canvas{max-height:210px}
           <div id="adminActions" style="display:none;gap:8px;align-items:center">
             <button class="btn btn-ol btn-sm" onclick="downloadClientList()">⬇ 업체 목록 다운로드</button>
             <button class="btn btn-bl btn-sm" onclick="go('register',null)">+ 계정 등록</button>
+            <button class="btn btn-bl btn-sm" id="naverSyncBtn" onclick="naverAutoSync()" style="background:var(--naver);border-color:var(--naver)">🔄 네이버 데이터 자동수집</button>
           </div>
         </div>
       </div>
@@ -1132,7 +1133,59 @@ function dpApply(){
   toast('📅 기간이 변경되었습니다');
   refreshDashboard();
 }
+/* ════ 네이버 자동 데이터 수집 ════ */
+async function naverAutoSync(){
+  const btn = document.getElementById('naverSyncBtn');
+  const isAdmin = currentUser?.role === 'admin';
+  if(!isAdmin){ toast('⚠️ 관리자만 사용 가능합니다'); return; }
 
+  // 업체 선택 확인
+  const targetClient = activeClientId || null;
+  const month = currentReportMonth || new Date().toISOString().slice(0,7);
+
+  const confirm = window.confirm(
+    `📅 ${month} 데이터를 네이버에서 자동 수집합니다.\n` +
+    (targetClient ? `업체: ${ACCOUNTS.find(a=>a.id===targetClient)?.company || targetClient}` : '전체 업체 수집 (시간이 걸릴 수 있습니다)')
+  );
+  if(!confirm) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 수집 중...';
+  toast('🔄 네이버 데이터 수집 시작...');
+
+  try{
+    const res = await fetch(
+      'https://pouqjsolszhntwkaaasj.supabase.co/functions/v1/naver-sync',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month,
+          client_key: targetClient || undefined,
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if(data.ok){
+      const success = (data.results||[]).filter(r=>r.status==='success').length;
+      const skip    = (data.results||[]).filter(r=>r.status==='skip').length;
+      const fail    = (data.results||[]).filter(r=>r.status==='error').length;
+      toast(`✅ 수집 완료! 성공 ${success}개 / 건너뜀 ${skip}개 / 실패 ${fail}개`);
+
+      // 대시보드 자동 갱신
+      setTimeout(refreshDashboard, 500);
+    } else {
+      toast(`❌ 수집 실패: ${data.error || '알 수 없는 오류'}`);
+    }
+  } catch(e){
+    toast(`❌ 연결 오류: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 네이버 데이터 자동수집';
+  }
+}
 function setQuick(type){
   dpSetPreset(type);
   dpApply();
