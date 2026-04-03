@@ -3027,7 +3027,16 @@ function processFiles(files){
                   conv:parseNum(r['전환수']),
                   rev:parseNum(r['전환매출액(원)']||r['전환매출액']||r['전환매출']||0)});
               });
-              function calcMetrics(imp, click, cost, conv, rev){
+              function function calcMetrics(imp, click, cost, conv, rev){
+  return {
+    roas: cost > 0 ? (rev / cost * 100) : 0,
+    ctr: imp > 0 ? (click / imp * 100) : 0,
+    cpc: click > 0 ? (cost / click) : 0,
+    cvr: click > 0 ? (conv / click * 100) : 0,
+    cpa: conv > 0 ? (cost / conv) : 0,
+    roi: cost > 0 ? ((rev - cost) / cost * 100) : 0
+  };
+}imp, click, cost, conv, rev){
   imp  = +imp  || 0;
   click= +click|| 0;
   cost = +cost || 0;
