@@ -676,17 +676,12 @@ async function doLogin(){
           }
         }
       } else {
-        // Supabase 응답 오류 — 클라이언트 로그인만 실패, 관리자는 이미 위에서 처리됨
+        // Supabase 응답 오류 — 클라이언트 계정 조회 실패, 아이디/비번 불일치로 처리
         console.warn('Supabase 응답 오류:', response.status);
-        errEl.textContent = "서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.";
-        errEl.style.display = 'block';
-        return;
       }
     } catch(e) {
+      // 네트워크 오류 — 클라이언트 계정 조회 실패, 아이디/비번 불일치로 처리
       console.error('로그인 중 에러 발생:', e);
-      errEl.textContent = "서버 연결에 실패했습니다.";
-      errEl.style.display = 'block';
-      return;
     }
   }
 
@@ -711,6 +706,13 @@ function doLogout(){
   document.getElementById('loginPage').style.display='flex';
   document.getElementById('lid').value='';document.getElementById('lpw').value='';
 }
+/* Enter 키로 로그인 */
+document.addEventListener('DOMContentLoaded',function(){
+  ['lid','lpw'].forEach(function(eid){
+    var el=document.getElementById(eid);
+    if(el) el.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+  });
+});
 
 /* ════════════════════════════════════════
    INIT
@@ -749,7 +751,7 @@ function initApp(restorePage){
 async function loadClientsFromSupabase(){
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/clients?select=*&is_active=eq.true&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/clients?select=*&order=created_at.desc`,
       {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
     );
     const rows = await res.json();
@@ -4752,8 +4754,6 @@ document.addEventListener('click',e=>{
   const savedClientId = sessionStorage.getItem('activeClientId');
   if(saved){
     currentUser = JSON.parse(saved);
-    if(savedClientId) activeClientId = savedClientId;
-    // activeClientId 먼저 복원 — go()의 업체 미선택 차단보다 앞서야 함
     if(savedClientId) activeClientId = savedClientId;
     document.getElementById('loginPage').style.display='none';
     document.getElementById('appShell').style.display='block';
