@@ -1054,6 +1054,7 @@ function dpRenderCal(elId, year, month, calNum){
 }
 
 function dpNavMonth(calNum, dir){
+  event.stopPropagation();
   if(calNum===1){
     dpState.viewMonth1 += dir;
     if(dpState.viewMonth1>11){dpState.viewMonth1=0;dpState.viewYear1++;}
@@ -1067,6 +1068,7 @@ function dpNavMonth(calNum, dir){
 }
 
 function dpClickDay(dateStr){
+  event.stopPropagation();
   if(!dpState.start || dpState.end){
     // 새로 시작
     dpState.start = dateStr;
@@ -1089,6 +1091,7 @@ function dpClickDay(dateStr){
 }
 
 function dpSetPreset(type){
+  event?.stopPropagation();
   const today = new Date();
   let from, to;
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
