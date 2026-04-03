@@ -460,7 +460,7 @@ canvas{max-height:210px}
     <div class="lg"><label>아이디</label><input id="lid" type="text" placeholder="아이디를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="lg"><label>비밀번호</label><input id="lpw" type="password" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="lbtn" onclick="doLogin()">로그인</button>
-    <div class="lerr" id="lerr"></div>
+    <div class="lerr" id="lerr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
   </div>
 </div>
 
@@ -1182,30 +1182,14 @@ async function naverAutoSync(){
   toast('🔄 네이버 데이터 수집 시작...');
 
   try{
-    try{
-    const targetAcc = ACCOUNTS.find(a => a.id === targetClient);
-    const naverCustomerId = targetAcc?.pw || undefined;
-
-    if(targetClient && !naverCustomerId){
-      toast('⚠️ 선택된 업체의 네이버 고객ID(비밀번호)를 찾을 수 없습니다');
-      btn.disabled = false;
-      btn.textContent = '🔄 네이버 데이터 자동수집';
-      return;
-    }
-
     const res = await fetch(
       'https://pouqjsolszhntwkaaasj.supabase.co/functions/v1/naver-sync',
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'apikey': SUPABASE_ANON_KEY,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           month,
-          client_key:        targetClient      || undefined,
-          naver_customer_id: naverCustomerId   || undefined,
+          client_key: targetClient || undefined,
         })
       }
     );
@@ -1581,11 +1565,11 @@ async function fetchReportData(month){
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
 
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
-    const totalImp      = sum(dailyArr,'imp');
-    const totalClick    = sum(dailyArr,'click');
-    const totalCost     = sum(dailyArr,'cost');
-    const totalConv     = sum(dailyArr,'conv');
-    const totalRev      = sum(dailyArr,'rev');
+    const totalImp          = sum(dailyArr,'imp');
+    const totalClick        = sum(dailyArr,'click');
+    const totalCost         = sum(dailyArr,'cost');
+    const totalConv         = sum(dailyArr,'conv');
+    const totalRev          = sum(dailyArr,'rev');
     const totalPurchaseConv = sum(dailyArr,'purchase_conv');
     const totalPurchaseRev  = sum(dailyArr,'purchase_rev');
     const totalCartRev      = sum(dailyArr,'cart_rev');
@@ -1685,6 +1669,7 @@ async function fetchReportData(month){
     return null;
   }
 }
+
 async function loadReportData(month){
   currentReportMonth=month;
   let data=await fetchReportData(month);
