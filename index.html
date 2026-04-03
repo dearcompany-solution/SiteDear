@@ -1546,18 +1546,34 @@ async function refreshDashboard(){
   try{
     const isAdmin      = currentUser?.role==='admin';
     const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+
     if(!targetClient) return null;
 
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const h={
+      'apikey':SUPABASE_ANON_KEY,
+      'Authorization':'Bearer '+SUPABASE_ANON_KEY
+    };
+
     const fromDate  = currentDateRange?.from || `${month}-01`;
     const toDate    = currentDateRange?.to   || `${month}-31`;
-    const fromMonth = fromDate.slice(0,7);
-    const toMonth   = toDate.slice(0,7);
+
     const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-  fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&select=*`,{headers:h})
-  fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
-  fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}),
-]);
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&select=*`,{headers:h}),
+    ]);
+
+    const dailyArr  = await dailyRes.json();
+    const kwArr     = await kwRes.json();
+    const hourlyArr = await hourlyRes.json();
+
+    return {dailyArr,kwArr,hourlyArr};
+
+  }catch(e){
+    console.error('fetchReportData 에러:',e);
+    return null;
+  }
+}
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     console.log('dailyArr 확인:', dailyArr);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
