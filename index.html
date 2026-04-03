@@ -4070,7 +4070,7 @@ function downloadClientExcel(){
     const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL','메모(한글명)'];
     const data = [
       [...header],
-      ['예시: 한스데이','hansdaycs','password123','공지수','https://smartstore.naver.com/hansday','한스데이'],
+      ['한스데이','hansdaycs','password123','공지수','https://smartstore.naver.com/hansday','한스데이'],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
