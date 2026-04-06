@@ -1547,14 +1547,9 @@ async function fetchReportData(month){
     const isAdmin      = currentUser?.role==='admin';
     const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
     if(!targetClient) return null;
-
     const fromDate = currentDateRange?.from || (month+'-01');
     const toDate   = currentDateRange?.to   || (month+'-31');
-    const h={
-      'apikey':SUPABASE_ANON_KEY,
-      'Authorization':'Bearer '+SUPABASE_ANON_KEY
-    };
-
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
     const [dailyRes,kwRes,hourlyRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
       fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=eq.${month}&select=*&limit=5000`,{headers:h}),
@@ -1563,105 +1558,84 @@ async function fetchReportData(month){
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
-
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
-    const totalImp          = sum(dailyArr,'imp');
-    const totalClick        = sum(dailyArr,'click');
-    const totalCost         = sum(dailyArr,'cost');
-    const totalConv         = sum(dailyArr,'conv');
-    const totalRev          = sum(dailyArr,'rev');
-    const totalPurchaseConv = sum(dailyArr,'purchase_conv');
-    const totalPurchaseRev  = sum(dailyArr,'purchase_rev');
-    const totalCartRev      = sum(dailyArr,'cart_rev');
-
+    const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
+    const totalConv=sum(dailyArr,'conv'), totalRev=sum(dailyArr,'rev');
+    const totalPurchaseConv=sum(dailyArr,'purchase_conv'), totalPurchaseRev=sum(dailyArr,'purchase_rev');
+    const totalCartRev=sum(dailyArr,'cart_rev');
     function calcMetrics(imp,click,cost,conv,rev){
       imp=+imp||0;click=+click||0;cost=+cost||0;conv=+conv||0;rev=+rev||0;
-      return {
-        imp,click,cost,conv,rev,
-        roas:cost>0?rev/cost*100:0,
-        ctr:imp>0?click/imp*100:0,
-        cpc:click>0?cost/click:0,
-        cvr:click>0?conv/click*100:0,
-        cpa:conv>0?cost/conv:0,
-        roi:cost>0?(rev-cost)/cost*100:0,
-      };
+      return {imp,click,cost,conv,rev,
+        roas:cost>0?rev/cost*100:0, ctr:imp>0?click/imp*100:0, cpc:click>0?cost/click:0,
+        cvr:click>0?conv/click*100:0, cpa:conv>0?cost/conv:0, roi:cost>0?(rev-cost)/cost*100:0};
     }
-
     const chMap={};
     dailyArr.forEach(r=>{
       const key=`${r.campaign_type||''} (${r.device||''})`;
       if(!chMap[key]) chMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
-      chMap[key].imp+=+r.imp||0;chMap[key].click+=+r.click||0;
-      chMap[key].cost+=+r.cost||0;chMap[key].conv+=+r.conv||0;chMap[key].rev+=+r.rev||0;
+      chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
+      chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
     });
     const channels=Object.values(chMap).map(c=>({...c,...calcMetrics(c.imp,c.click,c.cost,c.conv,c.rev)})).sort((a,b)=>b.cost-a.cost);
-
     const weekMap={};
     dailyArr.forEach(r=>{
       const day=new Date(r.date).getDate();
       const wk=day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
       if(!weekMap[wk]) weekMap[wk]={week:wk,imp:0,click:0,cost:0,conv:0,rev:0};
-      weekMap[wk].imp+=+r.imp||0;weekMap[wk].click+=+r.click||0;
-      weekMap[wk].cost+=+r.cost||0;weekMap[wk].conv+=+r.conv||0;weekMap[wk].rev+=+r.rev||0;
+      weekMap[wk].imp+=+r.imp||0; weekMap[wk].click+=+r.click||0;
+      weekMap[wk].cost+=+r.cost||0; weekMap[wk].conv+=+r.conv||0; weekMap[wk].rev+=+r.rev||0;
     });
     const weekly=['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
-
     const hourMap={};
     hourlyArr.forEach(r=>{
       const t=r.time_slot||'';
       if(!hourMap[t]) hourMap[t]={time:t,click:0,cost:0,conv:0,rev:0};
-      hourMap[t].click+=+r.click||0;hourMap[t].cost+=+r.cost||0;
-      hourMap[t].conv+=+r.conv||0;hourMap[t].rev+=+r.rev||0;
+      hourMap[t].click+=+r.click||0; hourMap[t].cost+=+r.cost||0;
+      hourMap[t].conv+=+r.conv||0; hourMap[t].rev+=+r.rev||0;
     });
     const hourly=Object.values(hourMap).map(h=>({...h,pct:totalClick>0?h.click/totalClick:0}));
-
     const kwMap={};
     kwArr.forEach(r=>{
       const key=`${r.keyword}__${r.campaign_type}__${r.device}`;
       if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,cost:0,click:0,conv:0,rev:0};
-      kwMap[key].cost+=+r.cost||0;kwMap[key].click+=+r.click||0;
-      kwMap[key].conv+=+r.conv||0;kwMap[key].rev+=+r.rev||0;
+      kwMap[key].cost+=+r.cost||0; kwMap[key].click+=+r.click||0;
+      kwMap[key].conv+=+r.conv||0; kwMap[key].rev+=+r.rev||0;
     });
     const topKeywords=Object.values(kwMap).map(k=>({...k,...calcMetrics(k.imp,k.click,k.cost,k.conv,k.rev)})).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
-
     const dailyMap={};
     dailyArr.forEach(r=>{
-      const d=r.date||'';if(!d)return;
+      const d=r.date||''; if(!d) return;
       if(!dailyMap[d]) dailyMap[d]={date:d,imp:0,click:0,cost:0,conv:0,rev:0};
-      dailyMap[d].imp+=+r.imp||0;dailyMap[d].click+=+r.click||0;
-      dailyMap[d].cost+=+r.cost||0;dailyMap[d].conv+=+r.conv||0;dailyMap[d].rev+=+r.rev||0;
+      dailyMap[d].imp+=+r.imp||0; dailyMap[d].click+=+r.click||0;
+      dailyMap[d].cost+=+r.cost||0; dailyMap[d].conv+=+r.conv||0; dailyMap[d].rev+=+r.rev||0;
     });
     const dailyList=Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
-
     const dowMap={0:{day:'일',imp:0,click:0,cost:0,conv:0,rev:0},1:{day:'월',imp:0,click:0,cost:0,conv:0,rev:0},2:{day:'화',imp:0,click:0,cost:0,conv:0,rev:0},3:{day:'수',imp:0,click:0,cost:0,conv:0,rev:0},4:{day:'목',imp:0,click:0,cost:0,conv:0,rev:0},5:{day:'금',imp:0,click:0,cost:0,conv:0,rev:0},6:{day:'토',imp:0,click:0,cost:0,conv:0,rev:0}};
     dailyArr.forEach(r=>{
-      if(!r.date)return;
+      if(!r.date) return;
       const dow=new Date(r.date).getDay();
-      dowMap[dow].imp+=+r.imp||0;dowMap[dow].click+=+r.click||0;
-      dowMap[dow].cost+=+r.cost||0;dowMap[dow].conv+=+r.conv||0;dowMap[dow].rev+=+r.rev||0;
+      dowMap[dow].imp+=+r.imp||0; dowMap[dow].click+=+r.click||0;
+      dowMap[dow].cost+=+r.cost||0; dowMap[dow].conv+=+r.conv||0; dowMap[dow].rev+=+r.rev||0;
     });
     const dowList=Object.values(dowMap);
-
     const pcArr=dailyArr.filter(r=>(r.device||'').includes('PC'));
     const moArr=dailyArr.filter(r=>(r.device||'').toLowerCase().includes('모바일')||(r.device||'').toLowerCase().includes('mobile'));
     const pcCost=sum(pcArr,'cost'),moCost=sum(moArr,'cost');
     const pcConv=sum(pcArr,'conv'),moConv=sum(moArr,'conv');
     const pcRev=sum(pcArr,'rev'),moRev=sum(moArr,'rev');
-
     const m0=calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev);
     const {roas,ctr,cpc,cvr,cpa,roi}=m0;
-
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,mn]=month.split('-');
     const periodLabel=currentDateRange?.from
       ?`${currentDateRange.from} ~ ${currentDateRange.to}`
       :`${y}년 ${parseInt(mn)}월`;
     return {
-      client:targetClient,period:periodLabel,manager:acc?.manager||'—',
+      client:targetClient, period:periodLabel, manager:acc?.manager||'—',
       kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
-      channels,weekly,hourly,topKeywords,insights:[],
-      dailyList,dowList,
+      channels, weekly, hourly, topKeywords, insights:[],
+      dailyList, dowList,
       device:{pcCost,moCost,pcConv,moConv,pcRev,moRev},
     };
   }catch(e){
@@ -3021,9 +2995,9 @@ function processFiles(files){
               function calcMetrics(imp,click,cost,conv,rev){
                 imp=+imp||0;click=+click||0;cost=+cost||0;conv=+conv||0;rev=+rev||0;
                 return {imp,click,cost,conv,rev,
-                  roas:cost>0?rev/cost*100:0,ctr:imp>0?click/imp*100:0,
-                  cpc:click>0?cost/click:0,cvr:click>0?conv/click*100:0,
-                  cpa:conv>0?cost/conv:0,roi:cost>0?(rev-cost)/cost*100:0};
+                  roas:cost>0?rev/cost*100:0, ctr:imp>0?click/imp*100:0,
+                  cpc:click>0?cost/click:0, cvr:click>0?conv/click*100:0,
+                  cpa:conv>0?cost/conv:0, roi:cost>0?(rev-cost)/cost*100:0};
               }
             } else if(isHourly){
               // 파일 상단 헤더 셀에서 월 추출 (예: '2026년 3월', '2026.03' 등)
@@ -4051,23 +4025,20 @@ function renderAdminTable(){
       <th style="width:40px">No</th>
       <th>업체명</th>
       <th>아이디</th>
-      <th>검색광고 ID</th>
-      <th>GFA ID</th>
       <th>메모</th>
+      <th>스토어 URL</th>
       <th style="width:80px">상태</th>
       <th style="width:110px">관리</th>
     </tr></thead><tbody>`;
     groups[team].forEach(c=>{
-      const sameId = c.naver_search_id && c.naver_search_id===c.naver_gfa_id;
       html+=`<tr class="${activeClientId===c.id?'sel-row':''}" onclick="selClient('${c.id}')" style="cursor:pointer">
         <td style="color:var(--text3);font-size:11px">${rowNum++}</td>
         <td><b>${c.company}</b></td>
         <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${c.id}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--naver)">${c.naver_search_id||'—'}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--blue)">
-          ${c.naver_gfa_id ? (sameId ? `<span style="font-size:10px;color:var(--text3)">검색광고와 동일</span>` : c.naver_gfa_id) : '—'}
+        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
+        <td style="font-size:11.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${c.url?`<a href="${c.url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none">${c.url}</a>`:'—'}
         </td>
-        <td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
         <td><div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">운영중</span></div></td>
         <td><div class="act-btns">
           <button class="btn btn-ol btn-sm" onclick="event.stopPropagation();openEditClient('${c.id}')">✏️</button>
@@ -4096,8 +4067,8 @@ function renderAdminTable(){
 function downloadClientList(){
   const list = ACCOUNTS.filter(a=>a.role==='client');
   if(!list.length){ toast('⚠️ 다운로드할 업체가 없습니다'); return; }
-  const header = ['업체명','아이디','비밀번호','담당 매니저','스토어 URL','메모','검색광고 고객ID','GFA 고객ID'];
-  const rows = list.map(c=>[c.company, c.id, c.pw||'', c.manager||'미지정', c.url||'', c.memo||'', c.naver_search_id||'', c.naver_gfa_id||'']);
+  const header = ['업체명','아이디','담당 매니저','스토어 URL'];
+  const rows = list.map(c=>[c.company, c.id, c.manager||'미지정', c.url||'']);
   const csv = [header, ...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
@@ -4131,10 +4102,8 @@ function selClient(id){
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;font-size:13px">
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">업체명</div><b>${c.company}</b></div>
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">담당 매니저</div><b>${c.manager||'미지정'}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b style="font-family:'IBM Plex Mono',monospace">${c.id}</b></div>
-        <div><div style="font-size:11px;color:var(--naver);margin-bottom:3px">🟢 검색광고 고객ID</div><b style="font-family:'IBM Plex Mono',monospace;color:var(--naver)">${c.naver_search_id||'미등록'}</b></div>
-        <div><div style="font-size:11px;color:var(--blue);margin-bottom:3px">📡 GFA 고객ID</div><b style="font-family:'IBM Plex Mono',monospace;color:var(--blue)">${c.naver_gfa_id ? (c.naver_gfa_id===c.naver_search_id?'검색광고와 동일':c.naver_gfa_id) : '미등록'}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.id}</b></div>
+        <div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px">
         <button class="btn btn-bl" onclick="go('report',null);setActive('report')">📑 보고서 확인</button>
@@ -4154,31 +4123,7 @@ function clearClientSelect(){
   setActive('admin');
 }
 /* ── 클라이언트 수정 ── */
-<div style="background:var(--naver-l);border:1.5px solid var(--naver);border-radius:var(--rsm);padding:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--naver);margin-bottom:10px">🟢 네이버 광고 계정 ID</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">검색광고 고객ID</label>
-            <input id="ec-search-id" class="fi" type="text" value="${c.naver_search_id||''}" placeholder="예: 1173069" style="font-family:'IBM Plex Mono',monospace">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">
-              GFA 고객ID
-              <label style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px;cursor:pointer">
-                <input type="checkbox" id="ec-gfa-same" ${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'checked':''} onchange="
-                  const gi=document.getElementById('ec-gfa-id');
-                  if(this.checked){gi.value=document.getElementById('ec-search-id').value;gi.disabled=true;gi.style.opacity='.4';}
-                  else{gi.disabled=false;gi.style.opacity='1';gi.value='';}
-                "> 검색광고와 동일
-              </label>
-            </label>
-            <input id="ec-gfa-id" class="fi" type="text" value="${c.naver_gfa_id||''}" placeholder="예: 9876543"
-              style="font-family:'IBM Plex Mono',monospace;${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'opacity:.4':''}"
-              ${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'disabled':''}>
-          </div>
-        </div>
-      </div>
-  function openEditClient(id){
+function openEditClient(id){
   const c=ACCOUNTS.find(a=>a.id===id);
   if(!c)return;
   document.getElementById('modalTitle').textContent='✏️ 클라이언트 수정';
@@ -4223,15 +4168,12 @@ async function saveEditClient(id){
   const c = ACCOUNTS.find(a => a.id === id);
   if(!c) return;
 
-  const name     = document.getElementById('ec-name').value.trim();
-  const newId    = document.getElementById('ec-id').value.trim();
-  const pw       = document.getElementById('ec-pw').value;
-  const mgr      = document.getElementById('ec-mgr').value;
-  const url      = document.getElementById('ec-url').value.trim();
-  const memo     = document.getElementById('ec-memo').value.trim();
-  const searchId = document.getElementById('ec-search-id')?.value.trim()||'';
-  const gfaSame  = document.getElementById('ec-gfa-same')?.checked;
-  const gfaId    = gfaSame ? searchId : (document.getElementById('ec-gfa-id')?.value.trim()||'');
+  const name  = document.getElementById('ec-name').value.trim();
+  const newId = document.getElementById('ec-id').value.trim();
+  const pw    = document.getElementById('ec-pw').value;
+  const mgr   = document.getElementById('ec-mgr').value;
+  const url   = document.getElementById('ec-url').value.trim();
+  const memo  = document.getElementById('ec-memo').value.trim();
 
   if(!name)  { toast('⚠️ 업체명을 입력해주세요'); return; }
  if(currentUser.role==='admin' && newId !== id && ACCOUNTS.find(a=>a.id===newId)){
@@ -4241,14 +4183,7 @@ async function saveEditClient(id){
   toast('💾 저장 중...');
 
   try {
-    const updateData = {
-      company_name:    name,
-      manager:         mgr,
-      store_url:       url,
-      memo,
-      naver_search_id: searchId || null,
-      naver_gfa_id:    gfaId    || null,
-    };
+    const updateData = { company_name: name, manager: mgr, store_url: url, memo };
     if(currentUser.role==='admin' && newId && newId !== id) updateData.client_key = newId;
     if(pw) updateData.password = pw;
 
@@ -4276,13 +4211,11 @@ async function saveEditClient(id){
       c.id = newId;
       if(activeClientId === id) activeClientId = newId;
     }
-    c.company        = name;
-    c.name           = name;
-    c.manager        = mgr;
-    c.url            = url;
-    c.memo           = memo;
-    c.naver_search_id = searchId;
-    c.naver_gfa_id    = gfaId;
+    c.company = name;
+    c.name    = name;
+    c.manager = mgr;
+    c.url     = url;
+    c.memo    = memo;
     if(pw) c.pw = pw;
 
     closeModal();
@@ -4459,8 +4392,7 @@ function openBulkRegister(){
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px">
       <div style="background:var(--blue-l);border:1.5px solid rgba(59,130,246,.2);border-radius:var(--rsm);padding:12px;font-size:12.5px;color:var(--blue);line-height:1.8">
-        📌 <b>엑셀 형식:</b> 업체명 / 아이디 / 비밀번호 / 담당매니저 / 스토어URL / 메모 / 검색광고ID / GFA ID<br>
-        📌 검색광고ID와 GFA ID가 같으면 GFA ID 칸에 동일하게 입력하세요<br>
+        📌 <b>엑셀 형식:</b> 업체명 / 아이디 / 비밀번호 / 담당매니저 / 스토어URL / 메모(한글명)<br>
         📌 첫 번째 행은 헤더로 자동 건너뜁니다<br>
         📌 기존 아이디와 중복되는 업체는 자동 건너뜁니다
       </div>
@@ -4523,15 +4455,13 @@ function previewBulkExcel(file){
 
         // 중복 체크
         bulkData = dataRows.map(r=>({
-          company:   String(r[0]||'').trim(),
-          id:        String(r[1]||'').trim(),
-          pw:        String(r[2]||'').trim(),
-          manager:   String(r[3]||'').trim(),
-          url:       String(r[4]||'').trim(),
-          memo:      String(r[5]||'').trim(),
-          search_id: String(r[6]||'').trim(),
-          gfa_id:    String(r[7]||'').trim() || String(r[6]||'').trim(),
-          dup:       !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
+          company: String(r[0]||'').trim(),
+          id:      String(r[1]||'').trim(),
+          pw:      String(r[2]||'').trim(),
+          manager: String(r[3]||'').trim(),
+          url:     String(r[4]||'').trim(),
+          memo:    String(r[5]||'').trim(),
+          dup:     !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
         })).filter(r=>r.company&&r.id&&r.pw);
 
         const newCount  = bulkData.filter(r=>!r.dup).length;
@@ -4552,8 +4482,7 @@ function previewBulkExcel(file){
                 <th>업체명</th>
                 <th>아이디</th>
                 <th>담당 매니저</th>
-                <th>검색광고 ID</th>
-                <th>GFA ID</th>
+                <th>스토어 URL</th>
                 <th style="width:100px">상태</th>
               </tr></thead>
               <tbody>
@@ -4562,8 +4491,7 @@ function previewBulkExcel(file){
                   <td><b>${r.company}</b></td>
                   <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${r.id}</td>
                   <td style="font-size:12px">${r.manager||'미지정'}</td>
-                  <td style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--naver)">${r.search_id||'—'}</td>
-                  <td style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--blue)">${r.gfa_id&&r.gfa_id!==r.search_id?r.gfa_id:(r.gfa_id?'동일':'—')}</td>
+                  <td style="font-size:11.5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--blue)">${r.url||'—'}</td>
                   <td>${r.dup
                     ? `<span style="font-size:11px;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px;border:1px solid var(--border)">중복</span>`
                     : `<div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">신규 등록</span></div>`
@@ -4606,19 +4534,17 @@ async function executeBulkRegister(){
           'Prefer':'return=representation'
         },
         body:JSON.stringify({
-          client_key:      c.id,
-          password:        c.pw,
-          company_name:    c.company,
-          manager:         c.manager,
-          store_url:       c.url,
-          memo:            c.memo||'',
-          naver_search_id: c.search_id||null,
-          naver_gfa_id:    c.gfa_id||null,
-          is_active:       true
+          client_key:   c.id,
+          password:     c.pw,
+          company_name: c.company,
+          manager:      c.manager,
+          store_url:    c.url,
+          memo:         c.memo||'',
+          is_active:    true
         })
       });
       if(!res.ok) throw new Error(await res.text());
-      ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url, memo:c.memo||'', naver_search_id:c.search_id||'', naver_gfa_id:c.gfa_id||''});
+      ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url, memo:c.memo||''});
       successCount++;
     }catch(err){
       console.error(`${c.company} 등록 실패:`, err);
