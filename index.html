@@ -4042,20 +4042,29 @@ function renderAdminTable(){
       <th style="width:40px">No</th>
       <th>업체명</th>
       <th>아이디</th>
+      <th>검색광고 ID</th>
+      <th>GFA ID</th>
       <th>메모</th>
-      <th>스토어 URL</th>
       <th style="width:80px">상태</th>
       <th style="width:110px">관리</th>
     </tr></thead><tbody>`;
     groups[team].forEach(c=>{
+      const sameId = c.naver_search_id && c.naver_search_id===c.naver_gfa_id;
       html+=`<tr class="${activeClientId===c.id?'sel-row':''}" onclick="selClient('${c.id}')" style="cursor:pointer">
         <td style="color:var(--text3);font-size:11px">${rowNum++}</td>
         <td><b>${c.company}</b></td>
         <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${c.id}</td>
-        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
-        <td style="font-size:11.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${c.url?`<a href="${c.url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none">${c.url}</a>`:'—'}
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">
+          ${c.naver_search_id
+            ? `<span style="color:var(--naver);font-weight:600">${c.naver_search_id}</span>`
+            : `<span style="color:var(--red);font-size:11px">⚠️ 미등록</span>`}
         </td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">
+          ${c.naver_gfa_id
+            ? (sameId ? `<span style="color:var(--text3);font-size:11px">검색광고와 동일</span>` : `<span style="color:var(--blue);font-weight:600">${c.naver_gfa_id}</span>`)
+            : `<span style="color:var(--text3);font-size:11px">—</span>`}
+        </td>
+        <td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
         <td><div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">운영중</span></div></td>
         <td><div class="act-btns">
           <button class="btn btn-ol btn-sm" onclick="event.stopPropagation();openEditClient('${c.id}')">✏️</button>
@@ -4119,8 +4128,22 @@ function selClient(id){
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;font-size:13px">
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">업체명</div><b>${c.company}</b></div>
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">담당 매니저</div><b>${c.manager||'미지정'}</b></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b>${c.id}</b></div>
-        <div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">클라이언트 ID</div><b style="font-family:'IBM Plex Mono',monospace">${c.id}</b></div>
+        <div>
+          <div style="font-size:11px;color:var(--naver);margin-bottom:3px">🟢 검색광고 고객ID</div>
+          <b style="font-family:'IBM Plex Mono',monospace;color:${c.naver_search_id?'var(--naver)':'var(--red)'}">
+            ${c.naver_search_id||'⚠️ 미등록 — 자동수집 불가'}
+          </b>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--blue);margin-bottom:3px">📡 GFA 고객ID</div>
+          <b style="font-family:'IBM Plex Mono',monospace;color:var(--blue)">
+            ${c.naver_gfa_id
+              ? (c.naver_gfa_id===c.naver_search_id ? '검색광고와 동일' : c.naver_gfa_id)
+              : '—'}
+          </b>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">URL</div><a href="${c.url}" style="color:var(--blue);text-decoration:none">${c.url||'미등록'}</a></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px">
         <button class="btn btn-bl" onclick="go('report',null);setActive('report')">📑 보고서 확인</button>
