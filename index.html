@@ -4527,7 +4527,8 @@ function previewBulkExcel(file){
           return;
         }
 
-        // 중복 체크
+        // 중복 체크 (DB + 엑셀 내부 중복 모두 감지)
+        const seenIds = new Set();
         bulkData = dataRows.map(r=>({
           company:   String(r[0]||'').trim(),
           id:        String(r[1]||'').trim(),
@@ -4538,7 +4539,11 @@ function previewBulkExcel(file){
           search_id: String(r[6]||'').trim(),
           gfa_id:    String(r[7]||'').trim() || String(r[6]||'').trim(),
           dup:       !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
-        })).filter(r=>r.company&&r.id&&r.pw);
+        })).filter(r=>r.company&&r.id&&r.pw).map(r=>{
+          if(seenIds.has(r.id)){ r.dup=true; }
+          else { seenIds.add(r.id); }
+          return r;
+        });
 
         const newCount  = bulkData.filter(r=>!r.dup).length;
         const dupCount  = bulkData.filter(r=>r.dup).length;
