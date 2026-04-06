@@ -1182,14 +1182,29 @@ async function naverAutoSync(){
   toast('🔄 네이버 데이터 수집 시작...');
 
   try{
+    const targetAcc = ACCOUNTS.find(a => a.id === targetClient);
+
+    if(targetClient && !targetAcc?.naver_search_id){
+      toast('⚠️ 선택된 업체의 검색광고 고객ID가 등록되지 않았습니다');
+      btn.disabled = false;
+      btn.textContent = '🔄 네이버 데이터 자동수집';
+      return;
+    }
+
     const res = await fetch(
       'https://pouqjsolszhntwkaaasj.supabase.co/functions/v1/naver-sync',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'apikey': SUPABASE_ANON_KEY,
+        },
         body: JSON.stringify({
           month,
-          client_key: targetClient || undefined,
+          client_key:       targetClient                 || undefined,
+          naver_search_id:  targetAcc?.naver_search_id  || undefined,
+          naver_gfa_id:     targetAcc?.naver_gfa_id     || undefined,
         })
       }
     );
