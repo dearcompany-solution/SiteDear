@@ -770,14 +770,16 @@ async function loadClientsFromSupabase(){
     rows.forEach(row=>{
       if(row.client_key==='dearcompany') return;
       ACCOUNTS.push({
-        id:      row.client_key,
-        pw:      row.password,
-        role:    'client',
-        name:    row.company_name,
-        company: row.company_name,
-        manager: row.manager   || '',
-        url:     row.store_url || '',
-        memo:    row.memo      || '',
+        id:             row.client_key,
+        pw:             row.password,
+        role:           'client',
+        name:           row.company_name,
+        company:        row.company_name,
+        manager:        row.manager        || '',
+        url:            row.store_url      || '',
+        memo:           row.memo           || '',
+        naver_search_id: row.naver_search_id || '',
+        naver_gfa_id:    row.naver_gfa_id    || '',
       });
     });
 
