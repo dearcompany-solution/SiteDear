@@ -4396,7 +4396,37 @@ async function registerAcc(){
   if(!name||!id||!pw){ toast('⚠️ 업체명, 아이디, 비밀번호는 필수입니다'); return; }
   if(!mgr){ toast('⚠️ 담당 매니저를 선택해주세요'); return; }
   if(pw!==pw2){ toast('⚠️ 비밀번호가 일치하지 않습니다'); return; }
-  if(ACCOUNTS.find(a=>a.id===id)){ toast('⚠️ 이미 사용 중인 아이디입니다'); return; }
+
+  // 중복 체크 — 아이디 / 업체명 / 검색광고ID / GFA ID
+  const clients = ACCOUNTS.filter(a=>a.role==='client');
+
+  const dupId = clients.find(a=>a.id===id);
+  if(dupId){
+    alert(`⚠️ 중복 아이디\n\n이미 등록된 아이디입니다.\n업체명: ${dupId.company}\n아이디: ${dupId.id}\n\n등록이 차단되었습니다.`);
+    return;
+  }
+
+  const dupName = clients.find(a=>a.company===name);
+  if(dupName){
+    alert(`⚠️ 중복 업체명\n\n이미 동일한 업체명이 존재합니다.\n업체명: ${dupName.company}\n아이디: ${dupName.id}\n\n등록이 차단되었습니다.`);
+    return;
+  }
+
+  if(searchId){
+    const dupSearch = clients.find(a=>a.naver_search_id===searchId);
+    if(dupSearch){
+      alert(`⚠️ 중복 검색광고 고객ID\n\n이미 동일한 검색광고 ID가 존재합니다.\n업체명: ${dupSearch.company}\n검색광고ID: ${searchId}\n\n등록이 차단되었습니다.`);
+      return;
+    }
+  }
+
+  if(gfaId){
+    const dupGfa = clients.find(a=>a.naver_gfa_id===gfaId);
+    if(dupGfa){
+      alert(`⚠️ 중복 GFA 고객ID\n\n이미 동일한 GFA ID가 존재합니다.\n업체명: ${dupGfa.company}\nGFA ID: ${gfaId}\n\n등록이 차단되었습니다.`);
+      return;
+    }
+  }
 
   toast('💾 저장 중...');
 
@@ -4527,8 +4557,13 @@ function previewBulkExcel(file){
           return;
         }
 
-        // 중복 체크 (DB + 엑셀 내부 중복 모두 감지)
-        const seenIds = new Set();
+        // 중복 체크 — 아이디 / 업체명 / 검색광고ID / GFA ID (DB + 엑셀 내부)
+        const clients = ACCOUNTS.filter(a=>a.role==='client');
+        const seenIds      = new Set();
+        const seenNames    = new Set();
+        const seenSearchIds = new Set();
+        const seenGfaIds   = new Set();
+
         bulkData = dataRows.map(r=>({
           company:   String(r[0]||'').trim(),
           id:        String(r[1]||'').trim(),
@@ -4538,10 +4573,40 @@ function previewBulkExcel(file){
           memo:      String(r[5]||'').trim(),
           search_id: String(r[6]||'').trim(),
           gfa_id:    String(r[7]||'').trim() || String(r[6]||'').trim(),
-          dup:       !!ACCOUNTS.find(a=>a.id===String(r[1]||'').trim())
+          dup:       false,
+          dup_reason: ''
         })).filter(r=>r.company&&r.id&&r.pw).map(r=>{
-          if(seenIds.has(r.id)){ r.dup=true; }
-          else { seenIds.add(r.id); }
+          // DB 중복 체크
+          if(clients.find(a=>a.id===r.id)){
+            r.dup=true; r.dup_reason='아이디 중복'; return r;
+          }
+          if(clients.find(a=>a.company===r.company)){
+            r.dup=true; r.dup_reason='업체명 중복'; return r;
+          }
+          if(r.search_id && clients.find(a=>a.naver_search_id===r.search_id)){
+            r.dup=true; r.dup_reason='검색광고ID 중복'; return r;
+          }
+          if(r.gfa_id && clients.find(a=>a.naver_gfa_id===r.gfa_id)){
+            r.dup=true; r.dup_reason='GFA ID 중복'; return r;
+          }
+          // 엑셀 내부 중복 체크
+          if(seenIds.has(r.id)){
+            r.dup=true; r.dup_reason='엑셀 내 아이디 중복'; return r;
+          }
+          if(seenNames.has(r.company)){
+            r.dup=true; r.dup_reason='엑셀 내 업체명 중복'; return r;
+          }
+          if(r.search_id && seenSearchIds.has(r.search_id)){
+            r.dup=true; r.dup_reason='엑셀 내 검색광고ID 중복'; return r;
+          }
+          if(r.gfa_id && seenGfaIds.has(r.gfa_id)){
+            r.dup=true; r.dup_reason='엑셀 내 GFA ID 중복'; return r;
+          }
+          // 정상 — Set에 추가
+          seenIds.add(r.id);
+          seenNames.add(r.company);
+          if(r.search_id) seenSearchIds.add(r.search_id);
+          if(r.gfa_id) seenGfaIds.add(r.gfa_id);
           return r;
         });
 
@@ -4576,7 +4641,7 @@ function previewBulkExcel(file){
                   <td style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--naver)">${r.search_id||'—'}</td>
                   <td style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--blue)">${r.gfa_id&&r.gfa_id!==r.search_id?r.gfa_id:(r.gfa_id?'동일':'—')}</td>
                   <td>${r.dup
-                    ? `<span style="font-size:11px;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px;border:1px solid var(--border)">중복</span>`
+                    ? `<span style="font-size:11px;color:var(--red);background:var(--red-l);padding:2px 8px;border-radius:20px;border:1px solid rgba(239,68,68,.2)" title="${r.dup_reason}">🚫 ${r.dup_reason||'중복'}</span>`
                     : `<div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">신규 등록</span></div>`
                   }</td>
                 </tr>`).join('')}
