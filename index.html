@@ -4290,14 +4290,34 @@ function htmlRegister(){return `
   <div class="reg-form">
     <div style="font-size:14px;font-weight:600;margin-bottom:16px">계정 정보 입력</div>
     <div class="reg-grid">
-      <div class="rg"><label>업체명 *</label><input type="text" id="rg-name" placeholder="예: 브랜드 C"></div>
-      <div class="rg"><label>아이디 *</label><input type="text" id="rg-id" placeholder="예: brand-c"></div>
+      <div class="rg"><label>업체명 *</label><input type="text" id="rg-name" placeholder="예: 한스데이"></div>
+      <div class="rg"><label>아이디 *</label><input type="text" id="rg-id" placeholder="예: hansday"></div>
       <div class="rg"><label>비밀번호 *</label><input type="password" id="rg-pw"></div>
       <div class="rg"><label>비밀번호 확인 *</label><input type="password" id="rg-pw2"></div>
       <div class="rg"><label>담당 매니저 *</label><select id="rg-mgr"><option value="">선택하세요</option>${MANAGERS.map(m=>`<option>${m}</option>`).join('')}</select></div>
-      
-      <div class="rg full"><label>스토어 URL</label><input type="text" id="rg-url" placeholder="https://..."></div>
+      <div class="rg full"><label>스토어 URL</label><input type="text" id="rg-url" placeholder="https://smartstore.naver.com/..."></div>
       <div class="rg full"><label>메모</label><textarea id="rg-memo" class="fi" style="height:60px;resize:none" placeholder="업체 실제 이름, 특이사항 등 자유롭게 입력"></textarea></div>
+      <div class="rg full" style="background:var(--naver-l);border:1.5px solid var(--naver);border-radius:var(--rsm);padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--naver);margin-bottom:10px">🟢 네이버 광고 계정 ID</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="rg" style="margin:0">
+            <label>검색광고 고객ID</label>
+            <input type="text" id="rg-search-id" placeholder="예: 1173069" style="font-family:'IBM Plex Mono',monospace">
+          </div>
+          <div class="rg" style="margin:0">
+            <label>GFA 고객ID &nbsp;
+              <label style="font-size:11px;font-weight:400;color:var(--text3);cursor:pointer">
+                <input type="checkbox" id="rg-gfa-same" onchange="
+                  const gi=document.getElementById('rg-gfa-id');
+                  if(this.checked){gi.value=document.getElementById('rg-search-id').value;gi.disabled=true;gi.style.opacity='.4';}
+                  else{gi.disabled=false;gi.style.opacity='1';gi.value='';}
+                "> 검색광고와 동일
+              </label>
+            </label>
+            <input type="text" id="rg-gfa-id" placeholder="예: 9876543" style="font-family:'IBM Plex Mono',monospace">
+          </div>
+        </div>
+      </div>
     </div>
     <div style="margin-top:16px;display:flex;gap:9px">
       <button class="btn btn-in" onclick="registerAcc()">✅ 계정 생성</button>
@@ -4315,13 +4335,16 @@ function htmlRegister(){return `
 </div>`;}
 
 async function registerAcc(){
-  const name = document.getElementById('rg-name').value.trim();
-  const id   = document.getElementById('rg-id').value.trim();
-  const pw   = document.getElementById('rg-pw').value;
-  const pw2  = document.getElementById('rg-pw2').value;
-  const mgr  = document.getElementById('rg-mgr').value;
-  const url  = document.getElementById('rg-url')?.value.trim()||'';
-  const memo = document.getElementById('rg-memo')?.value.trim()||'';
+  const name     = document.getElementById('rg-name').value.trim();
+  const id       = document.getElementById('rg-id').value.trim();
+  const pw       = document.getElementById('rg-pw').value;
+  const pw2      = document.getElementById('rg-pw2').value;
+  const mgr      = document.getElementById('rg-mgr').value;
+  const url      = document.getElementById('rg-url')?.value.trim()||'';
+  const memo     = document.getElementById('rg-memo')?.value.trim()||'';
+  const searchId = document.getElementById('rg-search-id')?.value.trim()||'';
+  const gfaSame  = document.getElementById('rg-gfa-same')?.checked;
+  const gfaId    = gfaSame ? searchId : (document.getElementById('rg-gfa-id')?.value.trim()||'');
 
   if(!name||!id||!pw){ toast('⚠️ 업체명, 아이디, 비밀번호는 필수입니다'); return; }
   if(!mgr){ toast('⚠️ 담당 매니저를 선택해주세요'); return; }
@@ -4340,12 +4363,15 @@ async function registerAcc(){
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
-        client_key:   id,
-        password:     pw,
-        company_name: name,
-        manager:      mgr,
-        store_url:    url,
-        is_active:    true
+        client_key:      id,
+        password:        pw,
+        company_name:    name,
+        manager:         mgr,
+        store_url:       url,
+        memo:            memo,
+        naver_search_id: searchId||null,
+        naver_gfa_id:    gfaId||null,
+        is_active:       true
       })
     });
 
@@ -4357,7 +4383,7 @@ async function registerAcc(){
     }
 
     // DB 저장 성공 후 로컬에도 추가
-    ACCOUNTS.push({id, pw, role:'client', name, company:name, manager:mgr, url});
+    ACCOUNTS.push({id, pw, role:'client', name, company:name, manager:mgr, url, memo, naver_search_id:searchId, naver_gfa_id:gfaId});
     toast(`✅ ${name} 등록 완료!`);
     clearReg();
     renderContent('register');
@@ -4569,7 +4595,11 @@ async function executeBulkRegister(){
   }
   renderContent('admin');
 }
-function clearReg(){['rg-name','rg-id','rg-pw','rg-pw2','rg-url','rg-memo'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});const s=document.getElementById('rg-mgr');if(s)s.value='';}
+function clearReg(){
+  ['rg-name','rg-id','rg-pw','rg-pw2','rg-url','rg-memo','rg-search-id','rg-gfa-id'].forEach(i=>{const el=document.getElementById(i);if(el){el.value='';el.disabled=false;el.style.opacity='1';}});
+  const s=document.getElementById('rg-mgr');if(s)s.value='';
+  const cb=document.getElementById('rg-gfa-same');if(cb)cb.checked=false;
+}
 
 /* ════════════════════════════════════════
    CHARTS
