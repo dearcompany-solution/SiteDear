@@ -4174,6 +4174,30 @@ function openEditClient(id){
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">메모</label>
         <textarea id="ec-memo" class="fi" style="height:70px;resize:none" placeholder="업체 실제 이름, 특이사항 등 자유롭게 입력">${c.memo||''}</textarea>
       </div>
+      <div style="background:var(--naver-l);border:1.5px solid var(--naver);border-radius:var(--rsm);padding:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--naver);margin-bottom:10px">🟢 네이버 광고 계정 ID</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11.5px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">검색광고 고객ID</label>
+            <input id="ec-search-id" class="fi" type="text" value="${c.naver_search_id||''}" placeholder="예: 1173069" style="font-family:'IBM Plex Mono',monospace">
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <label style="font-size:11.5px;font-weight:600;color:var(--text2)">GFA 고객ID</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);cursor:pointer;font-weight:400">
+                <input type="checkbox" id="ec-gfa-same" ${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'checked':''} onchange="
+                  const gi=document.getElementById('ec-gfa-id');
+                  if(this.checked){gi.value=document.getElementById('ec-search-id').value;gi.disabled=true;gi.style.opacity='.4';}
+                  else{gi.disabled=false;gi.style.opacity='1';gi.value='';}
+                "> 검색광고와 동일
+              </label>
+            </div>
+            <input id="ec-gfa-id" class="fi" type="text" value="${c.naver_gfa_id||''}" placeholder="예: 9876543"
+              style="font-family:'IBM Plex Mono',monospace;${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'opacity:.4':''}"
+              ${c.naver_gfa_id&&c.naver_gfa_id===c.naver_search_id?'disabled':''}>
+          </div>
+        </div>
+      </div>
     </div>`;
   document.getElementById('modalFooter').innerHTML=`
     <button class="btn btn-ol" onclick="closeModal()">취소</button>
@@ -4185,12 +4209,15 @@ async function saveEditClient(id){
   const c = ACCOUNTS.find(a => a.id === id);
   if(!c) return;
 
-  const name  = document.getElementById('ec-name').value.trim();
-  const newId = document.getElementById('ec-id').value.trim();
-  const pw    = document.getElementById('ec-pw').value;
-  const mgr   = document.getElementById('ec-mgr').value;
-  const url   = document.getElementById('ec-url').value.trim();
-  const memo  = document.getElementById('ec-memo').value.trim();
+  const name     = document.getElementById('ec-name').value.trim();
+  const newId    = document.getElementById('ec-id').value.trim();
+  const pw       = document.getElementById('ec-pw').value;
+  const mgr      = document.getElementById('ec-mgr').value;
+  const url      = document.getElementById('ec-url').value.trim();
+  const memo     = document.getElementById('ec-memo').value.trim();
+  const searchId = document.getElementById('ec-search-id')?.value.trim()||'';
+  const gfaSame  = document.getElementById('ec-gfa-same')?.checked;
+  const gfaId    = gfaSame ? searchId : (document.getElementById('ec-gfa-id')?.value.trim()||'');
 
   if(!name)  { toast('⚠️ 업체명을 입력해주세요'); return; }
  if(currentUser.role==='admin' && newId !== id && ACCOUNTS.find(a=>a.id===newId)){
@@ -4200,7 +4227,7 @@ async function saveEditClient(id){
   toast('💾 저장 중...');
 
   try {
-    const updateData = { company_name: name, manager: mgr, store_url: url, memo };
+    const updateData = { company_name: name, manager: mgr, store_url: url, memo, naver_search_id: searchId||null, naver_gfa_id: gfaId||null };
     if(currentUser.role==='admin' && newId && newId !== id) updateData.client_key = newId;
     if(pw) updateData.password = pw;
 
@@ -4228,11 +4255,13 @@ async function saveEditClient(id){
       c.id = newId;
       if(activeClientId === id) activeClientId = newId;
     }
-    c.company = name;
-    c.name    = name;
-    c.manager = mgr;
-    c.url     = url;
-    c.memo    = memo;
+    c.company         = name;
+    c.name            = name;
+    c.manager         = mgr;
+    c.url             = url;
+    c.memo            = memo;
+    c.naver_search_id = searchId;
+    c.naver_gfa_id    = gfaId;
     if(pw) c.pw = pw;
 
     closeModal();
