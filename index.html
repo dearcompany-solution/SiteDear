@@ -2936,7 +2936,7 @@ function saveOneFile(fileObj, client) {
 
         // ① 헤더 행 자동 탐색 (최대 10행 내에서)
         let headerIdx = -1, cols = [];
-        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드','게재 위치','광고 계정 이름','기간','캠페인유형','캠페인','PC/모바일 매체'];
+        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드','게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체'];
         for (let i = 0; i < Math.min(lines.length, 20); i++) {
           const c = csvParseLine(lines[i]);
           if (c.some(x => TARGET_COLS.includes(x.trim()))) {
@@ -2965,7 +2965,7 @@ function saveOneFile(fileObj, client) {
         const hasGFA      = cols.includes('게재 위치') || (cols.includes('기간') && cols.includes('광고 계정 이름'));
         const hasCampaign = cols.includes('캠페인유형') && cols.includes('캠페인');
         const hasDevice   = cols.includes('PC/모바일 매체') && !hasCampaign;
-        const kwCol      = cols.find(c => ['검색어','키워드명','키워드'].includes(c)) || '검색어';
+        const kwCol       = cols.find(c => ['검색어','키워드명','키워드'].includes(c)) || '검색어';
 
         const rows = [];
         for (let i = headerIdx + 1; i < lines.length; i++) {
