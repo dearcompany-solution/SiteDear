@@ -2536,7 +2536,8 @@ function openUploadReport(){
 ════════════════════════════════════════ */
 let uploadedFiles=[];
 let parsedTableData=[];
-let currentInputTab='upload';
+// 🌟 세션 저장소에 저장된 탭이 있으면 불러오고, 없으면 기본값 'upload' 사용
+let currentInputTab = sessionStorage.getItem('currentInputTab') || 'upload';
 
 function loadSheetJS(cb){
   // 상단에서 이미 로드했으므로 바로 실행하거나, 없을 경우 대비
