@@ -548,6 +548,9 @@ canvas{max-height:210px}
   </div>
 </div>
         </div>
+        <div id="reportPdfBtn" style="display:none">
+          <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+        </div>
     </header>
     <div class="content" id="appContent"></div>
   </main>
@@ -1403,10 +1406,6 @@ function htmlReport(){
   }).join('');
 
   return `
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
-</div>
-
   <div class="rpt-kpi-row">
     <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="rk-imp">—</div><div class="rpt-kpi-sub" id="rk-imp-sub"></div></div>
     <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="rk-click">—</div><div class="rpt-kpi-sub" id="rk-click-sub"></div></div>
