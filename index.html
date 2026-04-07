@@ -2162,9 +2162,9 @@ function renderUploadTab(){
 
   const fileRows=uploadedFiles.map((f,i)=>`
     <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border:1.5px solid ${f.status==='저장완료'?'var(--naver)':f.status==='저장실패'?'var(--red)':'var(--border)'};border-radius:var(--rsm);box-shadow:var(--sh)">
-      <div style="font-size:22px">${f.name.endsWith('.csv')?'📄':'📊'}</div>
+      <div style="font-size:22px;cursor:pointer" onclick="previewFile(${i})" title="파일 미리보기">${f.name.endsWith('.csv')?'📄':'📊'}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:var(--blue)" onclick="previewFile(${i})" title="클릭하여 파일 열기">${f.name}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
           <span>${f.size}</span>
           <span style="font-weight:600;color:${f.status==='저장완료'?'var(--naver)':f.status==='저장실패'?'var(--red)':f.status==='저장중'?'var(--gold)':'var(--text2)'}">
@@ -2174,7 +2174,10 @@ function renderUploadTab(){
           ${f.savedCount?`<span>${f.savedCount}건</span>`:''}
         </div>
       </div>
-      <button class="btn btn-ol btn-sm" onclick="removeFile(${i})" style="color:var(--red);flex-shrink:0">🗑</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ol btn-sm" onclick="previewFile(${i})" title="파일 열기">🔍 열기</button>
+        <button class="btn btn-ol btn-sm" onclick="removeFile(${i})" style="color:var(--red)">🗑</button>
+      </div>
     </div>`).join('');
 
   const pendingCount=uploadedFiles.filter(f=>f.status==='대기중').length;
@@ -2262,7 +2265,93 @@ function renderDataTab(){
       </div>
     </div>
     <div id="dataTableWrap">${renderDataTable(selType,selClient,selMonth)}</div>
-  </div>`;}
+    <div class="card" style="margin-top:16px;padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">📋 업로드 이력</div>
+        <button class="btn btn-ol btn-sm" onclick="loadUploadLogs()">🔄 새로고침</button>
+      </div>
+      <div id="uploadLogWrap" style="padding:14px 20px">
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">불러오는 중...</div>
+      </div>
+    </div>
+  </div>`;
+  loadUploadLogs(selClient);
+}
+
+async function loadUploadLogs(clientFilter){
+  const wrap = document.getElementById('uploadLogWrap');
+  if(!wrap) return;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const isAdmin = currentUser?.role==='admin';
+    const targetClient = clientFilter || (isAdmin ? (activeClientId||'') : (currentUser?.id||''));
+    let url = `${SUPABASE_URL}/rest/v1/upload_logs?select=*&order=uploaded_at.desc&limit=100`;
+    if(targetClient) url += `&client_key=eq.${targetClient}`;
+    const res = await fetch(url,{headers:h});
+    const logs = await res.json();
+
+    if(!Array.isArray(logs)||!logs.length){
+      wrap.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">업로드 이력이 없습니다</div>`;
+      return;
+    }
+
+    const typeLabel = {
+      daily:'📅 일별', keyword:'🔑 키워드', hourly:'🕐 시간대별',
+      gfa_daily:'📡 GFA 일별', gfa_placement:'📍 GFA 매체별', unknown:'📄 기타'
+    };
+
+    const rows = logs.map(log=>{
+      const dt = new Date(log.uploaded_at);
+      const dateStr = `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+      const timeStr = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      const acc = ACCOUNTS.find(a=>a.id===log.client_key);
+      const company = acc?.company || log.client_key;
+      const label = typeLabel[log.file_type] || '📄';
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:18px;flex-shrink:0">${log.file_name.endsWith('.csv')?'📄':'📊'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+              onclick="downloadUploadLog('${log.file_name}')" title="클릭하여 파일명 복사">
+              ${log.file_name}
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
+              <span style="color:var(--blue);font-weight:600">${company}</span>
+              <span>${label}</span>
+              ${log.month?`<span style="color:var(--indigo);font-weight:600">${log.month}</span>`:''}
+              <span>${log.row_count}건</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);text-align:right;flex-shrink:0;font-family:'IBM Plex Mono',monospace">
+            <div>${dateStr}</div>
+            <div>${timeStr}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    wrap.innerHTML = `<div style="display:flex;flex-direction:column">${rows}</div>`;
+  }catch(e){
+    wrap.innerHTML=`<div style="color:var(--red);font-size:13px;padding:10px">이력 로드 실패: ${e.message}</div>`;
+  }
+}
+
+function downloadUploadLog(fileName){
+  // 현재 세션의 uploadedFiles에서 찾아서 다운로드
+  const f = uploadedFiles.find(u=>u.name===fileName);
+  if(f&&f.file){
+    const url = URL.createObjectURL(f.file);
+    const a = document.createElement('a');
+    a.href=url; a.download=fileName; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  } else {
+    // 세션에 없으면 파일명 클립보드 복사
+    navigator.clipboard?.writeText(fileName).then(()=>{
+      toast(`📋 "${fileName}" 파일명이 복사되었습니다. 파일을 다시 업로드하면 다운로드 가능합니다.`);
+    }).catch(()=>{
+      toast(`ℹ️ "${fileName}" — 파일을 다시 업로드하면 열람 가능합니다.`);
+    });
+  }
+}
 
 function renderDataTable(type,client,month){
   const data=parsedTableData.filter(r=>{
@@ -2712,6 +2801,7 @@ function saveOneFile(fileObj, client) {
             fileObj.status='저장완료'; fileObj.savedMonth=gfaMonth; fileObj.savedCount=gfaRows.length;
             renderUploadTab();
             toast(`✅ ${fileObj.name} GFA ${isDaily?'일별':'매체별'} — ${gfaRows.length}개 저장 완료!`);
+            saveUploadLog(client, fileObj.name, isDaily?'gfa_daily':'gfa_placement', gfaMonth, gfaRows.length);
           }).catch(err=>{
             fileObj.status='저장실패'; renderUploadTab();
             toast('❌ GFA 저장 실패: '+err.message);
@@ -2748,7 +2838,8 @@ function saveOneFile(fileObj, client) {
           fileObj.savedType  = dtype;
           fileObj.savedCount = rows.length;
           renderUploadTab();
-          toast(`✅ ${fileObj.name} — ${rows.length}개 저장 완료!`);
+          toast(`✅ ${fileObj.name} 저장완료 — ${rows.length}건`);
+            saveUploadLog(client, fileObj.name, dtype, month, rows.length);
         }).catch(err => {
           fileObj.status = '저장실패'; renderUploadTab();
           let msg = err.message;
@@ -3323,7 +3414,77 @@ function addNewRow(){
 }
 
 function removeFile(idx){uploadedFiles.splice(idx,1);renderContent('input');setTimeout(renderUploadTab,50);}
+ async function saveUploadLog(clientKey, fileName, fileType, month, rowCount){
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/upload_logs`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Prefer':'return=minimal'
+      },
+      body:JSON.stringify({
+        client_key:  clientKey,
+        file_name:   fileName,
+        file_type:   fileType||'unknown',
+        month:       month||'',
+        row_count:   rowCount||0,
+      })
+    });
+  }catch(e){ console.warn('업로드 이력 저장 실패:', e); }
+} 
+function previewFile(idx){
+  const f = uploadedFiles[idx];
+  if(!f||!f.file) return;
+  const ext = f.name.split('.').pop().toLowerCase();
 
+  if(ext==='csv'){
+    // CSV — 모달로 내용 미리보기
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result;
+      const lines = text.split('\n').slice(0,51); // 헤더+50행
+      const headers = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+      const rows = lines.slice(1).filter(l=>l.trim());
+      const tableRows = rows.map(line=>{
+        const cols = line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+        return `<tr>${cols.map(c=>`<td style="font-size:11px;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;padding:6px 10px;border-bottom:1px solid var(--border)">${c}</td>`).join('')}</tr>`;
+      }).join('');
+      const headerHtml = headers.map(h=>`<th style="font-size:10.5px;padding:7px 10px;background:var(--surface);white-space:nowrap">${h}</th>`).join('');
+
+      document.getElementById('modalTitle').textContent = `📄 ${f.name}`;
+      document.getElementById('modalBody').innerHTML = `
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">${rows.length}행 표시 중 (최대 50행)</div>
+        <div style="overflow:auto;max-height:420px;border:1px solid var(--border);border-radius:var(--rsm)">
+          <table style="border-collapse:collapse;width:100%">
+            <thead style="position:sticky;top:0"><tr>${headerHtml}</tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>`;
+      document.getElementById('modalFooter').innerHTML = `
+        <button class="btn btn-ol" onclick="closeModal()">닫기</button>
+        <button class="btn btn-bl" onclick="downloadFileObj(${idx})">⬇ 다운로드</button>`;
+      document.getElementById('modalOverlay').classList.add('open');
+    };
+    reader.readAsText(f.file, 'UTF-8');
+
+  } else {
+    // XLSX — 새 탭에서 열기 (다운로드)
+    downloadFileObj(idx);
+  }
+}
+
+function downloadFileObj(idx){
+  const f = uploadedFiles[idx];
+  if(!f||!f.file) return;
+  const url = URL.createObjectURL(f.file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = f.name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
 function exportCSV(){
   if(!parsedTableData.length){toast('⚠️ 데이터가 없습니다');return;}
   const keys=Object.keys(parsedTableData[0]);
