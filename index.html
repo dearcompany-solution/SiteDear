@@ -2647,33 +2647,40 @@ function renderDataTab(){
   const selMonth=document.getElementById('filterMonth2')?document.getElementById('filterMonth2').value:'';
   el.innerHTML=`
   <div style="max-width:1100px">
-    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--sh)">
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-        <div style="flex:1;min-width:160px">
-          <div style="font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:5px;letter-spacing:.4px">🏢 업체</div>
+    <div style="background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+      <div style="display:flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 200px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text2); margin-bottom: 8px;">
+            <span style="font-size: 14px;">🏢</span> 업체 선택
+          </label>
           <div style="position:relative">
-            <select id="filterClient2" class="fi"
-              style="appearance:none;-webkit-appearance:none;padding-right:32px;background:var(--surface);border-color:var(--border);border-radius:10px;cursor:pointer;transition:all .2s"
-              onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(59,130,246,.12)'"
-              onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
-              <option value="">전체 업체</option>
+            <select id="filterClient2" style="width: 100%; appearance: none; -webkit-appearance: none; background: #fff; border: 1.5px solid var(--border2); border-radius: 8px; padding: 11px 40px 11px 16px; font-size: 13.5px; font-family: 'Noto Sans KR', sans-serif; color: var(--text); font-weight: 500; cursor: pointer; outline: none; transition: all 0.2s;"
+              onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px var(--blue-m)';"
+              onblur="this.style.borderColor='var(--border2)'; this.style.boxShadow='none';"
+              onmouseover="this.style.borderColor='var(--border)'"
+              onmouseout="if(document.activeElement !== this) this.style.borderColor='var(--border2)'">
+              <option value="" style="color: var(--text3);">전체 업체 보기</option>
               ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${a.id===selClient?'selected':''}>${a.company}</option>`).join('')}
             </select>
-            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);font-size:11px">▾</span>
+            <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: var(--bg); border-radius: 6px; color: var(--text2); font-size: 10px; transition: background 0.2s;">▼</div>
           </div>
         </div>
-        <div style="flex:1;min-width:140px">
-          <div style="font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:5px;letter-spacing:.4px">📅 월</div>
-          <input type="month" id="filterMonth2" class="fi" value="${selMonth}"
-            style="background:var(--surface);border-color:var(--border);border-radius:10px;cursor:pointer;transition:all .2s"
-            onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(59,130,246,.12)'"
-            onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+        <div style="flex: 1; min-width: 160px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text2); margin-bottom: 8px;">
+            <span style="font-size: 14px;">📅</span> 기준 월
+          </label>
+          <input type="month" id="filterMonth2" value="${selMonth}"
+            style="width: 100%; background: #fff; border: 1.5px solid var(--border2); border-radius: 8px; padding: 10.5px 16px; font-size: 13.5px; font-family: 'IBM Plex Mono', monospace; color: var(--text); font-weight: 500; cursor: pointer; outline: none; transition: all 0.2s;"
+            onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px var(--blue-m)';"
+            onblur="this.style.borderColor='var(--border2)'; this.style.boxShadow='none';"
+            onmouseover="this.style.borderColor='var(--border)'"
+            onmouseout="if(document.activeElement !== this) this.style.borderColor='var(--border2)'">
         </div>
         <button onclick="searchUploadLogs()"
-          style="height:42px;padding:0 28px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;box-shadow:0 2px 8px rgba(59,130,246,.3);transition:all .2s"
-          onmouseover="this.style.background='#2563eb';this.style.transform='translateY(-1px)'"
-          onmouseout="this.style.background='var(--blue)';this.style.transform='translateY(0)'">
-          🔍 검색
+          style="height: 45px; padding: 0 28px; border-radius: 8px; background: var(--navy); color: #fff; border: none; font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'Noto Sans KR', sans-serif; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);"
+          onmouseover="this.style.background='var(--blue)'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.3)';"
+          onmouseout="this.style.background='var(--navy)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';">
+          <span style="font-size: 14px;">🔍</span> 검색
         </button>
       </div>
     </div>
