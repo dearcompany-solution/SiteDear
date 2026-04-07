@@ -1072,15 +1072,24 @@ function dpRenderCal(elId, year, month, calNum){
   for(let d=1; d<=daysInMonth; d++){
     const dateStr = fmt(year, month, d);
     const isToday = dateStr === today;
+    const isFuture = dateStr > today; // 🌟 미래 날짜 여부 확인
     const isStart = dateStr === dpState.start;
     const isEnd   = dateStr === dpState.end;
     const inRange = dpState.start && dpState.end && dateStr > dpState.start && dateStr < dpState.end;
+    
     let cls = 'dp-day';
     if(isToday) cls += ' today';
     if(isStart) cls += ' selected-start';
     if(isEnd)   cls += ' selected-end';
     if(inRange) cls += ' in-range';
-    html += `<button class="${cls}" onclick="dpClickDay('${dateStr}')">${d}</button>`;
+    
+    // 🌟 미래 날짜일 경우 클릭 불가능하도록 속성 추가
+    if(isFuture) {
+      cls += ' dp-day-disabled';
+      html += `<button class="${cls}" style="cursor:not-allowed;opacity:0.3;" disabled>${d}</button>`;
+    } else {
+      html += `<button class="${cls}" onclick="dpClickDay('${dateStr}')">${d}</button>`;
+    }
   }
   const total = startDay + daysInMonth;
   const remain = total%7===0 ? 0 : 7-(total%7);
