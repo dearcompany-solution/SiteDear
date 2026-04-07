@@ -1166,14 +1166,19 @@ function dpApply(){
   }
   currentDateRange = {from: dpState.start, to: dpState.end};
   
-  // 추가: 세션 스토리지에 날짜 저장
   sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
+
+  // 기간 변경 시 report 월도 기간에 맞춰 동기화
+  currentReportMonth = dpState.start.slice(0,7);
   
   const disp = s => s.replace(/-/g,'.').slice(0,10);
   document.getElementById('drangeLabel').textContent = `${disp(dpState.start)} ~ ${disp(dpState.end)}`;
   closeDatePicker();
   toast('📅 기간이 변경되었습니다');
-  refreshDashboard();
+
+  // 캐시 초기화 후 전체 갱신
+  REPORT_DATA[currentReportMonth] = null;
+  refreshAllPages();
 }
 /* ════ 네이버 자동 데이터 수집 ════ */
 async function naverAutoSync(){
@@ -1550,8 +1555,11 @@ function htmlReport(){
    보고서 데이터 로드 & 렌더
 ════════════════════════════════════════ */
 async function refreshDashboard(){
+  refreshAllPages();
+}
+
+async function refreshAllPages(){
   const activePage = sessionStorage.getItem('currentPage') || 'combined';
-  if(!['combined','naver'].includes(activePage)) return;
   const c = document.getElementById('appContent');
   if(!c) return;
   const d = await fetchReportData(currentReportMonth);
@@ -1560,9 +1568,7 @@ async function refreshDashboard(){
   if(activePage==='combined'){
     c.innerHTML=htmlCombined();
     setTimeout(renderCharts,50);
-  }
-  if(activePage==='naver'){
-    // 현재 선택된 탭 저장 후 복원
+  } else if(activePage==='naver'){
     const savedTab = sessionStorage.getItem('currentNaverTab') || 'summary';
     c.innerHTML=htmlNaver();
     setTimeout(()=>{
@@ -1570,6 +1576,12 @@ async function refreshDashboard(){
       switchNaverTab(savedTab, tabEl);
       renderCharts();
     },50);
+  } else if(activePage==='report'){
+    c.innerHTML=htmlReport();
+    setTimeout(()=>{ initReportCharts(); loadReportData(currentReportMonth); },100);
+  } else if(activePage==='store'){
+    c.innerHTML=htmlStore();
+    setTimeout(renderCharts,50);
   }
 }
 async function fetchReportData(month){
@@ -4916,6 +4928,14 @@ function selClient(id){
 
   toast(`✅ ${c.company} 선택됨`);
   renderAdminTable();
+
+  // ▼ 추가: 현재 열린 페이지가 데이터 페이지면 자동 갱신
+  const curPage = sessionStorage.getItem('currentPage') || '';
+  if(['combined','naver','store','report'].includes(curPage)){
+    REPORT_DATA[currentReportMonth] = null;
+    refreshAllPages();
+  }
+
   setTimeout(()=>{
     const d=document.getElementById('clientDetail');if(!d)return;
     d.innerHTML=`<div class="card">
