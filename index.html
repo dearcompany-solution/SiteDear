@@ -2438,7 +2438,7 @@ function downloadPDF(){
       }
     </style>
   </head><body>${content.outerHTML}
-    \x3cscript>window.onload=function(){window.print()}\x3c/script>
+    <scr'+'ipt>window.onload=function(){window.print()}</scr'+'ipt>
   </body></html>`);
   w.document.close();
   toast('📥 PDF 저장 창이 열렸습니다');
