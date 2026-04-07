@@ -1876,6 +1876,21 @@ async function loadReportData(month){
     $s('rk-rev-sub',   '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
     $s('rk-roas-sub',  '<span style="color:var(--text3);font-size:10px">데이터 없음</span>');
     $s('rptSubTitle',`${data.period} · 등록된 데이터가 없습니다`);
+
+    // 아래 코드가 추가됩니다
+    const rptTable = document.querySelector('#rptChannelTable tbody');
+    if(rptTable) {
+      rptTable.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center;padding:40px;">
+            <div style="font-size:30px;margin-bottom:10px">📂</div>
+            <div style="color:var(--text2);margin-bottom:15px">해당 월의 리포트 데이터가 아직 업로드되지 않았습니다.</div>
+            <button class="btn btn-bl" onclick="go('input',null);setActive('input');">
+              📥 파일 업로드하러 가기
+            </button>
+          </td>
+        </tr>`;
+    }
   } else {
     $s('rk-imp',   fmtN(data.kpi.totalImp));
     $s('rk-click', fmtN(data.kpi.totalClick));
