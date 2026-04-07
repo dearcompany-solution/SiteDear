@@ -2390,28 +2390,34 @@ async function openReportPdf(){
     hasKeywords && '키워드 TOP20',
   ].filter(Boolean).join(' · ');
 
-  // PDF 미리보기 오버레이 표시
-  document.getElementById('pdfTitle').textContent = `${period} 광고 성과 보고서`;
+  // 제목 형식: 기간이 날짜범위면 그대로, 월 단위면 "2026년 3월" 형식으로
+  const titlePeriod = currentDateRange?.from
+    ? `${currentDateRange.from} ~ ${currentDateRange.to}`
+    : (()=>{
+        const [y,mn] = currentReportMonth.split('-');
+        return `${y}년 ${parseInt(mn)}월`;
+      })();
+
+  document.getElementById('pdfTitle').textContent = `${titlePeriod} 광고 성과 보고서`;
   document.getElementById('pdfSubTitle').textContent = `${data.client} · 담당: ${data.manager} · 포함: ${sections}`;
   document.getElementById('pdfContent').innerHTML = `
     <div id="printArea" style="font-family:'Noto Sans KR',sans-serif;max-width:800px;margin:0 auto;padding:10px">
-      <div style="text-align:center;padding:20px 0 16px;border-bottom:2px solid #1c2535;margin-bottom:20px">
+      <div style="text-align:center;padding:20px 0 16px;border-bottom:2px solid #1c2535;margin-bottom:20px;page-break-inside:avoid">
         <div style="font-size:10px;letter-spacing:2px;color:#888;margin-bottom:4px">DEARCOMPANY SOLUTION</div>
-        <div style="font-size:20px;font-weight:800;color:#1c2535;margin-bottom:3px">${period} 광고 성과 리포트</div>
+        <div style="font-size:20px;font-weight:800;color:#1c2535;margin-bottom:3px">${titlePeriod} 광고 성과 리포트</div>
         <div style="font-size:12px;color:#666">${data.client} · 담당: ${data.manager}</div>
-        <div style="font-size:11px;color:#aaa;margin-top:4px">포함 섹션: ${sections}</div>
       </div>
-      ${kpiHtml}
-      ${campHtml}
-      ${gfaHtml}
-      ${kwHtmlPdf}
-      ${dailyHtmlPdf}
+      <div style="page-break-inside:avoid">${kpiHtml}</div>
+      <div style="page-break-inside:avoid">${channelHtml}</div>
+      <div style="page-break-inside:avoid">${gfaHtml}</div>
+      <div style="page-break-inside:avoid">${keywordHtml}</div>
       <div style="text-align:center;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px;margin-top:20px">
         Dear Company Solution · dearcompany.kr · 본 보고서는 자동 생성되었습니다.
       </div>
     </div>`;
 
   document.getElementById('pdfOverlay').classList.add('open');
+}
 }
 function closePdfOverlay(){document.getElementById('pdfOverlay').classList.remove('open');}
 
@@ -2421,7 +2427,16 @@ function downloadPDF(){
   const w=window.open('','_blank');
   w.document.write(`<html><head><title>리포트</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'Noto Sans KR',sans-serif;margin:0;padding:20px}@media print{body{padding:0}}</style>
+    <style>
+      body{font-family:'Noto Sans KR',sans-serif;margin:0;padding:20px}
+      @media print{
+        body{padding:0}
+        div[style*="page-break-inside:avoid"]{page-break-inside:avoid}
+        table{page-break-inside:auto}
+        tr{page-break-inside:avoid;page-break-after:auto}
+        thead{display:table-header-group}
+      }
+    </style>
   </head><body>${content.outerHTML}
     <script>window.onload=function(){window.print()}<\/script>
   </body></html>`);
