@@ -1394,10 +1394,7 @@ function htmlReport(){
 
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)"
-      style="background:var(--surface);border:1.5px solid var(--border2);color:var(--text);border-radius:var(--rsm)">
-      ${opts}
-    </select>
+    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
     <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
   </div>
 
