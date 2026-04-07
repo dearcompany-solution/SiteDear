@@ -5629,7 +5629,7 @@ async function loadKeywordTab(){
 
     const dashboardHtml = `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px">
-        ${kwCard('효율 좋은 키워드','var(--naver)','🏆',byRoas,'ROAS',k=>Math.round(k.roas).toLocaleString()+'%')}
+        ${kwCard('효율 좋은 키워드','var(--naver)','🏆',byRoas,'ROAS',k=>k.roas.toFixed(1)+'%')}
         ${kwCard('노출 많은 키워드','var(--blue)','👁️',byImp,'노출수',k=>fmtn(k.imp))}
         ${kwCard('클릭 많은 키워드','var(--gold)','👆',byClick,'클릭수',k=>fmtn(k.click))}
         ${kwCard('비용 소진 키워드','var(--store)','💰',byCost,'광고비',k=>fmt(k.cost))}
