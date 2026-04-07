@@ -3121,6 +3121,90 @@ function saveOneFile(fileObj, client) {
           return;
         }
 
+        // 캠페인별 파싱
+        if(hasCampaign){
+          const campRows = [];
+          for(let i = headerIdx+1; i < lines.length; i++){
+            const line = lines[i]; if(!line.trim()) continue;
+            const vals = csvParseLine(line);
+            if(vals.every(v=>!v)) continue;
+            const row = {};
+            cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+            campRows.push({
+              client_key:    client,
+              month,
+              campaign_type: row['캠페인유형']||'',
+              campaign:      row['캠페인']||'',
+              device:        '전체',
+              imp:           parseNum(row['노출수']),
+              click:         parseNum(row['클릭수']),
+              ctr:           parseNum(row['클릭률(%)']),
+              cpc:           parseNum(row['평균 CPC']),
+              cost:          parseNum(row['총비용']),
+              conv:          parseNum(row['총 전환수']),
+              conv_rate:     parseNum(row['총 전환율(%)']),
+              rev:           parseNum(row['총 전환매출액(원)']||row['총 전환매출액']),
+              purchase_conv: parseNum(row['구매완료 전환수']),
+              purchase_rev:  parseNum(row['구매완료 전환매출액(원)']||row['구매완료 전환매출액']),
+              data_type:     'daily',
+            });
+          }
+          if(!campRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 캠페인 데이터 없음`); return; }
+          fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+            body:JSON.stringify(campRows)
+          }).then(res=>{
+            if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=campRows.length;
+            renderUploadTab();
+            toast(`✅ ${fileObj.name} 캠페인별 — ${campRows.length}개 저장 완료!`);
+            saveUploadLog(client, fileObj.name, 'campaign', month, campRows.length);
+          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 캠페인 저장 실패: '+err.message); });
+          return;
+        }
+
+        // 매체별(PC/모바일) 파싱
+        if(hasDevice){
+          const deviceRows = [];
+          for(let i = headerIdx+1; i < lines.length; i++){
+            const line = lines[i]; if(!line.trim()) continue;
+            const vals = csvParseLine(line);
+            if(vals.every(v=>!v)) continue;
+            const row = {};
+            cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+            deviceRows.push({
+              client_key:    client,
+              month,
+              device:        row['PC/모바일 매체']||'',
+              campaign_type: '통합',
+              imp:           parseNum(row['노출수']),
+              click:         parseNum(row['클릭수']),
+              ctr:           parseNum(row['클릭률(%)']),
+              cpc:           parseNum(row['평균 CPC']),
+              cost:          parseNum(row['총비용']),
+              conv:          parseNum(row['총 전환수']),
+              rev:           parseNum(row['총 전환매출액(원)']||row['총 전환매출액']),
+              purchase_conv: parseNum(row['구매완료 전환수']),
+              purchase_rev:  parseNum(row['구매완료 전환매출액(원)']||row['구매완료 전환매출액']),
+              data_type:     'daily',
+            });
+          }
+          if(!deviceRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 매체 데이터 없음`); return; }
+          fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+            body:JSON.stringify(deviceRows)
+          }).then(res=>{
+            if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=deviceRows.length;
+            renderUploadTab();
+            toast(`✅ ${fileObj.name} 매체별 — ${deviceRows.length}개 저장 완료!`);
+            saveUploadLog(client, fileObj.name, 'device', month, deviceRows.length);
+          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 매체 저장 실패: '+err.message); });
+          return;
+        }
+
                 // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
         if(hasGFA){
           const isDaily     = cols.includes('기간');
