@@ -4008,7 +4008,11 @@ function renderAdminTable(){
     a.company.toLowerCase().includes(q) ||
     a.id.toLowerCase().includes(q) ||
     (a.pw||'').toLowerCase().includes(q) ||
-    (a.memo||'').toLowerCase().includes(q)
+    (a.memo||'').toLowerCase().includes(q) ||
+    (a.manager||'').toLowerCase().includes(q) ||
+    (a.url||'').toLowerCase().includes(q) ||
+    (a.naver_search_id||'').toLowerCase().includes(q) ||
+    (a.naver_gfa_id||'').toLowerCase().includes(q)
   );
   if(adminTeamFilter!=='전체') list = list.filter(a=>a.manager===adminTeamFilter);
 
