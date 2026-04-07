@@ -497,7 +497,10 @@ canvas{max-height:210px}
         <div class="tb-actions" id="tbActions">
           <!-- 일반 페이지 버튼 -->
           <div id="defaultActions" style="display:flex;gap:8px;align-items:center">
-          </div>
+  <div id="reportPdfBtn" style="display:none">
+    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+  </div>
+</div>
           <!-- 관리자 페이지 버튼 -->
           <div id="adminActions" style="display:none;gap:8px;align-items:center">
             <button class="btn btn-ol btn-sm" onclick="downloadClientList()">⬇ 업체 목록 다운로드</button>
@@ -872,13 +875,20 @@ function go(id,el){
   const dr=document.getElementById('dateRow');
   const aa=document.getElementById('adminActions');
   const da=document.getElementById('defaultActions');
+  const rpb=document.getElementById('reportPdfBtn');
   if(dr&&aa&&da){
     if(id==='admin'){
       dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
+      if(rpb) rpb.style.display='none';
     } else if(id==='register'||id==='input'||id==='msg'||id==='cal'){
       dr.style.display='none'; aa.style.display='none'; da.style.display='none';
+      if(rpb) rpb.style.display='none';
+    } else if(id==='report'){
+      dr.style.display='none'; aa.style.display='none'; da.style.display='flex';
+      if(rpb) rpb.style.display='block';
     } else {
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
+      if(rpb) rpb.style.display='none';
     }
   }
   renderContent(id);
@@ -1395,8 +1405,7 @@ function htmlReport(){
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
     <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
-    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-  </div>
+</div>
 
   <div class="rpt-kpi-row">
     <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="rk-imp">—</div><div class="rpt-kpi-sub" id="rk-imp-sub"></div></div>
