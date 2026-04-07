@@ -2607,10 +2607,10 @@ function saveOneFile(fileObj, client) {
        
                 // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
         if(hasGFA){
-          const isDaily    = cols.includes('기간');    // 일별 파일
-          const isPlacement = cols.includes('게재 위치'); // 매체별 파일
+          const isDaily     = cols.includes('기간');
+          const isPlacement = cols.includes('게재 위치');
 
-          // 월 추출 — 일별이면 첫 데이터 행에서, 매체별이면 시작일에서
+          // 월 추출
           let gfaMonth = month;
           if(lines.length > headerIdx+1){
             const firstVals = csvParseLine(lines[headerIdx+1]);
@@ -2631,54 +2631,51 @@ function saveOneFile(fileObj, client) {
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
 
             if(isDaily){
-              // 일별 파일 처리
               const rawDate = row['기간'] || '';
               const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
               if(!dateStr || dateStr.length < 8) continue;
               gfaRows.push({
-                client_key:  client,
-                month:       dateStr.slice(0,7),
-                date:        dateStr,
-                placement:   'GFA 전체',
+                client_key:   client,
+                month:        dateStr.slice(0,7),
+                date:         dateStr,
+                placement:    'GFA 전체',
                 account_name: row['광고 계정 이름'] || '',
-                cost:        parseNum(row['총비용']),
-                imp:         parseNum(row['노출수']),
-                cpm:         parseNum(row['평균 CPM']),
-                click:       parseNum(row['클릭수']),
-                cpc:         parseNum(row['평균 CPC']),
-                ctr:         parseNum(row['클릭률(%)']),
-                conv:        parseNum(row['구매완료 수']),
-                rev:         parseNum(row['구매완료 전환매출액']),
-                roas:        parseNum(row['구매완료 광고수익률(%)']),
-                cart_conv:   parseNum(row['장바구니 담기 수']),
-                cart_rev:    parseNum(row['장바구니 전환매출액']),
-                total_conv:  parseNum(row['총 전환수']),
-                total_rev:   parseNum(row['총 전환매출액']),
-                total_roas:  parseNum(row['총 광고수익률(%)']),
+                cost:         parseNum(row['총비용']),
+                imp:          parseNum(row['노출수']),
+                cpm:          parseNum(row['평균 CPM']),
+                click:        parseNum(row['클릭수']),
+                cpc:          parseNum(row['평균 CPC']),
+                ctr:          parseNum(row['클릭률(%)']),
+                conv:         parseNum(row['구매완료 수']),
+                rev:          parseNum(row['구매완료 전환매출액']),
+                roas:         parseNum(row['구매완료 광고수익률(%)']),
+                cart_conv:    parseNum(row['장바구니 담기 수']),
+                cart_rev:     parseNum(row['장바구니 전환매출액']),
+                total_conv:   parseNum(row['총 전환수']),
+                total_rev:    parseNum(row['총 전환매출액']),
+                total_roas:   parseNum(row['총 광고수익률(%)']),
               });
             } else if(isPlacement){
-              // 매체별 파일 처리
-              const placement = row['게재 위치'] || '기타';
               gfaRows.push({
-                client_key:  client,
-                month:       gfaMonth,
-                date:        null,
-                placement:   placement,
+                client_key:   client,
+                month:        gfaMonth,
+                date:         null,
+                placement:    row['게재 위치'] || '기타',
                 account_name: row['광고 계정 이름'] || '',
-                cost:        parseNum(row['총비용']),
-                imp:         parseNum(row['노출수']),
-                cpm:         parseNum(row['평균 CPM']),
-                click:       parseNum(row['클릭수']),
-                cpc:         parseNum(row['평균 CPC']),
-                ctr:         parseNum(row['클릭률(%)']),
-                conv:        parseNum(row['구매완료 수']),
-                rev:         parseNum(row['구매완료 전환매출액']),
-                roas:        parseNum(row['구매완료 광고수익률(%)']),
-                cart_conv:   parseNum(row['장바구니 담기 수']),
-                cart_rev:    parseNum(row['장바구니 전환매출액']),
-                total_conv:  parseNum(row['총 전환수']),
-                total_rev:   parseNum(row['총 전환매출액']),
-                total_roas:  parseNum(row['총 광고수익률(%)']),
+                cost:         parseNum(row['총비용']),
+                imp:          parseNum(row['노출수']),
+                cpm:          parseNum(row['평균 CPM']),
+                click:        parseNum(row['클릭수']),
+                cpc:          parseNum(row['평균 CPC']),
+                ctr:          parseNum(row['클릭률(%)']),
+                conv:         parseNum(row['구매완료 수']),
+                rev:          parseNum(row['구매완료 전환매출액']),
+                roas:         parseNum(row['구매완료 광고수익률(%)']),
+                cart_conv:    parseNum(row['장바구니 담기 수']),
+                cart_rev:     parseNum(row['장바구니 전환매출액']),
+                total_conv:   parseNum(row['총 전환수']),
+                total_rev:    parseNum(row['총 전환매출액']),
+                total_roas:   parseNum(row['총 광고수익률(%)']),
               });
             }
           }
@@ -2688,7 +2685,6 @@ function saveOneFile(fileObj, client) {
             toast(`⚠️ ${fileObj.name} — GFA 데이터 없음`); return;
           }
 
-          // 일별 파일이면 기존 일별 데이터 삭제 후 저장
           const doUpsert = async () => {
             if(isDaily){
               const months = [...new Set(gfaRows.map(r=>r.month))];
@@ -2715,8 +2711,7 @@ function saveOneFile(fileObj, client) {
             if(!res.ok) return res.text().then(t=>{throw new Error(t);});
             fileObj.status='저장완료'; fileObj.savedMonth=gfaMonth; fileObj.savedCount=gfaRows.length;
             renderUploadTab();
-            const type = isDaily ? '일별' : '매체별';
-            toast(`✅ ${fileObj.name} GFA ${type} — ${gfaRows.length}개 저장 완료!`);
+            toast(`✅ ${fileObj.name} GFA ${isDaily?'일별':'매체별'} — ${gfaRows.length}개 저장 완료!`);
           }).catch(err=>{
             fileObj.status='저장실패'; renderUploadTab();
             toast('❌ GFA 저장 실패: '+err.message);
@@ -4913,22 +4908,21 @@ async function loadGFATab(){
           <div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(totalCpc)}</div>
         </div>
         <div class="kpi ks">
-          <div class="kpi-top"><div class="kpi-ic kic-s">🛒</div><span class="kpi-chip kc-s">전환</span></div>
-          <div class="kpi-lbl">장바구니 담기수</div>
-          <div class="kpi-val">${fmtn(rows.reduce((s,r)=>s+(+r.cart_conv||0),0))}건</div>
+          <div class="kpi-top"><div class="kpi-ic kic-s">🛍️</div><span class="kpi-chip kc-s">전환</span></div>
+          <div class="kpi-lbl">구매완료수</div><div class="kpi-val">${fmtn(totalConv)}건</div>
         </div>
         <div class="kpi kn">
           <div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">전환</span></div>
           <div class="kpi-lbl">구매완료금액</div><div class="kpi-val">${fmt(totalRev)}</div>
         </div>
+        <div class="kpi ks">
+          <div class="kpi-top"><div class="kpi-ic kic-s">🛒</div><span class="kpi-chip kc-s">전환</span></div>
+          <div class="kpi-lbl">장바구니 담기수</div><div class="kpi-val">${fmtn(rows.reduce((s,r)=>s+(+r.cart_conv||0),0))}건</div>
+        </div>
         <div class="kpi ki">
           <div class="kpi-top"><div class="kpi-ic kic-i">📈</div><span class="kpi-chip kc-n">GFA</span></div>
           <div class="kpi-lbl">구매완료 ROAS</div>
           <div class="kpi-val" style="color:${roasColor(totalCost,totalRev)}">${calcR(totalCost,totalRev)}</div>
-        </div>
-        <div class="kpi kg">
-          <div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">CTR</div><div class="kpi-val">${totalCtr}</div>
         </div>
       </div>`;
 
