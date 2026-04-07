@@ -2733,13 +2733,16 @@ function saveOneFile(fileObj, client) {
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
 
-            if(isDaily){
+           if(isDaily){
               const rawDate = row['기간'] || '';
               const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
               if(!dateStr || dateStr.length < 8) continue;
+              const rowMonth = dateStr.slice(0,7);
+              // gfaMonth와 다른 월 데이터는 건너뜀 (다른 월 데이터 혼입 방지)
+              if(gfaMonth && rowMonth !== gfaMonth) continue;
               gfaRows.push({
                 client_key:   client,
-                month:        dateStr.slice(0,7),
+                month:        rowMonth,
                 date:         dateStr,
                 placement:    'GFA 전체',
                 account_name: row['광고 계정 이름'] || '',
