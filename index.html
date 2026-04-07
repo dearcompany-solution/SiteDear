@@ -1550,13 +1550,21 @@ async function refreshDashboard(){
   const c = document.getElementById('appContent');
   if(!c) return;
   const d = await fetchReportData(currentReportMonth);
-  if(d){
-    REPORT_DATA[currentReportMonth] = d;
-    if(activePage==='combined'){ c.innerHTML=htmlCombined(); setTimeout(renderCharts,50); }
-    if(activePage==='naver'){    c.innerHTML=htmlNaver();    setTimeout(renderCharts,50); }
-  } else {
-    if(activePage==='combined'){ c.innerHTML=htmlCombined(); setTimeout(renderCharts,50); }
-    if(activePage==='naver'){    c.innerHTML=htmlNaver();    setTimeout(renderCharts,50); }
+  if(d) REPORT_DATA[currentReportMonth] = d;
+
+  if(activePage==='combined'){
+    c.innerHTML=htmlCombined();
+    setTimeout(renderCharts,50);
+  }
+  if(activePage==='naver'){
+    // 현재 선택된 탭 저장 후 복원
+    const savedTab = sessionStorage.getItem('currentNaverTab') || 'summary';
+    c.innerHTML=htmlNaver();
+    setTimeout(()=>{
+      const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedTab}'"]`);
+      switchNaverTab(savedTab, tabEl);
+      renderCharts();
+    },50);
   }
 }
 async function fetchReportData(month){
