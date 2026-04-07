@@ -4865,79 +4865,97 @@ async function loadGFATab(){
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  try{
-    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
-    const rows = await res.json();
-    if(!Array.isArray(rows)||!rows.length){
-      el.innerHTML=`<div class="empty"><div class="ei">📡</div><p>GFA 데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 GFA 파일을 업로드해주세요</span></p></div>`;
-      return;
-    }
+  const fmt      = v => '₩'+Math.round(v||0).toLocaleString();
+  const fmtn     = v => (v||0).toLocaleString();
+  const calcR    = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
+  const roasColor= (cost,rev) => cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
+  const WEEKDAYS = ['일','월','화','수','목','금','토'];
 
-    const fmt    = v => '₩'+Math.round(v||0).toLocaleString();
-    const fmtn   = v => (v||0).toLocaleString();
-    const calcR  = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
-    const roasColor = (cost,rev) => cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
-    const WEEKDAYS = ['일','월','화','수','목','금','토'];
-
-    // ── 종합 집계 ──
+  // 빈 틀 렌더 함수 — 데이터 없어도 표 틀은 유지
+  const renderShell = (rows=[], placementRows='', dailyRows='', dailyCount=0) => {
     const totalCost  = rows.reduce((s,r)=>s+(+r.cost||0),0);
     const totalImp   = rows.reduce((s,r)=>s+(+r.imp||0),0);
     const totalClick = rows.reduce((s,r)=>s+(+r.click||0),0);
     const totalConv  = rows.reduce((s,r)=>s+(+r.conv||0),0);
     const totalRev   = rows.reduce((s,r)=>s+(+r.rev||0),0);
-    const totalCtr   = totalImp>0   ? (totalClick/totalImp*100).toFixed(2)+'%' : '0%';
+    const totalCartConv = rows.reduce((s,r)=>s+(+r.cart_conv||0),0);
+    const totalCtr   = totalImp>0 ? (totalClick/totalImp*100).toFixed(2)+'%' : '0%';
     const totalCpc   = totalClick>0 ? Math.round(totalCost/totalClick) : 0;
 
-    // ── KPI 8개 ──
-    const kpiHtml = `
+    return `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
-        <div class="kpi kn">
-          <div class="kpi-top"><div class="kpi-ic kic-n">💰</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div>
+        <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💰</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
+        <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
+        <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+        <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(totalCpc)}</div></div>
+        <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">🛍️</div><span class="kpi-chip kc-s">전환</span></div><div class="kpi-lbl">구매완료수</div><div class="kpi-val">${fmtn(totalConv)}건</div></div>
+        <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">전환</span></div><div class="kpi-lbl">구매완료금액</div><div class="kpi-val">${fmt(totalRev)}</div></div>
+        <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">🛒</div><span class="kpi-chip kc-s">전환</span></div><div class="kpi-lbl">장바구니 담기수</div><div class="kpi-val">${fmtn(totalCartConv)}건</div></div>
+        <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">📈</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">구매완료 ROAS</div><div class="kpi-val" style="color:${roasColor(totalCost,totalRev)}">${calcR(totalCost,totalRev)}</div></div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600">📍 게재위치별 성과</div>
+          ${!placementRows ? `<span style="font-size:12px;color:var(--text3)">매체별 파일을 업로드해주세요</span>` : ''}
         </div>
-        <div class="kpi kb">
-          <div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(totalImp)}</div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>게재위치</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>장바구니수</th><th>구매완료금액</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>${placementRows||`<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음 — 매체별 파일을 업로드해주세요</td></tr>`}</tbody>
+          </table>
         </div>
-        <div class="kpi kb">
-          <div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600">📅 일별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${dailyCount}일</span></div>
+          ${!dailyRows ? `<span style="font-size:12px;color:var(--text3)">일별 파일을 업로드해주세요</span>` : ''}
         </div>
-        <div class="kpi kg">
-          <div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(totalCpc)}</div>
-        </div>
-        <div class="kpi ks">
-          <div class="kpi-top"><div class="kpi-ic kic-s">🛍️</div><span class="kpi-chip kc-s">전환</span></div>
-          <div class="kpi-lbl">구매완료수</div><div class="kpi-val">${fmtn(totalConv)}건</div>
-        </div>
-        <div class="kpi kn">
-          <div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">전환</span></div>
-          <div class="kpi-lbl">구매완료금액</div><div class="kpi-val">${fmt(totalRev)}</div>
-        </div>
-        <div class="kpi ks">
-          <div class="kpi-top"><div class="kpi-ic kic-s">🛒</div><span class="kpi-chip kc-s">전환</span></div>
-          <div class="kpi-lbl">장바구니 담기수</div><div class="kpi-val">${fmtn(rows.reduce((s,r)=>s+(+r.cart_conv||0),0))}건</div>
-        </div>
-        <div class="kpi ki">
-          <div class="kpi-top"><div class="kpi-ic kic-i">📈</div><span class="kpi-chip kc-n">GFA</span></div>
-          <div class="kpi-lbl">구매완료 ROAS</div>
-          <div class="kpi-val" style="color:${roasColor(totalCost,totalRev)}">${calcR(totalCost,totalRev)}</div>
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+          <table class="tbl">
+            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+              <th>날짜</th><th>요일</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>장바구니수</th><th>구매완료금액</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>${dailyRows||`<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음 — 일별 파일을 업로드해주세요</td></tr>`}</tbody>
+          </table>
         </div>
       </div>`;
+  };
 
-    // ── 게재위치별 집계 ──
+  try{
+    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+    const rows = await res.json();
+
+    // 데이터 없어도 빈 틀 표시
+    if(!Array.isArray(rows)||!rows.length){
+      el.innerHTML = renderShell();
+      return;
+    }
+
+    // 일별(date 있는 것) / 매체별(date null인 것) 분리
+    const dailyData     = rows.filter(r=>r.date);
+    const placementData = rows.filter(r=>!r.date);
+
+    // ── 게재위치별 집계 (매체별 파일 기준) ──
     const placementMap = {};
-    rows.forEach(r=>{
+    placementData.forEach(r=>{
       const p = r.placement||'기타';
-      if(!placementMap[p]) placementMap[p]={placement:p,cost:0,imp:0,click:0,conv:0,rev:0};
-      placementMap[p].cost +=+r.cost||0;
-      placementMap[p].imp  +=+r.imp ||0;
-      placementMap[p].click+=+r.click||0;
-      placementMap[p].conv +=+r.conv||0;
-      placementMap[p].rev  +=+r.rev ||0;
+      if(!placementMap[p]) placementMap[p]={placement:p,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0,cart_rev:0};
+      placementMap[p].cost     +=+r.cost||0;
+      placementMap[p].imp      +=+r.imp||0;
+      placementMap[p].click    +=+r.click||0;
+      placementMap[p].conv     +=+r.conv||0;
+      placementMap[p].rev      +=+r.rev||0;
+      placementMap[p].cart_conv+=+r.cart_conv||0;
+      placementMap[p].cart_rev +=+r.cart_rev||0;
     });
     const placements = Object.values(placementMap).sort((a,b)=>b.cost-a.cost);
+
     const placementRows = placements.map(p=>`
       <tr>
         <td style="font-size:12.5px;font-weight:600">${p.placement}</td>
@@ -4947,25 +4965,29 @@ async function loadGFATab(){
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${p.imp>0?(p.click/p.imp*100).toFixed(2)+'%':'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${p.click>0?fmt(Math.round(p.cost/p.click)):'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(p.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(p.cart_conv)}건</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(p.rev)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(p.cost,p.rev)}">${calcR(p.cost,p.rev)}</td>
       </tr>`).join('');
 
-    // ── 일별 집계 (날짜별 합산) ──
+    // ── 일별 집계 (일별 파일 기준, 날짜별 합산) ──
     const dailyMap = {};
-    rows.forEach(r=>{
+    dailyData.forEach(r=>{
       const d = r.date||'';
       if(!d) return;
-      if(!dailyMap[d]) dailyMap[d]={date:d,cost:0,imp:0,click:0,conv:0,rev:0};
-      dailyMap[d].cost +=+r.cost||0;
-      dailyMap[d].imp  +=+r.imp ||0;
-      dailyMap[d].click+=+r.click||0;
-      dailyMap[d].conv +=+r.conv||0;
-      dailyMap[d].rev  +=+r.rev ||0;
+      if(!dailyMap[d]) dailyMap[d]={date:d,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0,cart_rev:0};
+      dailyMap[d].cost     +=+r.cost||0;
+      dailyMap[d].imp      +=+r.imp||0;
+      dailyMap[d].click    +=+r.click||0;
+      dailyMap[d].conv     +=+r.conv||0;
+      dailyMap[d].rev      +=+r.rev||0;
+      dailyMap[d].cart_conv+=+r.cart_conv||0;
+      dailyMap[d].cart_rev +=+r.cart_rev||0;
     });
     const dailyList = Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+
     const dailyRows = dailyList.map(r=>{
-      const wd = r.date ? WEEKDAYS[new Date(r.date).getDay()] : '—';
+      const wd  = r.date ? WEEKDAYS[new Date(r.date).getDay()] : '—';
       const cpc = r.click>0 ? Math.round(r.cost/r.click) : 0;
       return `<tr>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date}</td>
@@ -4976,41 +4998,16 @@ async function loadGFATab(){
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.imp>0?(r.click/r.imp*100).toFixed(2)+'%':'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${cpc>0?fmt(cpc):'—'}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.cart_conv)}건</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(r.cost,r.rev)}">${calcR(r.cost,r.rev)}</td>
       </tr>`;
     }).join('');
 
-    el.innerHTML=`
-      ${kpiHtml}
-      <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:600">📍 게재위치별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${placements.length}개</span></div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="tbl">
-            <thead><tr>
-              <th>게재위치</th><th>광고비</th><th>노출수</th><th>클릭수</th>
-              <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>구매완료금액</th><th>ROAS</th>
-            </tr></thead>
-            <tbody>${placementRows}</tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-          <div style="font-size:14px;font-weight:600">📅 일별 성과 <span style="font-size:12px;color:var(--text3);font-weight:400">${dailyList.length}일</span></div>
-        </div>
-        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
-          <table class="tbl">
-            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
-              <th>날짜</th><th>요일</th><th>광고비</th><th>노출수</th><th>클릭수</th>
-              <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>구매완료금액</th><th>ROAS</th>
-            </tr></thead>
-            <tbody>${dailyRows}</tbody>
-          </table>
-        </div>
-      </div>`;
+    // KPI는 일별 데이터 기준 (더 정확)
+    const kpiBase = dailyData.length ? dailyData : rows;
+    el.innerHTML = renderShell(kpiBase, placementRows, dailyRows, dailyList.length);
+
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>데이터 로드 실패: ${e.message}</p></div>`;
   }
