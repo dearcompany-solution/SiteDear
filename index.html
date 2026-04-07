@@ -543,6 +543,10 @@ canvas{max-height:210px}
     </div>
   </div>
 </div>
+        <button class="btn btn-bl btn-sm" onclick="openReportPdf()"
+          style="white-space:nowrap;background:var(--indigo);border-color:var(--indigo)">
+          📄 보고서 다운로드
+        </button>
 </div>
     </header>
     <div class="content" id="appContent"></div>
@@ -2074,7 +2078,248 @@ function openPdfPreview(){
 
   document.getElementById('pdfOverlay').classList.add('open');
 }
+async function openReportPdf(){
+  const activePage = sessionStorage.getItem('currentPage') || 'combined';
+  if(!['naver','combined'].includes(activePage)){
+    toast('⚠️ 네이버 광고 또는 통합 대시보드에서 사용해주세요'); return;
+  }
 
+  toast('📄 보고서 생성 중...');
+
+  // 데이터 로드
+  const data = await fetchReportData(currentReportMonth);
+  if(!data){ toast('⚠️ 데이터가 없습니다'); return; }
+
+  // GFA 데이터 로드
+  const isAdmin      = currentUser?.role==='admin';
+  const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  const fromMonth    = currentDateRange?.from?.slice(0,7) || currentReportMonth;
+  const toMonth      = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  let gfaRows = [];
+  try{
+    const gfaRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,
+      {headers:h}
+    );
+    gfaRows = await gfaRes.json();
+    if(!Array.isArray(gfaRows)) gfaRows=[];
+  }catch(e){ gfaRows=[]; }
+
+  const kpi  = data.kpi||{};
+  const fmt  = n=>'₩'+Math.round(n||0).toLocaleString();
+  const fmtn = n=>(n||0).toLocaleString();
+  const fmtp = n=>Number(n||0).toFixed(2)+'%';
+  const period = currentDateRange?.from
+    ? `${currentDateRange.from} ~ ${currentDateRange.to}`
+    : data.period;
+
+  // 데이터 유무 판단
+  const hasKpi      = (kpi.totalCost||0) > 0 || (kpi.totalImp||0) > 0;
+  const hasChannels = (data.channels||[]).filter(c=>c.cost>0).length > 0;
+  const hasKeywords = (data.topKeywords||[]).filter(k=>k.cost>0).length > 0;
+  const hasDaily    = (data.dailyList||[]).filter(d=>d.cost>0).length > 0;
+  const hasGfa      = gfaRows.filter(r=>r.date&&(+r.cost||0)>0).length > 0;
+  const hasGfaPlacement = gfaRows.filter(r=>!r.date&&(+r.cost||0)>0).length > 0;
+
+  // ── 섹션별 HTML 생성 ──
+  const sectionTitle = (title, color='#3B82F6') =>
+    `<div style="font-size:14px;font-weight:700;margin:20px 0 10px;color:#1c2535;border-left:4px solid ${color};padding-left:10px">${title}</div>`;
+
+  const kpiHtml = !hasKpi ? '' : `
+    ${sectionTitle('📊 KPI 요약','#1c2535')}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px">
+      ${[
+        ['총 광고비',   fmt(kpi.totalCost),   '#F59E0B'],
+        ['총 노출수',   fmtn(kpi.totalImp),   '#3B82F6'],
+        ['총 클릭수',   fmtn(kpi.totalClick), '#3B82F6'],
+        ['CTR',         fmtp(kpi.ctr),         '#3B82F6'],
+        ['총 전환수',   fmtn(kpi.totalConv)+'건', '#FF6B35'],
+        ['전환매출',    fmt(kpi.totalRev),     '#FF6B35'],
+        ['ROAS',        Math.round(kpi.roas||0)+'%','#03C75A'],
+        ['평균CPC',     fmt(kpi.cpc),          '#F59E0B'],
+      ].map(([l,v,c])=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center;border-top:3px solid ${c}">
+        <div style="font-size:10px;color:#888;margin-bottom:3px">${l}</div>
+        <div style="font-size:14px;font-weight:700;color:${c}">${v}</div>
+      </div>`).join('')}
+    </div>`;
+
+  const channelHtml = !hasChannels ? '' : `
+    ${sectionTitle('📡 캠페인별 성과','#4F46E5')}
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <thead><tr style="background:#1c2535;color:#fff">
+        ${['채널','노출수','클릭수','광고비','CTR','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:7px 10px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${data.channels.filter(c=>c.cost>0).map((c,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:7px 10px;font-weight:600">${c.name}</td>
+          <td style="padding:7px 10px">${fmtn(c.imp)}</td>
+          <td style="padding:7px 10px">${fmtn(c.click)}</td>
+          <td style="padding:7px 10px">${fmt(c.cost)}</td>
+          <td style="padding:7px 10px">${c.imp>0?(c.click/c.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="padding:7px 10px">${c.conv}건</td>
+          <td style="padding:7px 10px">${fmt(c.rev)}</td>
+          <td style="padding:7px 10px;font-weight:700;color:${c.roas>=300?'#03C75A':c.roas>=100?'#F59E0B':'#EF4444'}">${Math.round(c.roas||0)}%</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // GFA 일별 집계
+  const gfaDailyList = (() => {
+    const map = {};
+    gfaRows.filter(r=>r.date).forEach(r=>{
+      if(!map[r.date]) map[r.date]={date:r.date,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0};
+      map[r.date].cost+=+r.cost||0; map[r.date].imp+=+r.imp||0;
+      map[r.date].click+=+r.click||0; map[r.date].conv+=+r.conv||0;
+      map[r.date].rev+=+r.rev||0; map[r.date].cart_conv+=+r.cart_conv||0;
+    });
+    return Object.values(map).sort((a,b)=>a.date.localeCompare(b.date));
+  })();
+
+  // GFA 매체별
+  const gfaPlacements = (() => {
+    const map = {};
+    gfaRows.filter(r=>!r.date).forEach(r=>{
+      const p=r.placement||'기타';
+      if(!map[p]) map[p]={placement:p,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0};
+      map[p].cost+=+r.cost||0; map[p].imp+=+r.imp||0;
+      map[p].click+=+r.click||0; map[p].conv+=+r.conv||0;
+      map[p].rev+=+r.rev||0; map[p].cart_conv+=+r.cart_conv||0;
+    });
+    return Object.values(map).filter(p=>p.cost>0).sort((a,b)=>b.cost-a.cost);
+  })();
+
+  const gfaTotalCost  = gfaDailyList.reduce((s,r)=>s+(+r.cost||0),0);
+  const gfaTotalConv  = gfaDailyList.reduce((s,r)=>s+(+r.conv||0),0);
+  const gfaTotalRev   = gfaDailyList.reduce((s,r)=>s+(+r.rev||0),0);
+  const gfaTotalCart  = gfaDailyList.reduce((s,r)=>s+(+r.cart_conv||0),0);
+  const gfaTotalImp   = gfaDailyList.reduce((s,r)=>s+(+r.imp||0),0);
+  const gfaTotalClick = gfaDailyList.reduce((s,r)=>s+(+r.click||0),0);
+
+  const gfaHtml = !hasGfa ? '' : `
+    ${sectionTitle('📡 GFA 성과','#03C75A')}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+      ${[
+        ['총 광고비',    fmt(gfaTotalCost),  '#F59E0B'],
+        ['노출수',       fmtn(gfaTotalImp),  '#3B82F6'],
+        ['클릭수',       fmtn(gfaTotalClick),'#3B82F6'],
+        ['구매완료수',   fmtn(gfaTotalConv)+'건','#FF6B35'],
+        ['구매완료금액', fmt(gfaTotalRev),   '#FF6B35'],
+        ['장바구니수',   fmtn(gfaTotalCart)+'건','#4F46E5'],
+        ['구매ROAS',     gfaTotalCost>0?Math.round(gfaTotalRev/gfaTotalCost*100)+'%':'—','#03C75A'],
+        ['평균CPC',      gfaTotalClick>0?fmt(Math.round(gfaTotalCost/gfaTotalClick)):'—','#F59E0B'],
+      ].map(([l,v,c])=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center;border-top:3px solid ${c}">
+        <div style="font-size:10px;color:#888;margin-bottom:3px">${l}</div>
+        <div style="font-size:14px;font-weight:700;color:${c}">${v}</div>
+      </div>`).join('')}
+    </div>
+    ${!hasGfaPlacement ? '' : `
+    <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#555">📍 게재위치별</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">
+      <thead><tr style="background:#03C75A;color:#fff">
+        ${['게재위치','광고비','노출수','클릭수','구매완료수','구매완료금액','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${gfaPlacements.map((p,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;font-weight:600">${p.placement}</td>
+          <td style="padding:6px 8px">${fmt(p.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(p.imp)}</td>
+          <td style="padding:6px 8px">${fmtn(p.click)}</td>
+          <td style="padding:6px 8px">${fmtn(p.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(p.rev)}</td>
+          <td style="padding:6px 8px;font-weight:700;color:${p.cost>0&&p.rev/p.cost>=3?'#03C75A':p.cost>0&&p.rev/p.cost>=1?'#F59E0B':'#EF4444'}">${p.cost>0?(p.rev/p.cost*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+    <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#555">📅 일별 성과</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#03C75A;color:#fff">
+        ${['날짜','광고비','노출수','클릭수','구매완료','구매금액','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${gfaDailyList.map((r,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;font-family:monospace">${r.date}</td>
+          <td style="padding:6px 8px">${fmt(r.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(r.imp)}</td>
+          <td style="padding:6px 8px">${fmtn(r.click)}</td>
+          <td style="padding:6px 8px">${fmtn(r.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(r.rev)}</td>
+          <td style="padding:6px 8px;font-weight:700;color:${r.cost>0&&r.rev/r.cost>=3?'#03C75A':r.cost>0&&r.rev/r.cost>=1?'#F59E0B':'#EF4444'}">${r.cost>0?(r.rev/r.cost*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const keywordHtml = !hasKeywords ? '' : `
+    ${sectionTitle('🔑 키워드 TOP20','#F59E0B')}
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#F59E0B;color:#fff">
+        ${['키워드','유형','기기','광고비','클릭수','전환수','전환매출'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${data.topKeywords.filter(k=>k.cost>0).slice(0,20).map((k,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;font-weight:600">${k.keyword}</td>
+          <td style="padding:6px 8px">${k.type||'—'}</td>
+          <td style="padding:6px 8px">${k.device||'—'}</td>
+          <td style="padding:6px 8px">${fmt(k.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(k.click)}</td>
+          <td style="padding:6px 8px">${fmtn(k.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(k.rev)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const dailyHtml = !hasDaily ? '' : `
+    ${sectionTitle('📅 일별 성과 (네이버 검색광고)','#3B82F6')}
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#3B82F6;color:#fff">
+        ${['날짜','광고비','노출수','클릭수','CTR','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${data.dailyList.filter(d=>d.cost>0).map((d,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;font-family:monospace">${d.date}</td>
+          <td style="padding:6px 8px">${fmt(d.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(d.imp)}</td>
+          <td style="padding:6px 8px">${fmtn(d.click)}</td>
+          <td style="padding:6px 8px">${d.imp>0?(d.click/d.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="padding:6px 8px">${fmtn(d.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(d.rev)}</td>
+          <td style="padding:6px 8px;font-weight:700;color:${d.cost>0&&d.rev/d.cost>=3?'#03C75A':d.cost>0&&d.rev/d.cost>=1?'#F59E0B':'#EF4444'}">${d.cost>0?(d.rev/d.cost*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // 포함된 섹션 목록
+  const sections = [
+    hasKpi      && 'KPI 요약',
+    hasChannels && '캠페인별',
+    hasGfa      && 'GFA',
+    hasKeywords && '키워드 TOP20',
+    hasDaily    && '일별 성과',
+  ].filter(Boolean).join(' · ');
+
+  // PDF 미리보기 오버레이 표시
+  document.getElementById('pdfTitle').textContent = `${period} 광고 성과 보고서`;
+  document.getElementById('pdfSubTitle').textContent = `${data.client} · 담당: ${data.manager} · 포함: ${sections}`;
+  document.getElementById('pdfContent').innerHTML = `
+    <div id="printArea" style="font-family:'Noto Sans KR',sans-serif;max-width:800px;margin:0 auto;padding:10px">
+      <div style="text-align:center;padding:20px 0 16px;border-bottom:2px solid #1c2535;margin-bottom:20px">
+        <div style="font-size:10px;letter-spacing:2px;color:#888;margin-bottom:4px">DEARCOMPANY SOLUTION</div>
+        <div style="font-size:20px;font-weight:800;color:#1c2535;margin-bottom:3px">${period} 광고 성과 리포트</div>
+        <div style="font-size:12px;color:#666">${data.client} · 담당: ${data.manager}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:4px">포함 섹션: ${sections}</div>
+      </div>
+      ${kpiHtml}
+      ${channelHtml}
+      ${gfaHtml}
+      ${keywordHtml}
+      ${dailyHtml}
+      <div style="text-align:center;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px;margin-top:20px">
+        Dear Company Solution · dearcompany.kr · 본 보고서는 자동 생성되었습니다.
+      </div>
+    </div>`;
+
+  document.getElementById('pdfOverlay').classList.add('open');
+}
 function closePdfOverlay(){document.getElementById('pdfOverlay').classList.remove('open');}
 
 function downloadPDF(){
