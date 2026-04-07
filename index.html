@@ -2331,21 +2331,33 @@ async function openReportPdf(){
         </tr>`).join('')}
       </tbody>
     </table>`}
-    <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#555">📅 일별 성과</div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#555">📊 주차별 소계</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="background:#03C75A;color:#fff">
-        ${['날짜','광고비','노출수','클릭수','구매완료','구매금액','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+        ${['주차','광고비','노출수','클릭수','구매완료수','구매완료금액','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
       </tr></thead>
-      <tbody>${gfaDailyList.map((r,i)=>`
-        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
-          <td style="padding:6px 8px;font-family:monospace">${r.date}</td>
-          <td style="padding:6px 8px">${fmt(r.cost)}</td>
-          <td style="padding:6px 8px">${fmtn(r.imp)}</td>
-          <td style="padding:6px 8px">${fmtn(r.click)}</td>
-          <td style="padding:6px 8px">${fmtn(r.conv)}건</td>
-          <td style="padding:6px 8px">${fmt(r.rev)}</td>
-          <td style="padding:6px 8px;font-weight:700;color:${r.cost>0&&r.rev/r.cost>=3?'#03C75A':r.cost>0&&r.rev/r.cost>=1?'#F59E0B':'#EF4444'}">${r.cost>0?(r.rev/r.cost*100).toFixed(1)+'%':'—'}</td>
-        </tr>`).join('')}
+      <tbody>${(()=>{
+        const gfaWkMap={};
+        gfaDailyList.forEach(r=>{
+          const day=new Date(r.date).getDate();
+          const wk=day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
+          if(!gfaWkMap[wk]) gfaWkMap[wk]={cost:0,imp:0,click:0,conv:0,rev:0};
+          gfaWkMap[wk].cost+=+r.cost||0; gfaWkMap[wk].imp+=+r.imp||0;
+          gfaWkMap[wk].click+=+r.click||0; gfaWkMap[wk].conv+=+r.conv||0; gfaWkMap[wk].rev+=+r.rev||0;
+        });
+        return ['1주','2주','3주','4주'].filter(w=>gfaWkMap[w]).map((wk,i)=>{
+          const w=gfaWkMap[wk];
+          return `<tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+            <td style="padding:6px 8px;font-weight:700;color:#03C75A">${wk}</td>
+            <td style="padding:6px 8px">${fmt(w.cost)}</td>
+            <td style="padding:6px 8px">${fmtn(w.imp)}</td>
+            <td style="padding:6px 8px">${fmtn(w.click)}</td>
+            <td style="padding:6px 8px">${fmtn(w.conv)}건</td>
+            <td style="padding:6px 8px">${fmt(w.rev)}</td>
+            <td style="padding:6px 8px;font-weight:700;color:${w.cost>0&&w.rev/w.cost>=3?'#03C75A':w.cost>0&&w.rev/w.cost>=1?'#F59E0B':'#EF4444'}">${w.cost>0?(w.rev/w.cost*100).toFixed(1)+'%':'—'}</td>
+          </tr>`;
+        }).join('');
+      })()}
       </tbody>
     </table>`;
 
@@ -2368,33 +2380,14 @@ async function openReportPdf(){
       </tbody>
     </table>`;
 
-  const dailyHtml = !hasDaily ? '' : `
-    ${sectionTitle('📅 일별 성과 (네이버 검색광고)','#3B82F6')}
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr style="background:#3B82F6;color:#fff">
-        ${['날짜','광고비','노출수','클릭수','CTR','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
-      </tr></thead>
-      <tbody>${data.dailyList.filter(d=>d.cost>0).map((d,i)=>`
-        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
-          <td style="padding:6px 8px;font-family:monospace">${d.date}</td>
-          <td style="padding:6px 8px">${fmt(d.cost)}</td>
-          <td style="padding:6px 8px">${fmtn(d.imp)}</td>
-          <td style="padding:6px 8px">${fmtn(d.click)}</td>
-          <td style="padding:6px 8px">${d.imp>0?(d.click/d.imp*100).toFixed(2)+'%':'—'}</td>
-          <td style="padding:6px 8px">${fmtn(d.conv)}건</td>
-          <td style="padding:6px 8px">${fmt(d.rev)}</td>
-          <td style="padding:6px 8px;font-weight:700;color:${d.cost>0&&d.rev/d.cost>=3?'#03C75A':d.cost>0&&d.rev/d.cost>=1?'#F59E0B':'#EF4444'}">${d.cost>0?(d.rev/d.cost*100).toFixed(1)+'%':'—'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
+  const dailyHtml = '';
 
   // 포함된 섹션 목록
   const sections = [
     hasKpi      && 'KPI 요약',
-    hasCamp     && '캠페인별',
-    hasGfa      && 'GFA',
-    hasKeywords && '키워드',
-    hasDaily    && '일별 성과',
+    hasChannels && '캠페인별',
+    hasGfa      && 'GFA (주차별 소계)',
+    hasKeywords && '키워드 TOP20',
   ].filter(Boolean).join(' · ');
 
   // PDF 미리보기 오버레이 표시
