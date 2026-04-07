@@ -1281,9 +1281,10 @@ function htmlNaver(){
 
   return `<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
     <button class="nav-tab active" onclick="switchNaverTab('summary',this)">🚀 요약</button>
-    <button class="nav-tab" onclick="switchNaverTab('campaign',this)">📊 캠페인별</button>
     <button class="nav-tab" onclick="switchNaverTab('gfa',this)">📡 GFA</button>
+    <button class="nav-tab" onclick="switchNaverTab('campaign',this)">📊 캠페인별</button>
     <button class="nav-tab" onclick="switchNaverTab('device',this)">📱 디바이스</button>
+    <button class="nav-tab" onclick="switchNaverTab('keyword',this)">🔑 키워드</button>
     <button class="nav-tab" onclick="switchNaverTab('action',this)">🎯 액션플랜</button>
   </div>
   <div id="nt-tab-summary">
@@ -1324,6 +1325,11 @@ function htmlNaver(){
         <div style="font-size:12px;color:var(--text3)">총 클릭수</div>
       </div>
     </div>` : '<div class="empty"><div class="ei">📱</div><p>데이터가 없습니다</p></div>'}
+  </div>
+  <div id="nt-tab-keyword" style="display:none">
+    <div id="keywordContent">
+      <div class="empty"><div class="ei">🔑</div><p>키워드 데이터 불러오는 중...</p></div>
+    </div>
   </div>
   <div id="nt-tab-action" style="display:none">
     <div class="empty"><div class="ei">🎯</div><p>파일 업로드 후 액션플랜이 표시됩니다</p></div>
@@ -5354,17 +5360,138 @@ function switchRptTab(id, el){
   sessionStorage.setItem('currentNaverTab', id);
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
-  ['summary','campaign','gfa','device','action'].forEach(t=>{
+  ['summary','campaign','gfa','device','keyword','action'].forEach(t=>{
     const p=document.getElementById('nt-tab-'+t);
     if(p)p.style.display=t===id?'block':'none';
   });
-  if(id==='gfa') loadGFATab();
-  if(id==='summary')setTimeout(()=>{
-    const mk=(id,cfg)=>{const el=document.getElementById(id);if(!el)return;try{if(charts[id])charts[id].destroy();charts[id]=new Chart(el,cfg);}catch(e){}};
+  if(id==='gfa')     loadGFATab();
+  if(id==='keyword') loadKeywordTab();
+  if(id==='summary') setTimeout(()=>{
+    const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     mk('naverSummaryBar',{type:'bar',data:{labels:['N쇼핑Mo 1월','N쇼핑Mo 2월','파워링크Mo 1월','파워링크Mo 2월'],datasets:[{data:[623931,508233,2283402,2317150],backgroundColor:['rgba(3,199,90,.4)','rgba(3,199,90,.85)','rgba(79,70,229,.4)','rgba(79,70,229,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
     mk('naverRoasBar',{type:'bar',data:{labels:['N쇼핑Mo','N쇼핑PC','파워링크Mo','파워링크PC'],datasets:[{data:[249,780,74,1544],backgroundColor:['rgba(3,199,90,.7)','rgba(3,199,90,.85)','rgba(239,68,68,.6)','rgba(245,158,11,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
   },80);
+}
+
+async function loadKeywordTab(){
+  const el = document.getElementById('keywordContent');
+  if(!el) return;
+  el.innerHTML=`<div class="empty"><div class="ei">🔑</div><p>불러오는 중...</p></div>`;
+
+  const isAdmin      = currentUser?.role==='admin';
+  const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!targetClient){ el.innerHTML=`<div class="empty"><div class="ei">🔑</div><p>업체를 선택해주세요</p></div>`; return; }
+
+  const fromMonth = currentDateRange?.from?.slice(0,7) || currentReportMonth;
+  const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  try{
+    const res  = await fetch(
+      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
+      {headers:h}
+    );
+    const rows = await res.json();
+
+    if(!Array.isArray(rows)||!rows.length){
+      el.innerHTML=`<div class="empty"><div class="ei">🔑</div><p>키워드 데이터가 없습니다<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 키워드 파일을 업로드해주세요</span></p></div>`;
+      return;
+    }
+
+    const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v=>(v||0).toLocaleString();
+    const calcR= (cost,rev)=>cost>0?(rev/cost*100).toFixed(1)+'%':'—';
+    const roasColor=(cost,rev)=>cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
+
+    // 키워드별 집계 (동일 키워드 합산)
+    const kwMap={};
+    rows.forEach(r=>{
+      const k = r.keyword||'—';
+      if(!kwMap[k]) kwMap[k]={keyword:k,imp:0,click:0,cost:0,conv:0,rev:0,avg_rank:[]};
+      kwMap[k].imp  +=+r.imp||0;
+      kwMap[k].click+=+r.click||0;
+      kwMap[k].cost +=+r.cost||0;
+      kwMap[k].conv +=+r.conv||0;
+      kwMap[k].rev  +=+r.rev||0;
+      if(r.avg_rank) kwMap[k].avg_rank.push(+r.avg_rank);
+    });
+    const kwList = Object.values(kwMap).map(k=>({
+      ...k,
+      ctr:  k.imp>0  ? k.click/k.imp*100 : 0,
+      cpc:  k.click>0? k.cost/k.click     : 0,
+      roas: k.cost>0 ? k.rev/k.cost*100   : 0,
+      rank: k.avg_rank.length ? k.avg_rank.reduce((s,v)=>s+v,0)/k.avg_rank.length : 0,
+    })).filter(k=>k.cost>0||k.imp>0);
+
+    // 총비용 내림차순 정렬
+    const byCost  = [...kwList].sort((a,b)=>b.cost-a.cost);
+    // 효율좋은 (ROAS 높은, 전환있는)
+    const byRoas  = [...kwList].filter(k=>k.conv>0).sort((a,b)=>b.roas-a.roas);
+    // 노출많은
+    const byImp   = [...kwList].sort((a,b)=>b.imp-a.imp);
+    // 클릭많은
+    const byClick = [...kwList].sort((a,b)=>b.click-a.click);
+
+    const kwCard = (title, color, icon, list, valueLabel, valueFn) => `
+      <div class="card" style="border-top:3px solid ${color}">
+        <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:12px">${icon} ${title}</div>
+        ${list.slice(0,5).map((k,i)=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;${i<4?'border-bottom:1px solid var(--border)':''}">
+            <div style="width:20px;height:20px;border-radius:50%;background:${color};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
+            <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${k.keyword}</div>
+            <div style="font-size:12px;font-weight:700;color:${color};white-space:nowrap">${valueFn(k)}</div>
+          </div>`).join('')}
+        ${list.length===0?`<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px">데이터 없음</div>`:''}
+      </div>`;
+
+    const dashboardHtml = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px">
+        ${kwCard('효율 좋은 키워드','var(--naver)','🏆',byRoas,'ROAS',k=>Math.round(k.roas)+'%')}
+        ${kwCard('노출 많은 키워드','var(--blue)','👁️',byImp,'노출수',k=>fmtn(k.imp))}
+        ${kwCard('클릭 많은 키워드','var(--gold)','👆',byClick,'클릭수',k=>fmtn(k.click))}
+        ${kwCard('비용 소진 키워드','var(--store)','💰',byCost,'광고비',k=>fmt(k.cost))}
+      </div>`;
+
+    // 전체 키워드 표 (총비용 내림차순)
+    const tableRows = byCost.map((k,i)=>`
+      <tr>
+        <td style="font-size:11px;color:var(--text3);text-align:center">${i+1}</td>
+        <td style="font-size:13px;font-weight:600">${k.keyword}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.imp>0?(k.click/k.imp*100).toFixed(2)+'%':'—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.click>0?fmt(Math.round(k.cpc)):'—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3)">${k.rank>0?k.rank.toFixed(1):'—'}</td>
+      </tr>`).join('');
+
+    el.innerHTML = `
+      ${dashboardHtml}
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600">🔑 키워드 전체 목록 <span style="font-size:12px;color:var(--text3);font-weight:400">${byCost.length}개 · 총비용 내림차순</span></div>
+        </div>
+        <div style="overflow-x:auto;max-height:560px;overflow-y:auto">
+          <table class="tbl">
+            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+              <th style="width:40px">순위</th>
+              <th>키워드</th>
+              <th>노출수</th><th>클릭수</th><th>CTR</th>
+              <th>광고비</th><th>평균CPC</th>
+              <th>전환수</th><th>전환매출</th><th>ROAS</th><th>평균순위</th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+  }catch(e){
+    el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>키워드 데이터 로드 실패: ${e.message}</p></div>`;
+  }
 }
 async function loadGFATab(){
   const el = document.getElementById('gfaContent');
