@@ -2613,57 +2613,58 @@ function renderDataTab(){
   if(!el)return;
   const selClient=document.getElementById('filterClient2')?document.getElementById('filterClient2').value:'';
   const selMonth=document.getElementById('filterMonth2')?document.getElementById('filterMonth2').value:'';
-  const selType=document.getElementById('filterType2')?document.getElementById('filterType2').value:'daily';
   el.innerHTML=`
   <div style="max-width:1100px">
     <div class="card" style="margin-bottom:16px">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end">
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">업체</div>
-          <select id="filterClient2" class="fi" onchange="renderDataTab()">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">업체</div>
+          <select id="filterClient2" class="fi" style="background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text1);width:100%">
             <option value="">전체 업체</option>
             ${ACCOUNTS.filter(a=>a.role==='client').map(a=>`<option value="${a.id}" ${a.id===selClient?'selected':''}>${a.company}</option>`).join('')}
           </select>
         </div>
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">월</div>
-          <input type="month" id="filterMonth2" class="fi" value="${selMonth}" onchange="renderDataTab()">
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">월</div>
+          <input type="month" id="filterMonth2" class="fi" value="${selMonth}"
+            style="background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text1);width:100%">
         </div>
-        <div>
-          <div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:5px">데이터 유형</div>
-          <select id="filterType2" class="fi" onchange="renderDataTab()">
-            <option value="daily" ${selType==='daily'?'selected':''}>📅 일별</option>
-            <option value="keyword" ${selType==='keyword'?'selected':''}>🔑 키워드별</option>
-            <option value="hourly" ${selType==='hourly'?'selected':''}>🕐 시간대별</option>
-            <option value="summary" ${selType==='summary'?'selected':''}>📊 월별 요약</option>
-          </select>
-        </div>
-        <button class="btn btn-bl" onclick="loadDataFromSupabase()">🔄 불러오기</button>
+        <button class="btn btn-bl" onclick="searchUploadLogs()"
+          style="height:40px;padding:0 24px;border-radius:8px;font-weight:600;white-space:nowrap">
+          🔍 검색
+        </button>
       </div>
     </div>
-    <div id="dataTableWrap">${renderDataTable(selType,selClient,selMonth)}</div>
-    <div class="card" style="margin-top:16px;padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:14px;font-weight:600">📋 업로드 이력</div>
-        <button class="btn btn-ol btn-sm" onclick="loadUploadLogs()">🔄 새로고침</button>
       </div>
       <div id="uploadLogWrap" style="padding:14px 20px">
         <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">불러오는 중...</div>
       </div>
     </div>
   </div>`;
-  loadUploadLogs(selClient);
+  // 처음엔 전체 목록 로드
+  loadUploadLogs(selClient, selMonth);
 }
 
-async function loadUploadLogs(clientFilter){
+function searchUploadLogs(){
+  const client = document.getElementById('filterClient2')?.value || '';
+  const month  = document.getElementById('filterMonth2')?.value || '';
+  loadUploadLogs(client, month);
+}
+
+async function loadUploadLogs(clientFilter, monthFilter){
   const wrap = document.getElementById('uploadLogWrap');
   if(!wrap) return;
+  wrap.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">불러오는 중...</div>`;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
     const isAdmin = currentUser?.role==='admin';
     const targetClient = clientFilter || (isAdmin ? (activeClientId||'') : (currentUser?.id||''));
-    let url = `${SUPABASE_URL}/rest/v1/upload_logs?select=*&order=uploaded_at.desc&limit=100`;
+    let url = `${SUPABASE_URL}/rest/v1/upload_logs?select=*&order=uploaded_at.desc&limit=200`;
     if(targetClient) url += `&client_key=eq.${targetClient}`;
+    if(monthFilter)  url += `&month=eq.${monthFilter}`;
     const res = await fetch(url,{headers:h});
     const logs = await res.json();
 
