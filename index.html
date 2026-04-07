@@ -2307,12 +2307,20 @@ async function loadUploadLogs(clientFilter){
       const acc = ACCOUNTS.find(a=>a.id===log.client_key);
       const company = acc?.company || log.client_key;
       const label = typeLabel[log.file_type] || '📄';
+      // JSON으로 직렬화해서 onclick에 안전하게 전달
+      const logJson = encodeURIComponent(JSON.stringify({
+        id: log.id,
+        client_key: log.client_key,
+        file_type: log.file_type,
+        month: log.month,
+        file_name: log.file_name,
+      }));
       return `
         <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
           <div style="font-size:18px;flex-shrink:0">${log.file_name.endsWith('.csv')?'📄':'📊'}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-              onclick="downloadUploadLog('${log.file_name}')" title="클릭하여 파일명 복사">
+              onclick="downloadUploadLog('${log.file_name}')" title="클릭하여 다운로드">
               ${log.file_name}
             </div>
             <div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
@@ -2322,10 +2330,12 @@ async function loadUploadLogs(clientFilter){
               <span>${log.row_count}건</span>
             </div>
           </div>
-          <div style="font-size:11px;color:var(--text3);text-align:right;flex-shrink:0;font-family:'IBM Plex Mono',monospace">
+          <div style="font-size:11px;color:var(--text3);text-align:right;flex-shrink:0;font-family:'IBM Plex Mono',monospace;margin-right:8px">
             <div>${dateStr}</div>
             <div>${timeStr}</div>
           </div>
+          <button class="btn btn-ol btn-sm" style="color:var(--red);border-color:rgba(239,68,68,.3);flex-shrink:0"
+            onclick="confirmDeleteUploadLog(decodeURIComponent('${logJson}'))">🗑</button>
         </div>`;
     }).join('');
 
@@ -2352,7 +2362,80 @@ function downloadUploadLog(fileName){
     });
   }
 }
+function confirmDeleteUploadLog(logStr){
+  const log = JSON.parse(logStr);
+  const tableMap = {
+    daily:         { table:'daily_reports',   label:'일별 데이터' },
+    keyword:       { table:'keyword_reports', label:'키워드 데이터' },
+    hourly:        { table:'hourly_reports',  label:'시간대별 데이터' },
+    gfa_daily:     { table:'gfa_reports',     label:'GFA 일별 데이터' },
+    gfa_placement: { table:'gfa_reports',     label:'GFA 매체별 데이터' },
+  };
+  const info = tableMap[log.file_type] || {table:null, label:'데이터'};
 
+  document.getElementById('modalTitle').textContent = '🗑 데이터 삭제';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="text-align:center;padding:12px 0">
+      <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px">${log.file_name}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:2">
+        업로드 이력 + Supabase의 <b>${info.label}</b>가 완전히 삭제됩니다.<br>
+        ${log.month ? `대상 월: <b style="color:var(--indigo)">${log.month}</b><br>` : ''}
+        이 작업은 되돌릴 수 없습니다.
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--red-l);border-radius:var(--rsm);font-size:12px;color:var(--red)">
+        삭제 후 해당 월 데이터가 대시보드에서 사라집니다
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-rd" onclick="deleteUploadLog(decodeURIComponent('${encodeURIComponent(logStr)}'))">🗑 완전 삭제</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function deleteUploadLog(logStr){
+  const log = JSON.parse(logStr);
+  const h = {
+    'apikey':SUPABASE_ANON_KEY,
+    'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+    'Content-Type':'application/json'
+  };
+  const tableMap = {
+    daily:         'daily_reports',
+    keyword:       'keyword_reports',
+    hourly:        'hourly_reports',
+    gfa_daily:     'gfa_reports',
+    gfa_placement: 'gfa_reports',
+  };
+  const dataTable = tableMap[log.file_type];
+
+  toast('🗑 삭제 중...');
+  closeModal();
+
+  try{
+    // 1. Supabase 실제 데이터 삭제
+    if(dataTable && log.client_key && log.month){
+      let delUrl = `${SUPABASE_URL}/rest/v1/${dataTable}?client_key=eq.${log.client_key}&month=eq.${log.month}`;
+      // GFA는 일별/매체별 구분
+      if(log.file_type==='gfa_daily')     delUrl += '&date=not.is.null';
+      if(log.file_type==='gfa_placement') delUrl += '&date=is.null';
+      await fetch(delUrl,{method:'DELETE',headers:h});
+    }
+
+    // 2. upload_logs 이력 삭제
+    await fetch(`${SUPABASE_URL}/rest/v1/upload_logs?id=eq.${log.id}`,{
+      method:'DELETE', headers:h
+    });
+
+    toast(`✅ "${log.file_name}" 삭제 완료`);
+    // 목록 새로고침
+    const selClient = document.getElementById('filterClient2')?.value || '';
+    loadUploadLogs(selClient);
+
+  }catch(e){
+    toast(`❌ 삭제 실패: ${e.message}`);
+  }
+}
 function renderDataTable(type,client,month){
   const data=parsedTableData.filter(r=>{
     if(client&&r.client_key!==client)return false;
