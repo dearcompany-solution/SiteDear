@@ -186,8 +186,9 @@ tbody tr:hover td{background:var(--surface)}
 
 /* ════ MESSAGING ════ */
 .msg-layout{display:grid;grid-template-columns:280px 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--sh);min-height:480px}
-.msg-sb{border-right:1px solid var(--border);display:flex;flex-direction:column}
-.msg-sb-hd{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.msg-sb{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+.msg-sb-hd{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.msg-sb-list{flex:1;overflow-y:auto;max-height:480px}
 .msg-thread{padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s;position:relative}
 .msg-thread:hover{background:var(--surface)}
 .msg-thread.active{background:var(--blue-l)}
@@ -4282,10 +4283,20 @@ function htmlMsg(){
   <div class="msg-layout" style="min-height:540px">
     <div class="msg-sb">
       <div class="msg-sb-hd">
-        <span style="font-size:13.5px;font-weight:600">💬 대화 목록</span>
-        ${isAdmin?`<button class="btn btn-ol btn-sm" onclick="updateMsgBadge()">🔄</button>`:''}
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13.5px;font-weight:600">💬 대화 목록</span>
+          ${isAdmin?`<button class="btn btn-ol btn-sm" onclick="updateMsgBadge()" style="flex-shrink:0">🔄</button>`:''}
+        </div>
+        ${isAdmin?`
+        <div style="position:relative">
+          <input id="msgClientSearch" type="text" placeholder="🔍 업체 검색..."
+            oninput="filterMsgThreads(this.value)"
+            style="width:100%;border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12.5px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--surface);outline:none;transition:all .2s;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(59,130,246,.12)'"
+            onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+        </div>`:''}
       </div>
-      <div>${threadList}</div>
+      <div class="msg-sb-list" id="msgThreadList">${threadList}</div>
     </div>
     <div class="msg-main">
       <div class="msg-main-hd">
@@ -4312,6 +4323,14 @@ function htmlMsg(){
       </div>
     </div>
   </div>`;}
+  function filterMsgThreads(q){
+  const threads = document.querySelectorAll('.msg-thread');
+  const keyword = q.trim().toLowerCase();
+  threads.forEach(t=>{
+    const name = t.querySelector('.mt-name')?.textContent?.toLowerCase()||'';
+    t.style.display = (!keyword || name.includes(keyword)) ? '' : 'none';
+  });
+}
 function selT(el,name){
   document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
