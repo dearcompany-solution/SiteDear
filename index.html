@@ -5153,6 +5153,27 @@ async function loadGFATab(){
         <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">전환</span></div><div class="kpi-lbl">구매완료금액</div><div class="kpi-val">${fmt(totalRev)}</div></div>
         <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">🛒</div><span class="kpi-chip kc-s">전환</span></div><div class="kpi-lbl">장바구니 담기수</div><div class="kpi-val">${fmtn(totalCartConv)}건</div></div>
         <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">📈</div><span class="kpi-chip kc-n">GFA</span></div><div class="kpi-lbl">구매완료 ROAS</div><div class="kpi-val" style="color:${roasColor(totalCost,totalRev)}">${calcR(totalCost,totalRev)}</div></div>
+     </div>
+
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">📊 주차별 노출수 · 클릭수</div></div></div>
+          <canvas id="gfaWeekBar" height="120"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">💰 주차별 광고비 · ROAS</div></div></div>
+          <canvas id="gfaWeekRoas" height="120"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-hd"><div><div class="card-title">📅 일별 노출수 · 클릭수</div></div></div>
+        <canvas id="gfaDailyBar" height="100"></canvas>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-hd"><div><div class="card-title">💰 일별 광고비 · 평균CPC</div></div></div>
+        <canvas id="gfaDailyCost" height="100"></canvas>
       </div>
 
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
@@ -5273,6 +5294,116 @@ async function loadGFATab(){
     // KPI는 일별 데이터 기준 (더 정확)
     const kpiBase = dailyData.length ? dailyData : rows;
     el.innerHTML = renderShell(kpiBase, placementRows, dailyRows, dailyList.length);
+
+    // ── 차트 그리기 ──
+    setTimeout(()=>{
+      const ax = {
+        grid:{color:'#dce6f0'},
+        ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}
+      };
+
+      // 주차별 데이터 집계
+      const weekMap = {};
+      dailyList.forEach(r=>{
+        const d = new Date(r.date);
+        const day = d.getDate();
+        const wk = day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
+        if(!weekMap[wk]) weekMap[wk]={wk,imp:0,click:0,cost:0,conv:0,rev:0,cpc:0,days:0};
+        weekMap[wk].imp   += +r.imp  ||0;
+        weekMap[wk].click += +r.click||0;
+        weekMap[wk].cost  += +r.cost ||0;
+        weekMap[wk].conv  += +r.conv ||0;
+        weekMap[wk].rev   += +r.rev  ||0;
+        weekMap[wk].days  += 1;
+      });
+      const weeks = ['1주','2주','3주','4주'].filter(w=>weekMap[w]);
+      const wLabels = weeks;
+      const wImp    = weeks.map(w=>weekMap[w].imp);
+      const wClick  = weeks.map(w=>weekMap[w].click);
+      const wCost   = weeks.map(w=>weekMap[w].cost);
+      const wRoas   = weeks.map(w=>weekMap[w].cost>0?(weekMap[w].rev/weekMap[w].cost*100):0);
+
+      // 일별 데이터
+      const dLabels = dailyList.map(r=>r.date.slice(5)); // MM-DD
+      const dImp    = dailyList.map(r=>+r.imp  ||0);
+      const dClick  = dailyList.map(r=>+r.click||0);
+      const dCost   = dailyList.map(r=>+r.cost ||0);
+      const dCpc    = dailyList.map(r=>r.click>0?Math.round(r.cost/r.click):0);
+
+      const mk = (id, cfg) => {
+        const el2 = document.getElementById(id);
+        if(!el2) return;
+        try{
+          if(charts[id]) charts[id].destroy();
+          charts[id] = new Chart(el2, cfg);
+        }catch(e){}
+      };
+
+      // ① 주차별 노출수·클릭수
+      mk('gfaWeekBar',{type:'bar',data:{
+        labels: wLabels,
+        datasets:[
+          {label:'노출수', data:wImp,   backgroundColor:'rgba(3,199,90,.5)',  borderRadius:6, yAxisID:'y'},
+          {label:'클릭수', data:wClick, type:'line', borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.1)', borderWidth:2, tension:.4, fill:true, pointRadius:4, yAxisID:'y1'},
+        ]
+      },options:{responsive:true,
+        scales:{
+          x:ax,
+          y:{...ax,position:'left',ticks:{...ax.ticks,color:'#03C75A',callback:v=>v.toLocaleString()}},
+          y1:{grid:{display:false},ticks:{color:'#F59E0B',font:{size:10,family:'IBM Plex Mono'},callback:v=>v.toLocaleString()},position:'right'}
+        },
+        plugins:{legend:{labels:{color:'#4a5670',font:{size:11,family:'Noto Sans KR'},padding:12}}}
+      }});
+
+      // ② 주차별 광고비·ROAS
+      mk('gfaWeekRoas',{type:'bar',data:{
+        labels: wLabels,
+        datasets:[
+          {label:'광고비', data:wCost, backgroundColor:'rgba(79,70,229,.5)', borderRadius:6, yAxisID:'y'},
+          {label:'ROAS(%)', data:wRoas, type:'line', borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,.08)', borderWidth:2, tension:.4, fill:true, pointRadius:4, yAxisID:'y1'},
+        ]
+      },options:{responsive:true,
+        scales:{
+          x:ax,
+          y:{...ax,position:'left',ticks:{...ax.ticks,color:'#4F46E5',callback:v=>'₩'+Math.round(v).toLocaleString()}},
+          y1:{grid:{display:false},ticks:{color:'#EF4444',font:{size:10,family:'IBM Plex Mono'},callback:v=>v.toFixed(0)+'%'},position:'right'}
+        },
+        plugins:{legend:{labels:{color:'#4a5670',font:{size:11,family:'Noto Sans KR'},padding:12}}}
+      }});
+
+      // ③ 일별 노출수·클릭수
+      mk('gfaDailyBar',{type:'bar',data:{
+        labels: dLabels,
+        datasets:[
+          {label:'노출수', data:dImp,   backgroundColor:'rgba(3,199,90,.4)',  borderRadius:4, yAxisID:'y'},
+          {label:'클릭수', data:dClick, type:'line', borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.08)', borderWidth:2, tension:.4, fill:true, pointRadius:2, yAxisID:'y1'},
+        ]
+      },options:{responsive:true,
+        scales:{
+          x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},
+          y:{...ax,position:'left',ticks:{...ax.ticks,color:'#03C75A',callback:v=>v.toLocaleString()}},
+          y1:{grid:{display:false},ticks:{color:'#F59E0B',font:{size:10,family:'IBM Plex Mono'},callback:v=>v.toLocaleString()},position:'right'}
+        },
+        plugins:{legend:{labels:{color:'#4a5670',font:{size:11,family:'Noto Sans KR'},padding:12}}}
+      }});
+
+      // ④ 일별 광고비·평균CPC
+      mk('gfaDailyCost',{type:'bar',data:{
+        labels: dLabels,
+        datasets:[
+          {label:'광고비',   data:dCost, backgroundColor:'rgba(79,70,229,.4)', borderRadius:4, yAxisID:'y'},
+          {label:'평균CPC', data:dCpc,  type:'line', borderColor:'#FF6B35', backgroundColor:'rgba(255,107,53,.08)', borderWidth:2, tension:.4, fill:true, pointRadius:2, yAxisID:'y1'},
+        ]
+      },options:{responsive:true,
+        scales:{
+          x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},
+          y:{...ax,position:'left',ticks:{...ax.ticks,color:'#4F46E5',callback:v=>'₩'+Math.round(v).toLocaleString()}},
+          y1:{grid:{display:false},ticks:{color:'#FF6B35',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+v.toLocaleString()},position:'right'}
+        },
+        plugins:{legend:{labels:{color:'#4a5670',font:{size:11,family:'Noto Sans KR'},padding:12}}}
+      }});
+
+    }, 100);
 
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>데이터 로드 실패: ${e.message}</p></div>`;
