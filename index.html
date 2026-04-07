@@ -2530,7 +2530,8 @@ let parsedTableData=[];
 let currentInputTab='upload';
 
 function loadSheetJS(cb){
-  if(window.XLSX){cb();return;}
+  // 상단에서 이미 로드했으므로 바로 실행하거나, 없을 경우 대비
+  if(window.XLSX){ cb(); return; }
   const s=document.createElement('script');
   s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   s.onload=cb;
