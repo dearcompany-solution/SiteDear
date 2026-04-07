@@ -2096,21 +2096,26 @@ async function openReportPdf(){
   const data = await fetchReportData(currentReportMonth);
   if(!data){ toast('⚠️ 데이터가 없습니다'); return; }
 
-  // GFA 데이터 로드
   const isAdmin      = currentUser?.role==='admin';
   const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
   const fromMonth    = currentDateRange?.from?.slice(0,7) || currentReportMonth;
   const toMonth      = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
+  const fromDate     = currentDateRange?.from || (currentReportMonth+'-01');
+  const toDate       = currentDateRange?.to   || (currentReportMonth+'-31');
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
-  let gfaRows = [];
+
+  // GFA + 키워드 + 캠페인별 데이터 병렬 로드
+  let gfaRows=[], kwRows=[], campRows=[];
   try{
-    const gfaRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,
-      {headers:h}
-    );
-    gfaRows = await gfaRes.json();
-    if(!Array.isArray(gfaRows)) gfaRows=[];
-  }catch(e){ gfaRows=[]; }
+    const [gfaRes, kwRes, campRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
+    ]);
+    gfaRows  = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
+    kwRows   = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
+    campRows = await campRes.json().then(r=>Array.isArray(r)?r:[]);
+  }catch(e){ gfaRows=[]; kwRows=[]; campRows=[]; }
 
   const kpi  = data.kpi||{};
   const fmt  = n=>'₩'+Math.round(n||0).toLocaleString();
@@ -2123,10 +2128,40 @@ async function openReportPdf(){
   // 데이터 유무 판단
   const hasKpi      = (kpi.totalCost||0) > 0 || (kpi.totalImp||0) > 0;
   const hasChannels = (data.channels||[]).filter(c=>c.cost>0).length > 0;
-  const hasKeywords = (data.topKeywords||[]).filter(k=>k.cost>0).length > 0;
-  const hasDaily    = (data.dailyList||[]).filter(d=>d.cost>0).length > 0;
   const hasGfa      = gfaRows.filter(r=>r.date&&(+r.cost||0)>0).length > 0;
   const hasGfaPlacement = gfaRows.filter(r=>!r.date&&(+r.cost||0)>0).length > 0;
+
+  // 키워드 집계 (Supabase에서 직접 로드한 kwRows 사용)
+  const kwMap2={};
+  kwRows.forEach(r=>{
+    const k=r.keyword||'';
+    if(!kwMap2[k]) kwMap2[k]={keyword:k,cost:0,click:0,conv:0,rev:0,imp:0};
+    kwMap2[k].cost+=+r.cost||0; kwMap2[k].click+=+r.click||0;
+    kwMap2[k].conv+=+r.conv||0; kwMap2[k].rev+=+r.rev||0; kwMap2[k].imp+=+r.imp||0;
+  });
+  const kwListPdf = Object.values(kwMap2).filter(k=>k.cost>0).sort((a,b)=>b.cost-a.cost);
+  const hasKeywords = kwListPdf.length > 0;
+
+  // 캠페인별 집계 (daily_reports에서 campaign_type 기준)
+  const campMap={};
+  campRows.forEach(r=>{
+    const key = r.campaign_type||'기타';
+    if(!campMap[key]) campMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
+    campMap[key].imp+=+r.imp||0; campMap[key].click+=+r.click||0;
+    campMap[key].cost+=+r.cost||0; campMap[key].conv+=+r.conv||0; campMap[key].rev+=+r.rev||0;
+  });
+  const campList = Object.values(campMap).filter(c=>c.cost>0).sort((a,b)=>b.cost-a.cost);
+  const hasCamp = campList.length > 0;
+
+  // 일별 집계
+  const dailyMap2={};
+  campRows.filter(r=>r.date).forEach(r=>{
+    if(!dailyMap2[r.date]) dailyMap2[r.date]={date:r.date,cost:0,imp:0,click:0,conv:0,rev:0};
+    dailyMap2[r.date].cost+=+r.cost||0; dailyMap2[r.date].imp+=+r.imp||0;
+    dailyMap2[r.date].click+=+r.click||0; dailyMap2[r.date].conv+=+r.conv||0; dailyMap2[r.date].rev+=+r.rev||0;
+  });
+  const dailyListPdf = Object.values(dailyMap2).sort((a,b)=>a.date.localeCompare(b.date));
+  const hasDaily = dailyListPdf.filter(d=>d.cost>0).length > 0;
 
   // ── 섹션별 HTML 생성 ──
   const sectionTitle = (title, color='#3B82F6') =>
@@ -2166,6 +2201,65 @@ async function openReportPdf(){
           <td style="padding:7px 10px">${c.conv}건</td>
           <td style="padding:7px 10px">${fmt(c.rev)}</td>
           <td style="padding:7px 10px;font-weight:700;color:${c.roas>=300?'#03C75A':c.roas>=100?'#F59E0B':'#EF4444'}">${Math.round(c.roas||0)}%</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const campHtml = !hasCamp ? '' : `
+    ${sectionTitle('📊 캠페인유형별 성과','#4F46E5')}
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <thead><tr style="background:#4F46E5;color:#fff">
+        ${['캠페인유형','노출수','클릭수','광고비','CTR','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:7px 10px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${campList.map((c,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:7px 10px;font-weight:600">${c.name}</td>
+          <td style="padding:7px 10px">${fmtn(c.imp)}</td>
+          <td style="padding:7px 10px">${fmtn(c.click)}</td>
+          <td style="padding:7px 10px">${fmt(c.cost)}</td>
+          <td style="padding:7px 10px">${c.imp>0?(c.click/c.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="padding:7px 10px">${fmtn(c.conv)}건</td>
+          <td style="padding:7px 10px">${fmt(c.rev)}</td>
+          <td style="padding:7px 10px;font-weight:700;color:${c.cost>0&&c.rev/c.cost>=3?'#03C75A':c.cost>0&&c.rev/c.cost>=1?'#F59E0B':'#EF4444'}">${c.cost>0?(c.rev/c.cost*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const kwHtmlPdf = !hasKeywords ? '' : `
+    ${sectionTitle('🔑 키워드별 성과 (총비용 내림차순)','#F59E0B')}
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#F59E0B;color:#fff">
+        ${['순위','키워드','광고비','클릭수','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${kwListPdf.slice(0,30).map((k,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;color:#888">${i+1}</td>
+          <td style="padding:6px 8px;font-weight:600">${k.keyword}</td>
+          <td style="padding:6px 8px">${fmt(k.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(k.click)}</td>
+          <td style="padding:6px 8px">${fmtn(k.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(k.rev)}</td>
+          <td style="padding:6px 8px;font-weight:700;color:${k.cost>0&&k.rev/k.cost>=3?'#03C75A':k.cost>0&&k.rev/k.cost>=1?'#F59E0B':'#EF4444'}">${k.cost>0?(k.rev/k.cost*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const dailyHtmlPdf = !hasDaily ? '' : `
+    ${sectionTitle('📅 일별 성과','#3B82F6')}
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#3B82F6;color:#fff">
+        ${['날짜','광고비','노출수','클릭수','CTR','전환수','전환매출','ROAS'].map(h2=>`<th style="padding:6px 8px;text-align:left">${h2}</th>`).join('')}
+      </tr></thead>
+      <tbody>${dailyListPdf.filter(d=>d.cost>0).map((d,i)=>`
+        <tr style="background:${i%2===0?'#f8fafc':'#fff'}">
+          <td style="padding:6px 8px;font-family:monospace">${d.date}</td>
+          <td style="padding:6px 8px">${fmt(d.cost)}</td>
+          <td style="padding:6px 8px">${fmtn(d.imp)}</td>
+          <td style="padding:6px 8px">${fmtn(d.click)}</td>
+          <td style="padding:6px 8px">${d.imp>0?(d.click/d.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="padding:6px 8px">${fmtn(d.conv)}건</td>
+          <td style="padding:6px 8px">${fmt(d.rev)}</td>
+          <td style="padding:6px 8px;font-weight:700;color:${d.cost>0&&d.rev/d.cost>=3?'#03C75A':d.cost>0&&d.rev/d.cost>=1?'#F59E0B':'#EF4444'}">${d.cost>0?(d.rev/d.cost*100).toFixed(1)+'%':'—'}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -2297,9 +2391,9 @@ async function openReportPdf(){
   // 포함된 섹션 목록
   const sections = [
     hasKpi      && 'KPI 요약',
-    hasChannels && '캠페인별',
+    hasCamp     && '캠페인별',
     hasGfa      && 'GFA',
-    hasKeywords && '키워드 TOP20',
+    hasKeywords && '키워드',
     hasDaily    && '일별 성과',
   ].filter(Boolean).join(' · ');
 
@@ -2315,10 +2409,10 @@ async function openReportPdf(){
         <div style="font-size:11px;color:#aaa;margin-top:4px">포함 섹션: ${sections}</div>
       </div>
       ${kpiHtml}
-      ${channelHtml}
+      ${campHtml}
       ${gfaHtml}
-      ${keywordHtml}
-      ${dailyHtml}
+      ${kwHtmlPdf}
+      ${dailyHtmlPdf}
       <div style="text-align:center;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px;margin-top:20px">
         Dear Company Solution · dearcompany.kr · 본 보고서는 자동 생성되었습니다.
       </div>
@@ -5535,47 +5629,87 @@ async function loadKeywordTab(){
 
     const dashboardHtml = `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px">
-        ${kwCard('효율 좋은 키워드','var(--naver)','🏆',byRoas,'ROAS',k=>Math.round(k.roas)+'%')}
+        ${kwCard('효율 좋은 키워드','var(--naver)','🏆',byRoas,'ROAS',k=>Math.round(k.roas).toLocaleString()+'%')}
         ${kwCard('노출 많은 키워드','var(--blue)','👁️',byImp,'노출수',k=>fmtn(k.imp))}
         ${kwCard('클릭 많은 키워드','var(--gold)','👆',byClick,'클릭수',k=>fmtn(k.click))}
         ${kwCard('비용 소진 키워드','var(--store)','💰',byCost,'광고비',k=>fmt(k.cost))}
       </div>`;
 
-    // 전체 키워드 표 (총비용 내림차순)
-    const tableRows = byCost.map((k,i)=>`
-      <tr>
-        <td style="font-size:11px;color:var(--text3);text-align:center">${i+1}</td>
-        <td style="font-size:13px;font-weight:600">${k.keyword}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.imp)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.imp>0?(k.click/k.imp*100).toFixed(2)+'%':'—'}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.click>0?fmt(Math.round(k.cpc)):'—'}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3)">${k.rank>0?k.rank.toFixed(1):'—'}</td>
-      </tr>`).join('');
+    // 전체 키워드 표 — 정렬 기능 포함
+    let kwSortCol = 'cost';
+    let kwSortAsc = false;
+
+    const kwCols = [
+      {key:'keyword', label:'키워드',  sortFn: k=>k.keyword},
+      {key:'imp',     label:'노출수',  sortFn: k=>k.imp},
+      {key:'click',   label:'클릭수',  sortFn: k=>k.click},
+      {key:'ctr',     label:'CTR',     sortFn: k=>k.ctr},
+      {key:'cost',    label:'광고비',  sortFn: k=>k.cost},
+      {key:'cpc',     label:'평균CPC', sortFn: k=>k.cpc},
+      {key:'conv',    label:'전환수',  sortFn: k=>k.conv},
+      {key:'rev',     label:'전환매출',sortFn: k=>k.rev},
+      {key:'roas',    label:'ROAS',    sortFn: k=>k.roas},
+    ];
+
+    const renderKwTable = () => {
+      const col = kwCols.find(c=>c.key===kwSortCol);
+      const sorted = [...kwList].sort((a,b)=>{
+        const va = col?.sortFn(a)||0;
+        const vb = col?.sortFn(b)||0;
+        if(typeof va==='string') return kwSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return kwSortAsc ? va-vb : vb-va;
+      });
+
+      const thStyle = (key) => {
+        const active = key===kwSortCol;
+        return `style="cursor:pointer;user-select:none;white-space:nowrap;${active?'color:var(--blue);background:var(--blue-l)':''}"`;
+      };
+      const arrow = (key) => key===kwSortCol ? (kwSortAsc?' ▲':' ▼') : ' ↕';
+
+      const heads = kwCols.map(c=>
+        `<th ${thStyle(c.key)} onclick="window._kwSort('${c.key}')">${c.label}${arrow(c.key)}</th>`
+      ).join('');
+
+      const rows2 = sorted.map((k,i)=>`
+        <tr>
+          <td style="font-size:11px;color:var(--text3);text-align:center">${i+1}</td>
+          <td style="font-size:13px;font-weight:600">${k.keyword}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.imp>0?(k.click/k.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${k.click>0?fmt(Math.round(k.cpc)):'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
+        </tr>`).join('');
+
+      const tbody = document.getElementById('kwTableBody');
+      const thead = document.getElementById('kwTableHead');
+      if(tbody) tbody.innerHTML = rows2;
+      if(thead) thead.innerHTML = `<tr><th style="width:40px">순위</th>${heads}</tr>`;
+    };
+
+    window._kwSort = (col) => {
+      if(kwSortCol===col) kwSortAsc=!kwSortAsc;
+      else { kwSortCol=col; kwSortAsc=false; }
+      renderKwTable();
+    };
 
     el.innerHTML = `
       ${dashboardHtml}
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:600">🔑 키워드 전체 목록 <span style="font-size:12px;color:var(--text3);font-weight:400">${byCost.length}개 · 총비용 내림차순</span></div>
+          <div style="font-size:14px;font-weight:600">🔑 키워드 전체 목록 <span style="font-size:12px;color:var(--text3);font-weight:400">${kwList.length}개 · 컬럼 클릭으로 정렬</span></div>
         </div>
         <div style="overflow-x:auto;max-height:560px;overflow-y:auto">
           <table class="tbl">
-            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
-              <th style="width:40px">순위</th>
-              <th>키워드</th>
-              <th>노출수</th><th>클릭수</th><th>CTR</th>
-              <th>광고비</th><th>평균CPC</th>
-              <th>전환수</th><th>전환매출</th><th>ROAS</th><th>평균순위</th>
-            </tr></thead>
-            <tbody>${tableRows}</tbody>
+            <thead id="kwTableHead" style="position:sticky;top:0;background:var(--white);z-index:1"></thead>
+            <tbody id="kwTableBody"></tbody>
           </table>
         </div>
       </div>`;
+    renderKwTable();
 
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>키워드 데이터 로드 실패: ${e.message}</p></div>`;
@@ -5656,6 +5790,23 @@ async function loadGFATab(){
               <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>장바구니수</th><th>구매완료금액</th><th>ROAS</th>
             </tr></thead>
             <tbody>${placementRows||`<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음 — 매체별 파일을 업로드해주세요</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px" id="gfaWeekSumCard">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600">📊 주차별 소계</div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>주차</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+              <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>장바구니수</th><th>구매완료금액</th><th>ROAS</th>
+            </tr></thead>
+            <tbody id="gfaWeekSumBody">
+              <tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text3)">일별 파일 업로드 후 표시됩니다</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -5828,6 +5979,28 @@ async function loadGFATab(){
     // KPI는 일별 데이터 기준 (더 정확)
     const kpiBase = dailyData.length ? dailyData : rows;
     el.innerHTML = renderShell(kpiBase, placementRows, dailyRows, dailyList.length);
+
+    // 주차별 소계 표 채우기
+    const weekSumBody = document.getElementById('gfaWeekSumBody');
+    if(weekSumBody && Object.keys(weekSumMap).length){
+      const weeks = ['1주','2주','3주','4주'].filter(w=>weekSumMap[w]);
+      weekSumBody.innerHTML = weeks.map(wk=>{
+        const ws = weekSumMap[wk];
+        const wCpc = ws.click>0 ? Math.round(ws.cost/ws.click) : 0;
+        return `<tr style="font-weight:600">
+          <td style="font-size:13px;font-weight:700;color:var(--blue)">${wk}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(ws.cost)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(ws.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(ws.click)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${ws.imp>0?(ws.click/ws.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${wCpc>0?fmt(wCpc):'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(ws.conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(ws.cart_conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(ws.rev)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(ws.cost,ws.rev)}">${calcR(ws.cost,ws.rev)}</td>
+        </tr>`;
+      }).join('');
+    }
 
     // ── 차트 그리기 ──
     setTimeout(()=>{
