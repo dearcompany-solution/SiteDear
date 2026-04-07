@@ -5273,10 +5273,74 @@ async function loadGFATab(){
     });
     const dailyList = Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
 
-    const dailyRows = dailyList.map(r=>{
-      const wd  = r.date ? WEEKDAYS[new Date(r.date).getDay()] : '—';
-      const cpc = r.click>0 ? Math.round(r.cost/r.click) : 0;
-      return `<tr>
+    // 주차 계산 함수
+    const getWeek = date => {
+      const day = new Date(date).getDate();
+      return day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
+    };
+
+    // 주차별 소계 집계
+    const weekSumMap = {};
+    dailyList.forEach(r=>{
+      const wk = getWeek(r.date);
+      if(!weekSumMap[wk]) weekSumMap[wk]={cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0};
+      weekSumMap[wk].cost     +=+r.cost||0;
+      weekSumMap[wk].imp      +=+r.imp||0;
+      weekSumMap[wk].click    +=+r.click||0;
+      weekSumMap[wk].conv     +=+r.conv||0;
+      weekSumMap[wk].rev      +=+r.rev||0;
+      weekSumMap[wk].cart_conv+=+r.cart_conv||0;
+    });
+
+    let prevWeek = '';
+    const dailyRows = dailyList.map((r,idx)=>{
+      const wd   = r.date ? WEEKDAYS[new Date(r.date).getDay()] : '—';
+      const cpc  = r.click>0 ? Math.round(r.cost/r.click) : 0;
+      const wk   = getWeek(r.date);
+      const isNewWeek = wk !== prevWeek;
+
+      // 주차 구분선 — 새 주차 시작 행 앞에 소계 행 삽입 (첫 주 제외)
+      let weekSumRow = '';
+      if(isNewWeek && prevWeek && weekSumMap[prevWeek]){
+        const ws = weekSumMap[prevWeek];
+        const wCpc = ws.click>0 ? Math.round(ws.cost/ws.click) : 0;
+        weekSumRow = `<tr style="background:var(--surface);border-top:2.5px solid var(--border2);border-bottom:2.5px solid var(--border2)">
+          <td colspan="2" style="font-size:12px;font-weight:700;color:var(--text2);padding:8px 12px">📊 ${prevWeek} 소계</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmt(ws.cost)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.click)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${ws.imp>0?(ws.click/ws.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${wCpc>0?fmt(wCpc):'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.cart_conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmt(ws.rev)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(ws.cost,ws.rev)}">${calcR(ws.cost,ws.rev)}</td>
+        </tr>`;
+      }
+      prevWeek = wk;
+
+      // 마지막 행이면 뒤에 마지막 주차 소계도 추가
+      const isLast = idx === dailyList.length - 1;
+      let lastWeekSumRow = '';
+      if(isLast && weekSumMap[wk]){
+        const ws = weekSumMap[wk];
+        const wCpc = ws.click>0 ? Math.round(ws.cost/ws.click) : 0;
+        lastWeekSumRow = `<tr style="background:var(--surface);border-top:2.5px solid var(--border2);border-bottom:2.5px solid var(--border2)">
+          <td colspan="2" style="font-size:12px;font-weight:700;color:var(--text2);padding:8px 12px">📊 ${wk} 소계</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmt(ws.cost)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.click)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${ws.imp>0?(ws.click/ws.imp*100).toFixed(2)+'%':'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${wCpc>0?fmt(wCpc):'—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmtn(ws.cart_conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700">${fmt(ws.rev)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(ws.cost,ws.rev)}">${calcR(ws.cost,ws.rev)}</td>
+        </tr>`;
+      }
+
+      const borderStyle = isNewWeek ? 'border-top:2.5px solid var(--blue);' : '';
+      const dataRow = `<tr style="${borderStyle}">
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date}</td>
         <td style="font-size:12px;color:var(--text3);text-align:center">${wd}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
@@ -5289,6 +5353,8 @@ async function loadGFATab(){
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(r.cost,r.rev)}">${calcR(r.cost,r.rev)}</td>
       </tr>`;
+
+      return weekSumRow + dataRow + lastWeekSumRow;
     }).join('');
 
     // KPI는 일별 데이터 기준 (더 정확)
