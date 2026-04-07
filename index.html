@@ -1611,7 +1611,14 @@ async function fetchReportData(month){
       chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
       chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
     });
-    const channels=Object.values(chMap).map(c=>({...c,...calcMetrics(c.imp,c.click,c.cost,c.conv,c.rev)})).sort((a,b)=>b.cost-a.cost);
+    const channelOrder = n => {
+      if(n.includes('통합') && (n.includes('PC')||n.includes('pc'))) return 0;
+      if(n.includes('통합') && (n.includes('모바일')||n.includes('Mobile')||n.includes('MO')||n.includes('Mo'))) return 1;
+      if(n.includes('파워링크')) return 2;
+      if(n.includes('쇼핑')) return 3;
+      return 4;
+    };
+    const channels=Object.values(chMap).map(c=>({...c,...calcMetrics(c.imp,c.click,c.cost,c.conv,c.rev)})).sort((a,b)=>channelOrder(a.name)-channelOrder(b.name));
     const weekMap={};
     dailyArr.forEach(r=>{
       const day=new Date(r.date).getDate();
@@ -2165,23 +2172,23 @@ async function openReportPdf(){
 
   // ── 섹션별 HTML 생성 ──
   const sectionTitle = (title, color='#3B82F6') =>
-    `<div style="font-size:14px;font-weight:700;margin:20px 0 10px;color:#1c2535;border-left:4px solid ${color};padding-left:10px">${title}</div>`;
+    `</div><div class="section"><div class="section-title" style="border-left-color:${color}">${title}</div>`;
 
   const kpiHtml = !hasKpi ? '' : `
     ${sectionTitle('📊 KPI 요약','#1c2535')}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px">
+    <div class="kpi-grid">
       ${[
-        ['총 광고비',   fmt(kpi.totalCost),   '#F59E0B'],
-        ['총 노출수',   fmtn(kpi.totalImp),   '#3B82F6'],
-        ['총 클릭수',   fmtn(kpi.totalClick), '#3B82F6'],
-        ['CTR',         fmtp(kpi.ctr),         '#3B82F6'],
-        ['총 전환수',   fmtn(kpi.totalConv)+'건', '#FF6B35'],
-        ['전환매출',    fmt(kpi.totalRev),     '#FF6B35'],
+        ['총 광고비',   fmt(kpi.totalCost),        '#F59E0B'],
+        ['총 노출수',   fmtn(kpi.totalImp),        '#3B82F6'],
+        ['총 클릭수',   fmtn(kpi.totalClick),      '#3B82F6'],
+        ['CTR',         fmtp(kpi.ctr),              '#3B82F6'],
+        ['총 전환수',   fmtn(kpi.totalConv)+'건',  '#FF6B35'],
+        ['전환매출',    fmt(kpi.totalRev),          '#FF6B35'],
         ['ROAS',        Math.round(kpi.roas||0)+'%','#03C75A'],
-        ['평균CPC',     fmt(kpi.cpc),          '#F59E0B'],
-      ].map(([l,v,c])=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center;border-top:3px solid ${c}">
-        <div style="font-size:10px;color:#888;margin-bottom:3px">${l}</div>
-        <div style="font-size:14px;font-weight:700;color:${c}">${v}</div>
+        ['평균CPC',     fmt(kpi.cpc),              '#F59E0B'],
+      ].map(([l,v,c])=>`<div class="kpi-box" style="border-top:3px solid ${c}">
+        <div class="kpi-label">${l}</div>
+        <div class="kpi-value" style="color:${c}">${v}</div>
       </div>`).join('')}
     </div>`;
 
@@ -2402,15 +2409,15 @@ async function openReportPdf(){
   document.getElementById('pdfSubTitle').textContent = `${data.client} · 담당: ${data.manager} · 포함: ${sections}`;
   document.getElementById('pdfContent').innerHTML = `
     <div id="printArea" style="font-family:'Noto Sans KR',sans-serif;max-width:800px;margin:0 auto;padding:10px">
-      <div style="text-align:center;padding:20px 0 16px;border-bottom:2px solid #1c2535;margin-bottom:20px;page-break-inside:avoid">
+      <div style="text-align:center;padding:20px 0 16px;border-bottom:2px solid #1c2535;margin-bottom:20px">
         <div style="font-size:10px;letter-spacing:2px;color:#888;margin-bottom:4px">DEARCOMPANY SOLUTION</div>
         <div style="font-size:20px;font-weight:800;color:#1c2535;margin-bottom:3px">${titlePeriod} 광고 성과 리포트</div>
         <div style="font-size:12px;color:#666">${data.client} · 담당: ${data.manager}</div>
       </div>
-      <div style="page-break-inside:avoid">${kpiHtml}</div>
-      <div style="page-break-inside:avoid">${channelHtml}</div>
-      <div style="page-break-inside:avoid">${gfaHtml}</div>
-      <div style="page-break-inside:avoid">${keywordHtml}</div>
+      ${kpiHtml}
+      ${channelHtml}
+      ${gfaHtml}
+      ${keywordHtml}
       <div style="text-align:center;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px;margin-top:20px">
         Dear Company Solution · dearcompany.kr · 본 보고서는 자동 생성되었습니다.
       </div>
@@ -2427,13 +2434,24 @@ function downloadPDF(){
   w.document.write(`<html><head><title>리포트</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body{font-family:'Noto Sans KR',sans-serif;margin:0;padding:20px}
+      *{box-sizing:border-box}
+      body{font-family:'Noto Sans KR',sans-serif;margin:0;padding:16px;font-size:12px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px}
+      th{background:#1c2535;color:#fff;padding:6px 8px;text-align:left;font-size:10.5px}
+      td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
+      .section{margin-bottom:20px;page-break-inside:avoid}
+      .section-title{font-size:13px;font-weight:700;margin:0 0 8px;padding:6px 10px;border-left:4px solid #3B82F6;background:#f8fafc}
+      .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+      .kpi-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center}
+      .kpi-label{font-size:9px;color:#888;margin-bottom:2px}
+      .kpi-value{font-size:13px;font-weight:700}
       @media print{
-        body{padding:0}
-        div[style*="page-break-inside:avoid"]{page-break-inside:avoid}
+        body{padding:8px}
+        .section{page-break-inside:avoid}
         table{page-break-inside:auto}
-        tr{page-break-inside:avoid;page-break-after:auto}
+        tr{page-break-inside:avoid}
         thead{display:table-header-group}
+        @page{margin:12mm}
       }
     </style>
   </head><body>${content.outerHTML}
@@ -2442,7 +2460,6 @@ function downloadPDF(){
   w.document.close();
   toast('📥 PDF 저장 창이 열렸습니다');
 }
-
 async function downloadExcelReport(){
   const data = await fetchReportData(currentReportMonth);
   if(!data||data._empty){ toast('⚠️ 다운로드할 데이터가 없습니다'); return; }
