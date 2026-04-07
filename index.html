@@ -509,8 +509,9 @@ canvas{max-height:210px}
           </div>
         </div>
       </div>
-      <div class="date-row" id="dateRow">
-        <div class="date-picker-wrap" id="datePickerWrap">
+      <div class="date-row" id="dateRow" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="date-picker-wrap" id="datePickerWrap">
   <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker()">
     📅 <span id="drangeLabel">2026.02.01 ~ 2026.02.28</span>
     <span class="dp-arrow">▾</span>
@@ -544,11 +545,12 @@ canvas{max-height:210px}
         <button class="dp-btn-cancel" onclick="closeDatePicker()">취소</button>
         <button class="dp-btn-apply" onclick="dpApply()">확인</button>
       </div>
-    </div>
   </div>
 </div>
-        <div id="reportPdfBtn" style="display:none;margin-left:8px">
-          <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+          </div>
+          <div id="reportPdfBtn" style="display:none">
+            <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+          </div>
         </div>
         </div>
     </header>
