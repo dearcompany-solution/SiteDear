@@ -2558,6 +2558,7 @@ function htmlInput(){
 
 function switchInputTab(tab){
   currentInputTab=tab;
+  sessionStorage.setItem('currentInputTab', tab); // 🌟 탭 이동 시 현재 위치를 저장
   renderContent('input');
   setTimeout(()=>{
     if(tab==='upload') renderUploadTab();
