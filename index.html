@@ -3049,6 +3049,7 @@ function saveOneFile(fileObj, client) {
             campRows.push({
               client_key:    client,
               month,
+              date:          null,
               campaign_type: row['캠페인유형']||'',
               campaign:      row['캠페인']||'',
               device:        '전체',
@@ -3092,6 +3093,7 @@ function saveOneFile(fileObj, client) {
             deviceRows.push({
               client_key:    client,
               month,
+              date:          null,
               device:        row['PC/모바일 매체']||'',
               campaign_type: '통합',
               imp:           parseNum(row['노출수']),
