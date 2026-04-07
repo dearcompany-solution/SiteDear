@@ -2699,15 +2699,29 @@ function saveOneFile(fileObj, client) {
           const isDaily     = cols.includes('기간');
           const isPlacement = cols.includes('게재 위치');
 
-          // 월 추출
+         // 월 추출 — 일별파일은 '기간'에서, 매체별파일은 파일명에서 추출
           let gfaMonth = month;
-          if(lines.length > headerIdx+1){
-            const firstVals = csvParseLine(lines[headerIdx+1]);
-            const firstRow = {};
-            cols.forEach((col,idx)=>{ firstRow[col]=(firstVals[idx]||'').trim(); });
-            const rawD = firstRow['기간'] || firstRow['시작일'] || '';
-            const mMatch = rawD.match(/(\d{4})[.\-](\d{2})/);
-            if(mMatch) gfaMonth = `${mMatch[1]}-${mMatch[2]}`;
+          if(isDaily){
+            // 일별 파일: 첫 데이터행의 '기간' 컬럼에서 추출
+            if(lines.length > headerIdx+1){
+              const firstVals = csvParseLine(lines[headerIdx+1]);
+              const firstRow = {};
+              cols.forEach((col,idx)=>{ firstRow[col]=(firstVals[idx]||'').trim(); });
+              const rawD = firstRow['기간'] || '';
+              const mMatch = rawD.match(/(\d{4})[.\-](\d{2})/);
+              if(mMatch) gfaMonth = `${mMatch[1]}-${mMatch[2]}`;
+            }
+          } else {
+            // 매체별 파일: 파일명에서 월 추출 (예: 한스데이_3월_GFA → 현재월 사용)
+            // 파일명에 연월 패턴이 있으면 추출, 없으면 현재 선택월 사용
+            const fnMatch = fileObj.name.match(/(\d{4})[.\-_](\d{2})|(\d{1,2})월/);
+            if(fnMatch && fnMatch[1] && fnMatch[2]){
+              gfaMonth = `${fnMatch[1]}-${fnMatch[2]}`;
+            } else if(fnMatch && fnMatch[3]){
+              const yr = new Date().getFullYear();
+              gfaMonth = `${yr}-${String(fnMatch[3]).padStart(2,'0')}`;
+            }
+            // 파일명에서 못찾으면 month(업로드 시 자동감지된 월) 그대로 사용
           }
 
           const gfaRows = [];
