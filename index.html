@@ -179,8 +179,11 @@ tbody tr:hover td{background:var(--surface)}
 .fl{display:flex;flex-direction:column;gap:5px}
 .fl label{font-size:11.5px;font-weight:600;color:var(--text2)}
 .fl .req{color:var(--naver)}
-.fi{border:1.5px solid var(--border2);border-radius:var(--rsm);padding:9px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--white);outline:none;transition:border-color .15s;width:100%}
-.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-m)}
+.fi{border:1.5px solid var(--border);border-radius:10px;padding:10px 36px 10px 14px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--white);outline:none;transition:all .2s cubic-bezier(.4,0,.2,1);width:100%;appearance:none;-webkit-appearance:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.fi:hover{border-color:var(--blue);background:var(--surface)}
+.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.15);background:var(--white)}
+select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a96ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:16px}
+input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .saved-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface);border-radius:var(--rsm);border:1px solid var(--border);margin-bottom:7px}
 .saved-meta{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-top:1px}
 
