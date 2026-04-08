@@ -615,7 +615,7 @@ let adminTeamFilter='전체';
 let adminPageSize=20;
 let adminPage=1;
 let charts={};
-let calYear=2026,calMonth=1;
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let selectedCalDate=null;
 let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:'2026-02-01',to:'2026-02-28'};
 
@@ -967,7 +967,11 @@ function renderContent(id){
   }
   break;
     case 'cal':
+  calYear=new Date().getFullYear();
+  calMonth=new Date().getMonth();
+  selectedCalDate=null;
   c.innerHTML=htmlCal();
+  setTimeout(renderCal,50);
   setTimeout(()=>{ loadCalEvents(); },50);
   break;
     case 'req':
