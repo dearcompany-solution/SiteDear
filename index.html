@@ -5061,8 +5061,18 @@ function renderAdminTable(){
 function downloadClientList(){
   const list = ACCOUNTS.filter(a=>a.role==='client');
   if(!list.length){ toast('⚠️ 다운로드할 업체가 없습니다'); return; }
-  const header = ['업체명','아이디','담당 매니저','스토어 URL'];
-  const rows = list.map(c=>[c.company, c.id, c.manager||'미지정', c.url||'']);
+  const header = ['업체명','아이디(client_key)','비밀번호','담당매니저','스토어URL','메모(한글명)','검색광고 고객ID','GFA 고객ID','운영상태'];
+  const rows = list.map(c=>[
+    c.company       || '',
+    c.id            || '',
+    c.pw            || '',
+    c.manager       || '',
+    c.url           || '',
+    c.memo          || '',
+    c.naver_search_id || '',
+    c.naver_gfa_id  || '',
+    c.is_active === false ? '비활성' : '활성',
+  ]);
   const csv = [header, ...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
@@ -5070,7 +5080,7 @@ function downloadClientList(){
   a.download = `업체목록_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   toast('✅ 업체 목록 다운로드 완료');
-}  
+}
 function selClient(id){
   activeClientId=id;
   sessionStorage.setItem('activeClientId', id);
