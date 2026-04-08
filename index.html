@@ -239,6 +239,9 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .cal-day.other-month{color:var(--text3)}
 .cal-day.has-event .ev-dot{display:flex}
 .cal-day.today .ev-dot{background:#fff}
+.cal-day.selected{background:var(--indigo);color:#fff;font-weight:700}
+.cal-day.selected:hover{background:#4338ca}
+.cal-day.selected .ev-dot{background:#fff}
 .ev-dot{display:none;width:5px;height:5px;border-radius:50%;background:var(--store)}
 .ev-dots{display:flex;gap:2px;justify-content:center}
 .ev-day-dot{width:4px;height:4px;border-radius:50%}
@@ -4571,7 +4574,13 @@ function renderCal(){
   const remain=total%7===0?0:7-(total%7);
   for(let i=1;i<=remain;i++)html+=`<div class="cal-day other-month" style="pointer-events:none"><span>${i}</span></div>`;
   grid.innerHTML=html;
-  renderEvList(null);
+  // 선택된 날짜 있으면 그 날짜로, 없으면 이번달 전체 목록
+  if(selectedCalDate && selectedCalDate.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)){
+    renderEvList(selectedCalDate);
+  } else {
+    selectedCalDate = null;
+    renderEvList(null, calYear, calMonth+1);
+  }
 }
 function calMove(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCal();}
 function calGoToday(){
@@ -4584,24 +4593,56 @@ function calGoToday(){
   selectCalDay(todayStr, today.getDate());
 }
 function selectCalDay(dateStr){
-  selectedCalDate=dateStr;
-  const evs=calEvents.filter(e=>e.date===dateStr);
-  const[y,m,dd]=dateStr.split('-');
-  document.getElementById('evPanelTitle').textContent=`${m}월 ${dd}일 ${evs.length?evs.length+'개 일정':'일정 없음'}`;
+  selectedCalDate = dateStr;
+  const [y,m,dd] = dateStr.split('-');
+  const evs = calEvents.filter(e=>e.date===dateStr);
+
+  // 선택된 날짜 셀 하이라이트
+  document.querySelectorAll('.cal-day').forEach(el=>el.classList.remove('selected'));
+  const sel = document.querySelector(`.cal-day[data-date="${dateStr}"]`);
+  if(sel) sel.classList.add('selected');
+
+  document.getElementById('evPanelTitle').textContent=
+    `${m}월 ${dd}일 · ${evs.length ? evs.length+'개 일정' : '일정 없음'}`;
   renderEvList(dateStr);
 }
-function renderEvList(dateFilter){
-  const el=document.getElementById('evList');if(!el)return;
-  const typeLabel={meet:'🤝 미팅',report:'📊 리포트',notice:'📢 공지',task:'✅ 작업'};
-  const typeClass={meet:'et-meet',report:'et-rep',notice:'et-notice',task:'et-task'};
-  const evs=dateFilter?calEvents.filter(e=>e.date===dateFilter):calEvents.slice(0,5);
-  if(!evs.length){el.innerHTML=`<div class="ev-empty"><div class="ei">📅</div><p>일정이 없습니다</p></div>`;return;}
-  el.innerHTML=evs.map(e=>`<div class="ev-item">
-    <span class="ev-tag ${typeClass[e.type]||'et-task'}">${typeLabel[e.type]||e.type}</span>
-    <div class="ev-title">${e.title}</div>
-    <div class="ev-meta">${e.date_end && e.date_end !== e.date ? e.date+' ~ '+e.date_end : e.date} · ${e.manager}</div>
-    ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
-  </div>`).join('');
+
+function renderEvList(dateFilter, filterYear, filterMonth){
+  const el = document.getElementById('evList');
+  if(!el) return;
+  const typeLabel = {meet:'🤝 미팅', report:'📊 리포트', notice:'📢 공지', task:'✅ 작업'};
+  const typeClass = {meet:'et-meet', report:'et-rep', notice:'et-notice', task:'et-task'};
+
+  let evs;
+  if(dateFilter){
+    // 특정 날짜 클릭 — 해당 날짜만
+    evs = calEvents.filter(e=>e.date===dateFilter);
+  } else {
+    // 월 전체 — 해당 연월 기준 오름차순 (날짜순)
+    const y = filterYear  || calYear;
+    const m = filterMonth || (calMonth+1);
+    const prefix = `${y}-${String(m).padStart(2,'0')}`;
+    evs = calEvents
+      .filter(e=>e.date && e.date.startsWith(prefix))
+      .sort((a,b)=>a.date.localeCompare(b.date));
+
+    // 패널 제목 업데이트
+    const titleEl = document.getElementById('evPanelTitle');
+    if(titleEl) titleEl.textContent = `${m}월 전체 일정 · ${evs.length}개`;
+  }
+
+  if(!evs.length){
+    el.innerHTML=`<div class="ev-empty"><div class="ei">📅</div><p>일정이 없습니다</p></div>`;
+    return;
+  }
+
+  el.innerHTML = evs.map(e=>`
+    <div class="ev-item">
+      <span class="ev-tag ${typeClass[e.type]||'et-task'}">${typeLabel[e.type]||e.type}</span>
+      <div class="ev-title">${e.title}</div>
+      <div class="ev-meta">${e.date_end&&e.date_end!==e.date?e.date+' ~ '+e.date_end:e.date} · ${e.manager||''}</div>
+      ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
+    </div>`).join('');
 }
 function openAddEventModal(){
   const today = new Date().toISOString().split('T')[0];
