@@ -4531,10 +4531,9 @@ async function loadCalEvents(){
       <button class="btn btn-bl btn-sm" onclick="openAddEventModal()">+ 일정 추가</button>
     </div>
     <div style="margin-bottom:10px">
-      <div class="notice-pinned" onclick="go('report',null);setActive('report')">
+      <div class="notice-pinned">
         <span class="np-icon">📑</span>
         <div class="np-content"><div class="np-title">2026년 2월 성과 보고서 확인</div><div class="np-meta">2026.03.01 · 이채환</div></div>
-        <span class="np-badge">📊 보기</span>
       </div>
     </div>
     <div class="ev-list" id="evList" style="flex:1;overflow-y:auto;max-height:none"></div>
@@ -4564,7 +4563,7 @@ function renderCal(){
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
     const dots=evMap[d]?evMap[d].map(t=>`<div class="ev-day-dot" style="background:${typeColor[t]||'var(--store)'}"></div>`).join(''):'';
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    html+=`<div class="cal-day ${isToday?'today':''} ${evMap[d]?'has-event':''}" onclick="selectCalDay('${dateStr}',${d})">
+    html+=`<div class="cal-day ${isToday?'today':''} ${evMap[d]?'has-event':''}" data-date="${dateStr}" onclick="selectCalDay('${dateStr}',${d})">
       <span>${d}</span><div class="ev-dots">${dots}</div>
     </div>`;
   }
@@ -4580,12 +4579,9 @@ function calGoToday(){
   calYear=today.getFullYear();
   calMonth=today.getMonth();
   renderCal();
-  // 오늘 날짜 클릭 효과
-  setTimeout(()=>{
-    const todayStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    const todayEl=document.querySelector(`.cal-day[data-date="${todayStr}"]`);
-    if(todayEl) todayEl.click();
-  },50);
+  // 오늘 날짜로 일정 패널 업데이트
+  const todayStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  selectCalDay(todayStr, today.getDate());
 }
 function selectCalDay(dateStr){
   selectedCalDate=dateStr;
