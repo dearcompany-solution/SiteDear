@@ -4521,7 +4521,7 @@ async function loadCalEvents(){
         <div class="cal-month" id="calMonthLabel"></div>
         <button class="cal-nav-btn" onclick="calMove(1)">›</button>
       </div>
-      <button class="btn btn-bl btn-sm" onclick="openAddEventModal()">+ 일정 추가</button>
+      <button class="btn btn-ol btn-sm" onclick="calGoToday()" style="font-weight:600;border-color:var(--blue);color:var(--blue)">📅 오늘</button>
     </div>
     <div class="cal-grid" id="calGrid" style="margin-top:8px"></div>
   </div>
@@ -4575,6 +4575,18 @@ function renderCal(){
   renderEvList(null);
 }
 function calMove(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCal();}
+function calGoToday(){
+  const today=new Date();
+  calYear=today.getFullYear();
+  calMonth=today.getMonth();
+  renderCal();
+  // 오늘 날짜 클릭 효과
+  setTimeout(()=>{
+    const todayStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const todayEl=document.querySelector(`.cal-day[data-date="${todayStr}"]`);
+    if(todayEl) todayEl.click();
+  },50);
+}
 function selectCalDay(dateStr){
   selectedCalDate=dateStr;
   const evs=calEvents.filter(e=>e.date===dateStr);
