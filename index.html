@@ -1419,11 +1419,8 @@ function htmlReport(){
   <!-- 보고서 탭 -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
-    <button class="nav-tab" onclick="switchRptTab('daily',this)">📅 일별 성과</button>
-    <button class="nav-tab" onclick="switchRptTab('dow',this)">📆 요일별 성과</button>
-    <button class="nav-tab" onclick="switchRptTab('channel',this)">📡 채널별 성과</button>
-    <button class="nav-tab" onclick="switchRptTab('keyword',this)">🔑 키워드 TOP20</button>
-    <button class="nav-tab" onclick="switchRptTab('hourly',this)">🕐 시간대별 성과</button>
+    <button class="nav-tab" onclick="switchRptTab('weekly',this)">📅 주간 데이터</button>
+    <button class="nav-tab" onclick="switchRptTab('monthly',this)">📆 월간 데이터</button>
   </div>
 
   <div class="rpt-kpi-row">
@@ -1472,88 +1469,37 @@ function htmlReport(){
       <div id="rptInsights"></div>
   </div><!-- /rpt-tab-summary -->
 
-  <!-- 일별 성과 탭 -->
-  <div id="rpt-tab-daily" style="display:none">
+  <!-- 주간 데이터 탭 -->
+  <div id="rpt-tab-weekly" style="display:none">
     <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📅 일별 성과</div>
+        <div style="font-size:14px;font-weight:600">📅 주간 데이터</div>
       </div>
       <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
         <table class="tbl">
           <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
             <th>날짜</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
           </tr></thead>
-          <tbody id="rptDailyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          <tbody id="rptWeeklyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">기간을 주 단위로 선택하면 데이터가 표시됩니다</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- 요일별 성과 탭 -->
-  <div id="rpt-tab-dow" style="display:none">
+  <!-- 월간 데이터 탭 -->
+  <div id="rpt-tab-monthly" style="display:none">
     <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📆 요일별 성과</div>
+        <div style="font-size:14px;font-weight:600">📆 월간 데이터</div>
       </div>
-      <div style="overflow-x:auto">
+      <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
         <table class="tbl">
-          <thead><tr>
-            <th>요일</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+            <th>주차</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
           </tr></thead>
-          <tbody id="rptDowTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          <tbody id="rptMonthlyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">기간을 월 단위로 선택하면 데이터가 표시됩니다</td></tr></tbody>
         </table>
       </div>
-    </div>
-  </div>
-
-  <!-- 채널별 성과 탭 -->
-  <div id="rpt-tab-channel" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📡 채널별 성과</div>
-      </div>
-      <div style="overflow-x:auto" id="rptChannelTab2"></div>
-    </div>
-  </div>
-
-  <!-- 키워드 탭 -->
-  <div id="rpt-tab-keyword" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">🔑 키워드 TOP 20 <span style="font-size:12px;color:var(--text3);font-weight:400">#NAME? 등 오류 키워드 자동 제외</span></div>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="tbl">
-          <thead><tr>
-            <th>순위</th><th>키워드</th><th>유형</th><th>디바이스</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
-          </tr></thead>
-          <tbody id="rptKwTbody2"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- 시간대별 탭 -->
-  <div id="rpt-tab-hourly" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">🕐 시간대별 성과</div>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="tbl">
-          <thead><tr>
-            <th>시간대</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
-          </tr></thead>
-          <tbody id="rptHourlyTbody2"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">로딩 중
-        </table>
-      </div>
-    </div>
-  <div class="card" style="background:linear-gradient(135deg,rgba(79,70,229,.04),rgba(59,130,246,.04));border-color:rgba(79,70,229,.2)">
-    <div style="font-size:13px;font-weight:600;color:var(--indigo);margin-bottom:8px">📌 보고서 데이터 관리 안내</div>
-    <div style="font-size:12.5px;color:var(--text2);line-height:1.9">
-      • 매월 새 보고서 데이터는 REPORT_DATA 객체에 추가하거나 Supabase에 INSERT하세요<br>
-      • Supabase 연동 후 fetchReportData() 함수의 주석을 해제하면 실시간 연동됩니다<br>
-      • PDF 다운로드 시 현재 화면의 성과 데이터가 자동 포맷되어 저장됩니다
     </div>
   </div>`;
 }
@@ -5649,10 +5595,61 @@ function switchRptTab(id, el){
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','daily','dow','channel','keyword','hourly'].forEach(t=>{
+  ['summary','weekly','monthly'].forEach(t=>{
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
+
+  const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
+  const fmtn = v=>(v||0).toLocaleString();
+  const calcR= (cost,rev)=>cost>0?(rev/cost*100).toFixed(1)+'%':'—';
+  const d = REPORT_DATA[currentReportMonth];
+
+  if(id==='weekly' && d){
+    // 일별 데이터를 날짜별로 표시
+    const tb = document.getElementById('rptWeeklyTbody');
+    if(tb){
+      if(!d.dailyList||!d.dailyList.length){
+        tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+      } else {
+        tb.innerHTML = d.dailyList.map((r,i)=>{
+          const wd = ['일','월','화','수','목','금','토'][new Date(r.date).getDay()];
+          return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date} (${wd})</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.imp>0?(r.click/r.imp*100).toFixed(2)+'%':'—'}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${r.cost>0&&r.rev/r.cost>=3?'var(--naver)':r.cost>0&&r.rev/r.cost>=1?'var(--gold)':'var(--red)'}">${calcR(r.cost,r.rev)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+  }
+
+  if(id==='monthly' && d){
+    // 주차별 데이터 표시
+    const tb = document.getElementById('rptMonthlyTbody');
+    if(tb){
+      if(!d.weekly||!d.weekly.length){
+        tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+      } else {
+        tb.innerHTML = d.weekly.filter(w=>w.cost>0||w.imp>0).map((w,i)=>`
+          <tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+            <td style="font-size:13px;font-weight:700;color:var(--blue)">${w.week}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.imp)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.click)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${w.imp>0?(w.click/w.imp*100).toFixed(2)+'%':'—'}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(w.cost)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.conv)}건</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(w.rev)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${w.cost>0&&w.rev/w.cost>=3?'var(--naver)':w.cost>0&&w.rev/w.cost>=1?'var(--gold)':'var(--red)'}">${calcR(w.cost,w.rev)}</td>
+          </tr>`).join('');
+      }
+    }
+  }
 }
   function switchNaverTab(id,el){
   sessionStorage.setItem('currentNaverTab', id);
