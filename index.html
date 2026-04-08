@@ -1325,9 +1325,20 @@ function htmlNaver(){
     </div>
   </div>
   <div id="nt-tab-campaign" style="display:none">
-    <div class="card"><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>캠페인</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead><tbody>
-      ${channelRows}
-    </tbody></table></div></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">📊 캠페인별 성과</div>
+        ${!channels.length?`<span style="font-size:12px;color:var(--text3)">파일 관리에서 캠페인 파일을 업로드해주세요</span>`:''}
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>캠페인</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody>${channelRows}</tbody>
+        </table>
+      </div>
+    </div>
   </div>
   <div id="nt-tab-gfa" style="display:none">
     <div id="gfaContent">
@@ -1335,16 +1346,50 @@ function htmlNaver(){
     </div>
   </div>
   <div id="nt-tab-device" style="display:none">
-    ${d ? `<div class="row2b">
-      <div class="card" style="border-top:4px solid var(--blue)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px">💻 PC</div>
-        <div style="font-size:24px;font-weight:700">${fmtn((channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.click,0)))}건</div>
-        <div style="font-size:12px;color:var(--text3)">총 클릭수</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">📱 디바이스별 성과</div>
+        ${!channels.length?`<span style="font-size:12px;color:var(--text3)">파일 관리에서 데이터를 업로드해주세요</span>`:''}
       </div>
-      <div class="card" style="border-top:4px solid var(--store)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📱 MOBILE</div>
-        <div style="font-size:24px;font-weight:700">${fmtn((channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')).reduce((s,c)=>s+c.click,0)))}건</div>
-        <div style="font-size:12px;color:var(--text3)">총 클릭수</div>
+      <div style="padding:16px">
+        <div class="row2b" style="margin-bottom:16px">
+          <div class="card" style="border-top:4px solid var(--blue);text-align:center">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">💻 PC</div>
+            <div style="font-size:28px;font-weight:700;color:var(--blue)">${fmtn(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.click,0))}건</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">총 클릭수</div>
+            <div style="font-size:13px;font-weight:600;color:var(--naver);margin-top:6px">${fmt(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.cost,0))}</div>
+            <div style="font-size:11px;color:var(--text3)">광고비</div>
+          </div>
+          <div class="card" style="border-top:4px solid var(--store);text-align:center">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">📱 MOBILE</div>
+            <div style="font-size:28px;font-weight:700;color:var(--store)">${fmtn(channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')||c.name.includes('모바일')).reduce((s,c)=>s+c.click,0))}건</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">총 클릭수</div>
+            <div style="font-size:13px;font-weight:600;color:var(--naver);margin-top:6px">${fmt(channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')||c.name.includes('모바일')).reduce((s,c)=>s+c.cost,0))}</div>
+            <div style="font-size:11px;color:var(--text3)">광고비</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>캠페인</th><th>디바이스</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>${channels.length
+              ? channels.map((c,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+                  <td style="font-weight:600;font-size:12.5px">${c.name}</td>
+                  <td style="font-size:12px">${c.name.includes('PC')?'💻 PC':'📱 모바일'}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.imp)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.click)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.cost)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.conv)}건</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.rev)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${c.cost>0&&c.rev/c.cost>=3?'var(--naver)':c.cost>0&&c.rev/c.cost>=1?'var(--gold)':'var(--red)'}">${c.roas?Math.round(c.roas)+'%':'—'}</td>
+                </tr>`).join('')
+              : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음 — 캠페인 파일을 업로드해주세요</td></tr>`}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>` : '<div class="empty"><div class="ei">📱</div><p>데이터가 없습니다</p></div>'}
+    </div>
   </div>
   <div id="nt-tab-keyword" style="display:none">
     <div id="keywordContent">
