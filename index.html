@@ -3192,11 +3192,17 @@ function saveOneFile(fileObj, client) {
           } else if (hasKeyword) {
             const kw = String(row[kwCol] || '').trim();
             if (!kw) continue;
-            // #NAME?, #REF!, #VALUE! 등 엑셀 오류값 필터링
             if (/^#[A-Z]+[!?]?$/.test(kw) || kw === '#N/A' || kw.startsWith('#')) continue;
+            // 일별 컬럼 있으면 날짜 추출
+            const kwRawDate = row['일별']||'';
+            const kwDate = kwRawDate ? kwRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
+            const kwMonth = kwDate?.length>=7 ? kwDate.slice(0,7) : month;
             rows.push({
-              data_type: 'keyword', client_key: client, month, keyword: String(kw).trim(),
-                  campaign_type: row['유형'] || row['캠페인유형'] || '',
+              data_type: 'keyword', client_key: client,
+              month: kwMonth,
+              date:  kwDate?.length>=8 ? kwDate : null,
+              keyword: String(kw).trim(),
+              campaign_type: row['유형'] || row['캠페인유형'] || '',
               device: row['PC/모바일 매체'] || row['PC/모바일'] || '',
               imp:      parseNum(row['노출수']),
               click:    parseNum(row['클릭수']),
@@ -3217,13 +3223,17 @@ function saveOneFile(fileObj, client) {
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+            // 일별 컬럼에서 날짜 추출 (예: 2026.03.01. → 2026-03-01)
+            const rawDate = row['일별']||'';
+            const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+            const rowMonth = dateStr.length>=7 ? dateStr.slice(0,7) : month;
             campRows.push({
               client_key:    client,
-              month,
-              date:          month + '-01',
+              month:         rowMonth,
+              date:          dateStr.length>=8 ? dateStr : null,
               campaign_type: row['캠페인유형']||'',
               campaign:      row['캠페인']||'',
-              device:        '전체',
+              device:        row['PC/모바일 매체']||'전체',
               imp:           parseNum(row['노출수']),
               click:         parseNum(row['클릭수']),
               ctr:           parseNum(row['클릭률(%)']),
@@ -3261,10 +3271,13 @@ function saveOneFile(fileObj, client) {
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+            const rawDate2 = row['일별']||'';
+            const dateStr2 = rawDate2.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+            const rowMonth2 = dateStr2.length>=7 ? dateStr2.slice(0,7) : month;
             deviceRows.push({
               client_key:    client,
-              month,
-              date:          month + '-01',
+              month:         rowMonth2,
+              date:          dateStr2.length>=8 ? dateStr2 : null,
               device:        row['PC/모바일 매체']||'',
               campaign_type: '통합',
               imp:           parseNum(row['노출수']),
