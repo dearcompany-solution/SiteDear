@@ -517,9 +517,6 @@ canvas{max-height:210px}
         <div class="tb-actions" id="tbActions">
           <!-- 일반 페이지 버튼 -->
           <div id="defaultActions" style="display:flex;gap:8px;align-items:center">
-  <div id="reportPdfBtn" style="display:none">
-    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-  </div>
 </div>
           <!-- 관리자 페이지 버튼 -->
           <div id="adminActions" style="display:none;gap:8px;align-items:center">
@@ -1545,11 +1542,6 @@ function htmlReport(){
   
 
  return `
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
-    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-  </div>
-
   <!-- 보고서 탭 -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
