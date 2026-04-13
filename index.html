@@ -1983,6 +1983,9 @@ async function loadReportData(month){
     };
   }
 
+  // REPORT_DATA에 저장 (PDF 미리보기 등에서 사용)
+  REPORT_DATA[month] = data;
+
   // ── 차트 초기화 (이전 달 데이터 제거) ──
   if(reportCharts.weekly){try{reportCharts.weekly.destroy();}catch(e){} reportCharts.weekly=null;}
 
