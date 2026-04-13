@@ -849,14 +849,14 @@ function initApp(restorePage){
           if(lbl) lbl.innerHTML = `선택된 업체 <span onclick="clearClientSelect()" style="cursor:pointer;color:var(--red);font-size:10px;margin-left:6px;padding:1px 6px;background:var(--red-l);border-radius:10px">✕ 해제</span>`;
         }
       }
-      renderContent(page);
+      go(page, null);
       setActive(page);
     });
   } else {
     renderClientNav();
     setSb(currentUser.company,currentUser.id,'광고 운영 중');
     const page = restorePage || 'combined';
-    renderContent(page);
+    go(page, null);
     setTimeout(renderCharts,100);
     setActive(page);
   }
