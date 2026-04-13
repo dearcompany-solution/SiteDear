@@ -1654,12 +1654,13 @@ function switchRptTab(id, el){
     const bg=i%2===0?'var(--surface)':'var(--white)';
     return `<tr style="background:${bg}">
       <td style="font-size:12.5px;font-weight:600">${k.keyword}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
-    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">데이터 없음</td></tr>`;
+      <td style="font-family:monospace;font-size:12px">${fmt(k.cost)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(k.click)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(k.conv)}건</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(k.rev)}</td>
+      <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">데이터 없음</td></tr>`;
 
   if(id==='weekly'){
     // KPI
