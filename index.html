@@ -2769,7 +2769,7 @@ function downloadPDF(){
       }
     </style>
   </head><body>${content.outerHTML}
-    <scr'+'ipt>window.onload=function(){window.print()}</scr'+'ipt>
+    <scr'+'ipt>document.fonts.ready.then(function(){setTimeout(function(){window.print();},300)})</scr'+'ipt>
   </body></html>`);
   w.document.close();
   closePdfOverlay();
