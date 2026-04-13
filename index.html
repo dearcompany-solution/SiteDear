@@ -565,7 +565,8 @@ canvas{max-height:210px}
 </div>
           </div>
           <div id="reportPdfBtn" style="display:none">
-            <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+                       <button class="btn-pdf" onclick="directDownloadPDF()">📄 PDF 다운로드</button>
+
           </div>
     </header>
     <div class="content" id="appContent"></div>
@@ -2723,7 +2724,13 @@ async function openReportPdf(){
   document.getElementById('pdfOverlay').classList.add('open');
 }
 function closePdfOverlay(){document.getElementById('pdfOverlay').classList.remove('open');}
-
+function directDownloadPDF(){
+  openPdfPreview();
+  setTimeout(()=>{
+    downloadPDF();
+    setTimeout(closePdfOverlay, 500);
+  }, 400);
+}
 function downloadPDF(){
   const content=document.getElementById('printArea');
   if(!content)return;
