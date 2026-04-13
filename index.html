@@ -1602,6 +1602,90 @@ function htmlReport(){
       <div class="rpt-section-title">💡 핵심 인사이트</div>
       <div id="rptInsights"></div>
   </div><!-- /rpt-tab-summary -->
+
+  <!-- 주간 데이터 탭 -->
+  <div id="rpt-tab-weekly" style="display:none">
+    <div class="rpt-kpi-row">
+      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="wk-imp">—</div></div>
+      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="wk-click">—</div></div>
+      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="wk-cost">—</div></div>
+      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="wk-rev">—</div></div>
+      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="wk-roas">—</div></div>
+    </div>
+    <div class="rpt-compare">
+      <div class="rpt-section">
+        <div class="rpt-section-title">📡 채널별 성과</div>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="wkChannelTable">
+            <thead><tr><th>채널</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+            <tbody><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rpt-section">
+        <div class="rpt-section-title">📅 일별 성과</div>
+        <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
+          <table class="tbl">
+            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+              <th>날짜</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+            </tr></thead>
+            <tbody id="rptWeeklyTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="rpt-section" style="margin-bottom:16px">
+      <div class="rpt-section-title">🔑 주요 키워드 성과</div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="wkKwTable">
+          <thead><tr><th>키워드</th><th>광고비</th><th>클릭수</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 월간 데이터 탭 -->
+  <div id="rpt-tab-monthly" style="display:none">
+    <div class="rpt-kpi-row">
+      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="mo-imp">—</div></div>
+      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="mo-click">—</div></div>
+      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="mo-cost">—</div></div>
+      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="mo-rev">—</div></div>
+      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="mo-roas">—</div></div>
+    </div>
+    <div class="rpt-compare">
+      <div class="rpt-section">
+        <div class="rpt-section-title">📡 채널별 성과</div>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="moChannelTable">
+            <thead><tr><th>채널</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+            <tbody><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rpt-section">
+        <div class="rpt-section-title">📆 주차별 성과</div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>주차</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+            </tr></thead>
+            <tbody id="rptMonthlyTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="rpt-section" style="margin-bottom:16px">
+      <div class="rpt-section-title">🔑 주요 키워드 성과</div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="moKwTable">
+          <thead><tr><th>키워드</th><th>광고비</th><th>클릭수</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
   `;
 }
 
