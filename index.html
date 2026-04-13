@@ -1542,16 +1542,22 @@ function htmlReport(){
     return `<option value="${m}" ${m===currentReportMonth?'selected':''}>${d?d.period:m}</option>`;
   }).join('');
 
-  const pills=MONTHLY_TREND.map(t=>{
-    const active=t.month===currentReportMonth;
-    const rc=t.roas>=5?'color:var(--naver)':t.roas>=3?'color:var(--gold)':'color:var(--red)';
-    return `<div class="month-pill ${active?'mp-active':''}" onclick="switchReportMonth('${t.month}')">
-      <div class="mp-mo">${t.label}</div>
-      <div class="mp-roas" style="${active?'':rc}">${t.roas.toFixed(1)}x</div>
-    </div>`;
-  }).join('');
+  
 
  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)">${opts}</select>
+    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+  </div>
+
+  <div class="rpt-kpi-row">
+    <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="rk-imp">—</div><div class="rpt-kpi-sub" id="rk-imp-sub"></div></div>
+    <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="rk-click">—</div><div class="rpt-kpi-sub" id="rk-click-sub"></div></div>
+    <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="rk-cost">—</div><div class="rpt-kpi-sub" id="rk-cost-sub"></div></div>
+    <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="rk-rev">—</div><div class="rpt-kpi-sub" id="rk-rev-sub"></div></div>
+    <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="rk-roas">—</div><div class="rpt-kpi-sub" id="rk-roas-sub"></div></div>
+  </div>
+
   <!-- 보고서 탭 -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
