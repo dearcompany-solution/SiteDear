@@ -1690,6 +1690,7 @@ function htmlReport(){
 }
 
 function switchRptTab(id, el){
+  sessionStorage.setItem('currentRptTab', id);
   document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
@@ -1836,8 +1837,14 @@ async function refreshAllPages(){
       renderCharts();
     },50);
   } else if(activePage==='report'){
+    const savedRptTab = sessionStorage.getItem('currentRptTab') || 'summary';
     c.innerHTML=htmlReport();
-    setTimeout(()=>{ initReportCharts(); loadReportData(currentReportMonth); },100);
+    setTimeout(()=>{
+      initReportCharts();
+      loadReportData(currentReportMonth);
+      const tabEl = document.querySelector(`.nav-tab[onclick*="switchRptTab('${savedRptTab}'"]`);
+      switchRptTab(savedRptTab, tabEl);
+    },100);
   } else if(activePage==='store'){
     c.innerHTML=htmlStore();
     setTimeout(renderCharts,50);
