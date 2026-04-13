@@ -1605,39 +1605,120 @@ function htmlReport(){
       <div id="rptInsights"></div>
   </div><!-- /rpt-tab-summary -->
 
-  <!-- 주간 데이터 탭 -->
-  <div id="rpt-tab-weekly" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📅 주간 데이터</div>
-      </div>
-      <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
-        <table class="tbl">
-          <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
-            <th>날짜</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
-          </tr></thead>
-          <tbody id="rptWeeklyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">기간을 주 단위로 선택하면 데이터가 표시됩니다</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  function switchRptTab(id, el){
+  document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
+    if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
+  });
+  if(el) el.classList.add('active');
+  ['summary','weekly','monthly'].forEach(t=>{
+    const p = document.getElementById('rpt-tab-'+t);
+    if(p) p.style.display = t===id ? 'block' : 'none';
+  });
 
-  <!-- 월간 데이터 탭 -->
-  <div id="rpt-tab-monthly" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📆 월간 데이터</div>
-      </div>
-      <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
-        <table class="tbl">
-          <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
-            <th>주차</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
-          </tr></thead>
-          <tbody id="rptMonthlyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">기간을 월 단위로 선택하면 데이터가 표시됩니다</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>`;
+  const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
+  const fmtn = v=>(v||0).toLocaleString();
+  const fmtp = v=>v?v.toFixed(2)+'%':'0%';
+  const calcR= (cost,rev)=>cost>0?(rev/cost*100).toFixed(1)+'%':'—';
+  const rc   = (cost,rev)=>cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
+  const d = REPORT_DATA[currentReportMonth];
+  if(!d) return;
+
+  const kpi = d.kpi||{};
+
+  // 채널 행 공통 렌더
+  const channelRowsHtml = (d.channels||[]).length
+    ? d.channels.map((c,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+        <td style="font-weight:600;font-size:12.5px">${c.name}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(c.cost,c.rev)}">${calcR(c.cost,c.rev)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+
+  // 키워드 행 공통 렌더
+  const kwRowsHtml = (d.topKeywords||[]).filter(k=>k.cost>0).slice(0,10).map((k,i)=>`
+    <tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+      <td style="font-size:12.5px;font-weight:600">${k.keyword}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.conv)}건</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.rev)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(k.cost,k.rev)}">${calcR(k.cost,k.rev)}</td>
+    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">데이터 없음</td></tr>`;
+
+  if(id==='weekly'){
+    // KPI
+    const $s = (id2,v)=>{ const e=document.getElementById(id2); if(e) e.textContent=v; };
+    $s('wk-imp',   fmtn(kpi.totalImp));
+    $s('wk-click', fmtn(kpi.totalClick));
+    $s('wk-cost',  fmt(kpi.totalCost));
+    $s('wk-rev',   fmt(kpi.totalRev));
+    $s('wk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+
+    // 채널
+    const ct = document.querySelector('#wkChannelTable tbody');
+    if(ct) ct.innerHTML = channelRowsHtml;
+
+    // 일별
+    const tb = document.getElementById('rptWeeklyTbody');
+    if(tb){
+      tb.innerHTML = (d.dailyList||[]).length
+        ? d.dailyList.map((r,i)=>{
+            const wd=['일','월','화','수','목','금','토'][new Date(r.date).getDay()];
+            return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.date} (${wd})</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(r.cost,r.rev)}">${calcR(r.cost,r.rev)}</td>
+            </tr>`;}).join('')
+        : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+    }
+
+    // 키워드
+    const wkt = document.querySelector('#wkKwTable tbody');
+    if(wkt) wkt.innerHTML = kwRowsHtml;
+  }
+
+  if(id==='monthly'){
+    // KPI
+    const $s = (id2,v)=>{ const e=document.getElementById(id2); if(e) e.textContent=v; };
+    $s('mo-imp',   fmtn(kpi.totalImp));
+    $s('mo-click', fmtn(kpi.totalClick));
+    $s('mo-cost',  fmt(kpi.totalCost));
+    $s('mo-rev',   fmt(kpi.totalRev));
+    $s('mo-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+
+    // 채널
+    const ct = document.querySelector('#moChannelTable tbody');
+    if(ct) ct.innerHTML = channelRowsHtml;
+
+    // 주차별
+    const tb = document.getElementById('rptMonthlyTbody');
+    if(tb){
+      tb.innerHTML = (d.weekly||[]).filter(w=>w.cost>0||w.imp>0).length
+        ? d.weekly.filter(w=>w.cost>0||w.imp>0).map((w,i)=>`
+            <tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+              <td style="font-size:13px;font-weight:700;color:var(--blue)">${w.week}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.imp)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.click)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(w.cost)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(w.conv)}건</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(w.rev)}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(w.cost,w.rev)}">${calcR(w.cost,w.rev)}</td>
+            </tr>`).join('')
+        : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+    }
+
+    // 키워드
+    const mkt = document.querySelector('#moKwTable tbody');
+    if(mkt) mkt.innerHTML = kwRowsHtml;
+  }
 }
 
 /* ════════════════════════════════════════
