@@ -566,10 +566,8 @@ canvas{max-height:210px}
 </div>
           </div>
           <div id="reportPdfBtn" style="display:none">
-            <button class="btn-pdf" onclick="openPdfPreview()" style="height:36px;padding:0 18px;border-radius:8px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(239,68,68,.3)">📄 PDF 다운로드</button>
+            <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
           </div>
-        </div>
-        </div>
     </header>
     <div class="content" id="appContent"></div>
   </main>
@@ -1568,9 +1566,8 @@ function htmlReport(){
       ${opts}
     </select>
     <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-  </div>
-  <!-- 보고서 탭 -->
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+  return `
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
     <button class="nav-tab" onclick="switchRptTab('weekly',this)">📅 주간 데이터</button>
     <button class="nav-tab" onclick="switchRptTab('monthly',this)">📆 월간 데이터</button>
