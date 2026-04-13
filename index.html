@@ -565,9 +565,7 @@ canvas{max-height:210px}
   </div>
 </div>
           </div>
-          <div id="reportPdfBtn" style="display:none">
-            <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-          </div>
+          <div id="reportPdfBtn" style="display:none"></div>
         </div>
         </div>
     </header>
@@ -1542,6 +1540,13 @@ function htmlReport(){
   
 
  return `
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)"
+      style="background:var(--surface);border:1.5px solid var(--border2);color:var(--text);border-radius:var(--rsm);padding:7px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer">
+      ${opts}
+    </select>
+    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+  </div>
   <!-- 보고서 탭 -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
