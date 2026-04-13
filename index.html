@@ -2336,9 +2336,14 @@ function initReportCharts(){
 /* ════════════════════════════════════════
    PDF 기능
 ════════════════════════════════════════ */
-function openPdfPreview(){
-  const data=REPORT_DATA[currentReportMonth];
-  if(!data){toast('⚠️ 데이터가 없습니다');return;}
+async function openPdfPreview(){
+  let data=REPORT_DATA[currentReportMonth];
+  if(!data){
+    toast('⏳ 데이터 불러오는 중...');
+    await loadReportData(currentReportMonth);
+    data=REPORT_DATA[currentReportMonth];
+    if(!data){toast('⚠️ 데이터가 없습니다. 파일을 먼저 업로드해주세요');return;}
+  }
   const fmt =n=>'₩'+Math.round(+n||0).toLocaleString('ko-KR');
   const fmtN=n=>Math.round(+n||0).toLocaleString('ko-KR');
 
