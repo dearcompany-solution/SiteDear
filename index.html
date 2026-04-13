@@ -2743,37 +2743,38 @@ function directDownloadPDF(){
 }
 function downloadPDF(){
   const content=document.getElementById('printArea');
-  if(!content)return;
-  const w=window.open('','_blank');
-  w.document.write(`<html><head><title>리포트</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+  if(!content){toast('⚠️ 미리보기를 먼저 열어주세요');return;}
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>리포트</title>
     <style>
-      *{box-sizing:border-box}
-      body{font-family:'Noto Sans KR',sans-serif;margin:0;padding:16px;font-size:12px}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:16px;font-size:12px;color:#1c2535}
       table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px}
       th{background:#1c2535;color:#fff;padding:6px 8px;text-align:left;font-size:10.5px}
       td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
-      .section{margin-bottom:20px;page-break-inside:avoid}
-      .section-title{font-size:13px;font-weight:700;margin:0 0 8px;padding:6px 10px;border-left:4px solid #3B82F6;background:#f8fafc}
-      .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
-      .kpi-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center}
-      .kpi-label{font-size:9px;color:#888;margin-bottom:2px}
+      h2{font-size:14px;font-weight:700;margin:16px 0 8px;padding:6px 10px;border-left:4px solid #3B82F6;background:#f8fafc}
+      .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+      .kpi-box{border:1px solid #e2e8f0;border-radius:6px;padding:10px;text-align:center}
+      .kpi-label{font-size:9px;color:#888;margin-bottom:4px}
       .kpi-value{font-size:13px;font-weight:700}
       @media print{
-        body{padding:8px}
-        .section{page-break-inside:avoid}
+        @page{margin:10mm;size:A4}
+        body{padding:0}
+        h2{page-break-before:auto}
         table{page-break-inside:auto}
         tr{page-break-inside:avoid}
         thead{display:table-header-group}
-        @page{margin:12mm}
       }
     </style>
-  </head><body>${content.outerHTML}
-    <scr'+'ipt>document.fonts.ready.then(function(){setTimeout(function(){window.print();},300)})</scr'+'ipt>
-  </body></html>`);
-  w.document.close();
+  </head><body onload="window.print()">
+  ${content.innerHTML}
+  </body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const w=window.open(url,'_blank');
+  if(!w){toast('⚠️ 팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요');return;}
   closePdfOverlay();
-  toast('📥 PDF 저장 창이 열렸습니다');
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  toast('📥 인쇄 창에서 PDF로 저장을 선택하세요');
 }
 async function downloadExcelReport(){
   const data = await fetchReportData(currentReportMonth);
