@@ -990,7 +990,7 @@ function go(id,el){
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
     }
     const rpb=document.getElementById('reportPdfBtn');
-    if(rpb) rpb.style.display='none';
+    if(rpb) rpb.style.display=(id==='report')?'block':'none';
   }
   renderContent(id);
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
