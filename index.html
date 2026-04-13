@@ -526,8 +526,7 @@ canvas{max-height:210px}
           </div>
         </div>
       </div>
-      <div class="date-row" id="dateRow" style="flex-direction:column;align-items:flex-start;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
+      <div class="date-row" id="dateRow" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="date-picker-wrap" id="datePickerWrap">
   <button class="date-picker-btn" id="datePickerBtn" onclick="toggleDatePicker()">
     📅 <span id="drangeLabel">2026.02.01 ~ 2026.02.28</span>
@@ -567,8 +566,7 @@ canvas{max-height:210px}
           </div>
           <div id="reportPdfBtn" style="display:none">
             <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-          </div>
-    </header>
+          </header>
     <div class="content" id="appContent"></div>
   </main>
 </div>
@@ -1549,15 +1547,7 @@ ${!d ? '<div class="empty" style="margin-top:16px"><div class="ei">📊</div><p>
    보고서확인 패널 HTML
 ════════════════════════════════════════ */
 function htmlReport(){
-  const months=Object.keys(REPORT_DATA).sort().reverse();
-  // Supabase에서 추가 월 데이터 로드 (비동기로 트렌드 업데이트)
   loadMonthlyTrend();
-  const opts=months.map(m=>{
-    const d=REPORT_DATA[m];
-    return `<option value="${m}" ${m===currentReportMonth?'selected':''}>${d?d.period:m}</option>`;
-  }).join('');
-
-  
 
  return `
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
