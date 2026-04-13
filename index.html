@@ -565,7 +565,8 @@ canvas{max-height:210px}
 </div>
           </div>
           <div id="reportPdfBtn" style="display:none">
-          <button class="btn-pdf" onclick="openPdfPreview();setTimeout(()=>{downloadPDF();closePdfOverlay();},500)">📄 PDF 다운로드</button>
+                      <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+
 
 
           </div>
@@ -583,7 +584,7 @@ canvas{max-height:210px}
         <div style="font-size:11.5px;color:rgba(255,255,255,.45)" id="pdfSubTitle"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 저장</button>
+        <button class="btn-pdf" onclick="downloadPDF()">📥 PDF 다운로드</button>
         <button class="pdf-close" onclick="closePdfOverlay()">✕</button>
       </div>
     </div>
@@ -2763,6 +2764,7 @@ function downloadPDF(){
     <scr'+'ipt>window.onload=function(){window.print()}</scr'+'ipt>
   </body></html>`);
   w.document.close();
+  closePdfOverlay();
   toast('📥 PDF 저장 창이 열렸습니다');
 }
 async function downloadExcelReport(){
