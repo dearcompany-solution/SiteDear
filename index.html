@@ -565,7 +565,9 @@ canvas{max-height:210px}
   </div>
 </div>
           </div>
-          <div id="reportPdfBtn" style="display:none"></div>
+          <div id="reportPdfBtn" style="display:none">
+            <button class="btn-pdf" onclick="openPdfPreview()" style="height:36px;padding:0 18px;border-radius:8px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(239,68,68,.3)">📄 PDF 다운로드</button>
+          </div>
         </div>
         </div>
     </header>
@@ -718,6 +720,26 @@ document.addEventListener('click', ()=>{
     b.parentElement?.querySelector('.cd-list')?.classList.remove('open');
   });
 });
+
+/* ════ 전역 숫자 포맷 함수 ════ */
+function $fmt(v){   // 금액: ₩1,234,567
+  return '₩' + Math.round(+v||0).toLocaleString('ko-KR');
+}
+function $fmtn(v){  // 정수: 1,234,567
+  return Math.round(+v||0).toLocaleString('ko-KR');
+}
+function $fmtp(v){  // 비율: 3.25% (이미 % 단위인 값)
+  const n = +v||0;
+  return n === 0 ? '0%' : n.toFixed(2) + '%';
+}
+function $fmtr(cost, rev){ // ROAS: 1471.6%
+  const c = +cost||0, r = +rev||0;
+  return c > 0 ? (r/c*100).toFixed(1) + '%' : '—';
+}
+function $fmtd(v, digits=2){ // 소수점: 3.70 → 두자리까지
+  const n = +v||0;
+  return n === 0 ? '—' : n.toFixed(digits);
+}
 
 async function doLogin(){
   const id = document.getElementById('lid').value.trim();
@@ -1368,9 +1390,9 @@ function htmlNaver(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
   const kpi = d?.kpi || {};
-  const fmt  = v => v ? '₩'+Math.round(v).toLocaleString() : '₩0';
-  const fmtn = v => v ? v.toLocaleString() : '0';
-  const fmtp = v => v ? (v*100).toFixed(1)+'%' : '0%';
+  const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtp = v => (+v||0)===0?'0%':(+v).toFixed(2)+'%';
 
   const channels = d?.channels || [];
   const channelRows = channels.length
@@ -1508,8 +1530,8 @@ function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
   const kpi = d?.kpi || {};
-  const fmt  = v => v ? '₩'+Number(v).toLocaleString() : '₩0';
-  const fmtn = v => v ? Number(v).toLocaleString() : '0';
+  const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
   return `
 <div class="sum-bar">
   <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(kpi.totalCost)}</div></div>
@@ -1540,13 +1562,6 @@ function htmlReport(){
   
 
  return `
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <select class="month-sel" id="reportMonthSel" onchange="switchReportMonth(this.value)"
-      style="background:var(--surface);border:1.5px solid var(--border2);color:var(--text);border-radius:var(--rsm);padding:7px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer">
-      ${opts}
-    </select>
-    <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
-  </div>
   <!-- 보고서 탭 -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
@@ -1612,9 +1627,9 @@ function switchRptTab(id, el){
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
 
-  const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
-  const fmtn = v=>(v||0).toLocaleString();
-  const fmtp = v=>v?v.toFixed(2)+'%':'0%';
+  const fmt  = v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtn = v=>Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtp = v=>(+v||0)===0?'0%':(+v).toFixed(2)+'%';
   const calcR= (cost,rev)=>cost>0?(rev/cost*100).toFixed(1)+'%':'—';
   const rc   = (cost,rev)=>cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
   const d = REPORT_DATA[currentReportMonth];
@@ -1895,8 +1910,8 @@ async function loadReportData(month){
   const renderDailyTab = (d) => {
   const tb = document.getElementById('rptDailyTbody');
   if(!tb) return;
-  const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
-  const fmtn = v => (v||0).toLocaleString();
+  const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
   const fmtp = (a,b) => b>0 ? (a/b*100).toFixed(2)+'%' : '0%';
   const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
 
@@ -1933,8 +1948,8 @@ async function loadReportData(month){
   const renderDowTab = (d) => {
     const tb = document.getElementById('rptDowTbody');
     if(!tb) return;
-    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
-    const fmtn = v => (v||0).toLocaleString();
+    const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+    const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
     const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
     if(!d.dowList || !d.dowList.length){
       tb.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">📭 요일별 데이터 없음</td></tr>`;
@@ -1955,8 +1970,8 @@ async function loadReportData(month){
   const renderKwTab = (d) => {
     const tb = document.getElementById('rptKwTbody2');
     if(!tb) return;
-    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
-    const fmtn = v => (v||0).toLocaleString();
+    const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+    const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
     const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
     const kws = (d.topKeywords||[]).filter(k=>k.keyword && !k.keyword.startsWith('#') && k.keyword !== '#N/A');
     if(!kws.length){
@@ -1980,8 +1995,8 @@ async function loadReportData(month){
   const renderHourlyTab = (d) => {
     const tb = document.getElementById('rptHourlyTbody2');
     if(!tb) return;
-    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
-    const fmtn = v => (v||0).toLocaleString();
+    const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
+    const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
     const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(1)+'%' : '—';
     if(!d.hourly || !d.hourly.length){
       tb.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">📭 시간대별 데이터 없음</td></tr>`;
@@ -2034,8 +2049,8 @@ async function loadReportData(month){
     });
   }
 
-  const fmt =n=>'₩'+Math.round(n).toLocaleString()
-  const fmtN=n=>n.toLocaleString();
+  const fmt =n=>'₩'+Math.round(+n||0).toLocaleString('ko-KR');
+  const fmtN=n=>Math.round(+n||0).toLocaleString('ko-KR');
   const momStr=v=>v>0?`<span class="up">▲ ${fmtN(Math.abs(v))}</span>`:v<0?`<span class="dn">▼ ${fmtN(Math.abs(v))}</span>`:'<span style="color:var(--text3)">—</span>';
   const $s=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
 
@@ -2237,8 +2252,8 @@ function initReportCharts(){
 function openPdfPreview(){
   const data=REPORT_DATA[currentReportMonth];
   if(!data){toast('⚠️ 데이터가 없습니다');return;}
-  const fmt =n=>'₩'+Math.round(n).toLocaleString()
-  const fmtN=n=>n.toLocaleString();
+  const fmt =n=>'₩'+Math.round(+n||0).toLocaleString('ko-KR');
+  const fmtN=n=>Math.round(+n||0).toLocaleString('ko-KR');
 
   document.getElementById('pdfTitle').textContent=`${data.period} 광고 성과 보고서`;
   document.getElementById('pdfSubTitle').textContent=`${data.client} · 담당: ${data.manager} · Dear Company Solution`;
@@ -2323,9 +2338,9 @@ async function openReportPdf(){
   }catch(e){ gfaRows=[]; kwRows=[]; campRows=[]; }
 
   const kpi  = data.kpi||{};
-  const fmt  = n=>'₩'+Math.round(n||0).toLocaleString();
-  const fmtn = n=>(n||0).toLocaleString();
-  const fmtp = n=>Number(n||0).toFixed(2)+'%';
+  const fmt  = n=>'₩'+Math.round(+n||0).toLocaleString('ko-KR');
+  const fmtn = n=>Math.round(+n||0).toLocaleString('ko-KR');
+  const fmtp = n=>(+n||0)===0?'0%':(+n).toFixed(2)+'%';
   const period = currentDateRange?.from
     ? `${currentDateRange.from} ~ ${currentDateRange.to}`
     : data.period;
