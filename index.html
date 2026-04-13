@@ -1610,8 +1610,10 @@ function htmlReport(){
       <div class="rpt-section-title">💡 핵심 인사이트</div>
       <div id="rptInsights"></div>
   </div><!-- /rpt-tab-summary -->
+  `;
+}
 
-  function switchRptTab(id, el){
+function switchRptTab(id, el){
   document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
