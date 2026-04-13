@@ -5941,6 +5941,7 @@ function renderCharts(){
 
 /* ════ NAVER TAB ════ */
 function switchRptTab(id, el){
+  sessionStorage.setItem('currentRptTab', id);
   document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
