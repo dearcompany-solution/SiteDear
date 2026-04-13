@@ -1633,20 +1633,24 @@ function htmlReport(){
 
   // 채널 행 공통 렌더
   const channelRowsHtml = (d.channels||[]).length
-    ? d.channels.map((c,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
-        <td style="font-weight:600;font-size:12.5px">${c.name}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.imp)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.click)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.cost)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.conv)}건</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.rev)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc(c.cost,c.rev)}">${calcR(c.cost,c.rev)}</td>
-      </tr>`).join('')
+    ? d.channels.map((c,i)=>{
+        const bg=i%2===0?'var(--surface)':'var(--white)';
+        return `<tr style="background:${bg}">
+          <td style="font-weight:600;font-size:12.5px">${c.name}</td>
+          <td style="font-family:monospace;font-size:12px">${fmtn(c.imp)}</td>
+          <td style="font-family:monospace;font-size:12px">${fmtn(c.click)}</td>
+          <td style="font-family:monospace;font-size:12px">${fmt(c.cost)}</td>
+          <td style="font-family:monospace;font-size:12px">${fmtn(c.conv)}건</td>
+          <td style="font-family:monospace;font-size:12px">${fmt(c.rev)}</td>
+          <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(c.cost,c.rev)}">${calcR(c.cost,c.rev)}</td>
+        </tr>`;
+      }).join('')
     : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
 
   // 키워드 행 공통 렌더
-  const kwRowsHtml = (d.topKeywords||[]).filter(k=>k.cost>0).slice(0,10).map((k,i)=>`
-    <tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+  const kwRowsHtml = (d.topKeywords||[]).filter(k=>k.cost>0).slice(0,10).map((k,i)=>{
+    const bg=i%2===0?'var(--surface)':'var(--white)';
+    return `<tr style="background:${bg}">
       <td style="font-size:12.5px;font-weight:600">${k.keyword}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(k.cost)}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(k.click)}</td>
