@@ -1786,6 +1786,7 @@ async function fetchReportData(month){
     }
     const chMap={};
     dailyArr.forEach(r=>{
+      if(!r.campaign_type && !r.device) return; // 둘 다 빈 행 제외
       const key=`${r.campaign_type||''} (${r.device||''})`;
       if(!chMap[key]) chMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
       chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
