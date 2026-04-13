@@ -1839,9 +1839,9 @@ async function refreshAllPages(){
   } else if(activePage==='report'){
     const savedRptTab = sessionStorage.getItem('currentRptTab') || 'summary';
     c.innerHTML=htmlReport();
-    setTimeout(()=>{
+    setTimeout(async ()=>{
       initReportCharts();
-      loadReportData(currentReportMonth);
+      await loadReportData(currentReportMonth);
       const tabEl = document.querySelector(`.nav-tab[onclick*="switchRptTab('${savedRptTab}'"]`);
       switchRptTab(savedRptTab, tabEl);
     },100);
@@ -2312,6 +2312,11 @@ async function loadMonthlyTrend(){
   }catch(e){
     console.warn('월별 트렌드 로드 실패:', e);
   }
+
+  // 탭 복원
+  const savedRptTab = sessionStorage.getItem('currentRptTab') || 'summary';
+  const tabEl = document.querySelector(`.nav-tab[onclick*="switchRptTab('${savedRptTab}'"]`);
+  if(tabEl) switchRptTab(savedRptTab, tabEl);
 }
 function switchReportMonth(month){
   currentReportMonth=month;
