@@ -1264,12 +1264,13 @@ function dpApply(){
     toast('⚠️ 시작일과 종료일을 모두 선택해주세요'); return;
   }
   currentDateRange = {from: dpState.start, to: dpState.end};
-
-  // currentReportMonth도 시작일 기준 월로 동기화
   currentReportMonth = dpState.start.slice(0,7);
 
   sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
   sessionStorage.setItem('currentReportMonth', currentReportMonth);
+
+  // 기간 바뀌면 캐시 초기화 — 새 기간으로 다시 조회
+  REPORT_DATA[currentReportMonth] = null;
 
   const disp = s => s.replace(/-/g,'.').slice(0,10);
   document.getElementById('drangeLabel').textContent = `${disp(dpState.start)} ~ ${disp(dpState.end)}`;
