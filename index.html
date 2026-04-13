@@ -565,7 +565,8 @@ canvas{max-height:210px}
 </div>
           </div>
           <div id="reportPdfBtn" style="display:none">
-                       <button class="btn-pdf" onclick="directDownloadPDF()">📄 PDF 다운로드</button>
+          <button class="btn-pdf" onclick="openPdfPreview();setTimeout(()=>{downloadPDF();closePdfOverlay();},500)">📄 PDF 다운로드</button>
+
 
           </div>
     </header>
