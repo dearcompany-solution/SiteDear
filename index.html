@@ -1496,9 +1496,13 @@ function htmlNaver(){
       <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">🛒</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">장바구니 전환매출</div><div class="kpi-val">${fmt(kpi.totalCartRev)}</div></div>
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
     </div>
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📈 채널별 ROAS</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverRoasBar"></canvas></div>
+    </div>
     <div class="row2b">
-      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비</div></div></div><canvas id="naverSummaryBar"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">채널별 ROAS</div></div></div><canvas id="naverRoasBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div><div class="card-sub">전체 채널 합산</div></div></div><canvas id="naverDailyTrend"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">🔄 캠페인유형 비중</div><div class="card-sub">광고비 기준</div></div></div><canvas id="naverTypePie"></canvas></div>
     </div>
   </div>
   <div id="nt-tab-campaign" style="display:none">
@@ -6245,8 +6249,31 @@ function switchRptTab(id, el){
   if(id==='summary') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
-    mk('naverSummaryBar',{type:'bar',data:{labels:['N쇼핑Mo 1월','N쇼핑Mo 2월','파워링크Mo 1월','파워링크Mo 2월'],datasets:[{data:[623931,508233,2283402,2317150],backgroundColor:['rgba(3,199,90,.4)','rgba(3,199,90,.85)','rgba(79,70,229,.4)','rgba(79,70,229,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
-    mk('naverRoasBar',{type:'bar',data:{labels:['N쇼핑Mo','N쇼핑PC','파워링크Mo','파워링크PC'],datasets:[{data:[249,780,74,1544],backgroundColor:['rgba(3,199,90,.7)','rgba(3,199,90,.85)','rgba(239,68,68,.6)','rgba(245,158,11,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
+    const d = REPORT_DATA[currentReportMonth];
+    const channels = d?.channels || [];
+
+    // 채널별 광고비 차트 (실제 데이터)
+    const chLabels = channels.length ? channels.map(c=>c.name) : ['데이터 없음'];
+    const chCosts  = channels.length ? channels.map(c=>c.cost) : [0];
+    const chRoas   = channels.length ? channels.map(c=>c.cost>0?+(c.rev/c.cost*100).toFixed(1):0) : [0];
+    const chColors = ['rgba(3,199,90,.8)','rgba(3,199,90,.5)','rgba(79,70,229,.8)','rgba(79,70,229,.5)','rgba(245,158,11,.8)','rgba(239,68,68,.8)'];
+    mk('naverSummaryBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chCosts,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+    mk('naverRoasBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chRoas,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
+
+    // 일별 광고비 추이 (실제 데이터)
+    const daily = d?.dailyList || [];
+    const dailyMap = {};
+    daily.forEach(r=>{ if(!dailyMap[r.date]) dailyMap[r.date]=0; dailyMap[r.date]+=+r.cost||0; });
+    const dailyDates = Object.keys(dailyMap).sort();
+    const dailyCosts = dailyDates.map(d2=>dailyMap[d2]);
+    mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:2}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 캠페인유형 비중 파이차트
+    const typeMap = {};
+    channels.forEach(c=>{ const t=c.name.includes('쇼핑')?'쇼핑검색':c.name.includes('파워링크')?'파워링크':'기타'; if(!typeMap[t])typeMap[t]=0; typeMap[t]+=c.cost; });
+    const typeLabels = Object.keys(typeMap);
+    const typeData   = typeLabels.map(t=>typeMap[t]);
+    mk('naverTypePie',{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeData,backgroundColor:['rgba(3,199,90,.8)','rgba(79,70,229,.8)','rgba(245,158,11,.8)'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670'}}}}});
   },80);
 }
 
