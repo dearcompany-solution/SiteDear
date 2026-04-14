@@ -6252,28 +6252,12 @@ async function loadKeywordTab(){
   }
 }
 async function loadRptGFATab(){
-  // rptGfaContent를 gfaContent로 임시 변경 후 loadGFATab 실행
-  const rptEl = document.getElementById('rptGfaContent');
-  if(!rptEl) return;
-
-  // 네이버 탭의 gfaContent 숨기기
-  const naverEl = document.getElementById('gfaContent');
-  if(naverEl) naverEl.id = '__gfaContent_hidden';
-
-  // 보고서 탭 el을 gfaContent로 변경
-  rptEl.id = 'gfaContent';
-
-  // loadGFATab 실행 (이제 rptEl에 렌더됨)
-  await loadGFATab();
-
-  // ID 원복
-  rptEl.id = 'rptGfaContent';
-  const hiddenEl = document.getElementById('__gfaContent_hidden');
-  if(hiddenEl) hiddenEl.id = 'gfaContent';
+  await loadGFATab('rptGfaContent');
 }
-  async function loadGFATab(){
-  const el = document.getElementById('gfaContent');
+  async function loadGFATab(targetElId='gfaContent'){
+  const el = document.getElementById(targetElId);
   if(!el) return;
+  const pfx = targetElId==='gfaContent' ? '' : 'rpt_';
   el.innerHTML = `<div class="empty"><div class="ei">📡</div><p>불러오는 중...</p></div>`;
 
   const isAdmin      = currentUser?.role==='admin';
@@ -6316,22 +6300,22 @@ async function loadRptGFATab(){
       <div class="row2b" style="margin-bottom:16px">
         <div class="card">
           <div class="card-hd"><div><div class="card-title">📊 주차별 노출수 · 클릭수</div></div></div>
-          <canvas id="gfaWeekBar" height="120"></canvas>
+          <canvas id="${pfx}gfaWeekBar" height="120"></canvas>
         </div>
         <div class="card">
           <div class="card-hd"><div><div class="card-title">💰 주차별 광고비 · ROAS</div></div></div>
-          <canvas id="gfaWeekRoas" height="120"></canvas>
+          <canvas id="${pfx}gfaWeekRoas" height="120"></canvas>
         </div>
       </div>
 
       <div class="card" style="margin-bottom:16px">
         <div class="card-hd"><div><div class="card-title">📅 일별 노출수 · 클릭수</div></div></div>
-        <canvas id="gfaDailyBar" height="100"></canvas>
+        <canvas id="${pfx}gfaDailyBar" height="100"></canvas>
       </div>
 
       <div class="card" style="margin-bottom:16px">
         <div class="card-hd"><div><div class="card-title">💰 일별 광고비 · 평균CPC</div></div></div>
-        <canvas id="gfaDailyCost" height="100"></canvas>
+        <canvas id="${pfx}gfaDailyCost" height="100"></canvas>
       </div>
 
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
@@ -6360,7 +6344,7 @@ async function loadRptGFATab(){
               <th>주차</th><th>광고비</th><th>노출수</th><th>클릭수</th>
               <th>CTR</th><th>평균CPC</th><th>구매완료수</th><th>장바구니수</th><th>구매완료금액</th><th>ROAS</th>
             </tr></thead>
-            <tbody id="gfaWeekSumBody">
+            <tbody id="${pfx}gfaWeekSumBody">
               <tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text3)">일별 파일 업로드 후 표시됩니다</td></tr>
             </tbody>
           </table>
@@ -6491,7 +6475,7 @@ async function loadRptGFATab(){
     el.innerHTML = renderShell(kpiBase, placementRows, dailyRows, dailyList.length);
 
     // 주차별 소계 표 채우기
-    const weekSumBody = document.getElementById('gfaWeekSumBody');
+    const weekSumBody = document.getElementById(pfx+'gfaWeekSumBody');
     if(weekSumBody && Object.keys(weekSumMap).length){
       const weeks = ['1주','2주','3주','4주'].filter(w=>weekSumMap[w]);
       weekSumBody.innerHTML = weeks.map(wk=>{
@@ -6557,7 +6541,7 @@ async function loadRptGFATab(){
       };
 
       // ① 주차별 노출수·클릭수
-      mk('gfaWeekBar',{type:'bar',data:{
+      mk(pfx+'gfaWeekBar',{type:'bar',data:{
         labels: wLabels,
         datasets:[
           {label:'노출수', data:wImp,   backgroundColor:'rgba(3,199,90,.5)',  borderRadius:6, yAxisID:'y'},
@@ -6573,7 +6557,7 @@ async function loadRptGFATab(){
       }});
 
       // ② 주차별 광고비·ROAS
-      mk('gfaWeekRoas',{type:'bar',data:{
+      mk(pfx+'gfaWeekRoas',{type:'bar',data:{
         labels: wLabels,
         datasets:[
           {label:'광고비', data:wCost, backgroundColor:'rgba(79,70,229,.5)', borderRadius:6, yAxisID:'y'},
@@ -6589,7 +6573,7 @@ async function loadRptGFATab(){
       }});
 
       // ③ 일별 노출수·클릭수
-      mk('gfaDailyBar',{type:'bar',data:{
+      mk(pfx+'gfaDailyBar',{type:'bar',data:{
         labels: dLabels,
         datasets:[
           {label:'노출수', data:dImp,   backgroundColor:'rgba(3,199,90,.4)',  borderRadius:4, yAxisID:'y'},
@@ -6605,7 +6589,7 @@ async function loadRptGFATab(){
       }});
 
       // ④ 일별 광고비·평균CPC
-      mk('gfaDailyCost',{type:'bar',data:{
+      mk(pfx+'gfaDailyCost',{type:'bar',data:{
         labels: dLabels,
         datasets:[
           {label:'광고비',   data:dCost, backgroundColor:'rgba(79,70,229,.4)', borderRadius:4, yAxisID:'y'},
