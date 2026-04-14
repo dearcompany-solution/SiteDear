@@ -575,7 +575,29 @@ canvas{max-height:210px}
   </main>
 </div>
 
-<!-- PDF Overlay -->
+<!-- 데이터 부족 안내 팝업 -->
+<div class="pdf-overlay" id="dataGuideOverlay" style="z-index:950">
+  <div class="pdf-modal" style="max-width:480px;min-height:auto">
+    <div class="pdf-header" style="background:#1c2535">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff">📋 필요 데이터 안내</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.5)" id="dataGuideSubtitle"></div>
+      </div>
+      <button class="pdf-close" onclick="closeDataGuide()">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div id="dataGuideList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px"></div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;justify-content:space-between">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <input type="checkbox" id="dataGuideHideCheck" style="width:16px;height:16px;cursor:pointer">
+          데이터가 없습니다. (1주일간 표시 안함)
+        </label>
+        <button class="btn btn-bl btn-sm" onclick="closeDataGuide()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- PDF Overlay -->
 <div class="pdf-overlay" id="pdfOverlay">
   <div class="pdf-modal">
     <div class="pdf-header">
@@ -741,7 +763,52 @@ function $fmtd(v, digits=2){ // 소수점: 3.70 → 두자리까지
   return n === 0 ? '—' : n.toFixed(digits);
 }
 
-async function doLogin(){
+/* ════ 데이터 부족 안내 팝업 ════ */
+function showDataGuide(items, subtitle){
+  // 1주일 숨김 체크
+  const hidden = localStorage.getItem('dataGuideHidden');
+  if(hidden && Date.now() < +hidden) return;
+
+  const el = document.getElementById('dataGuideList');
+  const sub = document.getElementById('dataGuideSubtitle');
+  if(!el) return;
+  if(sub) sub.textContent = subtitle || '';
+  el.innerHTML = items.map(item=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface);border-radius:8px;border-left:3px solid var(--blue)">
+      <span style="font-size:18px;flex-shrink:0">${item.icon||'📂'}</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text1)">${item.title}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${item.desc}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('dataGuideHideCheck').checked = false;
+  document.getElementById('dataGuideOverlay').classList.add('open');
+}
+
+function closeDataGuide(){
+  const check = document.getElementById('dataGuideHideCheck');
+  if(check && check.checked){
+    localStorage.setItem('dataGuideHidden', Date.now() + 7*24*60*60*1000);
+  }
+  document.getElementById('dataGuideOverlay').classList.remove('open');
+}
+
+function checkDataAndGuide(data, period){
+  if(!data || data._empty) return;
+  const missing = [];
+  const p = period || currentReportMonth;
+  if(!data.channels || !data.channels.length)
+    missing.push({icon:'📊', title:`${p} 캠페인별 성과`, desc:'파일관리 → 네이버 일별 캠페인 파일 업로드'});
+  if(!data.topKeywords || !data.topKeywords.length)
+    missing.push({icon:'🔑', title:`${p} 키워드 성과`, desc:'파일관리 → 네이버 일별 키워드 파일 업로드'});
+  if(!data.hourly || !data.hourly.length)
+    missing.push({icon:'🕐', title:`${p} 시간대별 성과`, desc:'파일관리 → 네이버 시간대별 파일 업로드'});
+  if(!data.kpi || !data.kpi.totalCost)
+    missing.push({icon:'💰', title:`${p} 광고비 데이터`, desc:'파일관리 → 네이버 일별 성과 파일 업로드'});
+  if(missing.length > 0)
+    showDataGuide(missing, `${p} 기간 데이터 현황`);
+}
+  async function doLogin(){
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value.trim();
   const errEl = document.getElementById('lerr');
@@ -1601,7 +1668,11 @@ function htmlCombined(){
   <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
 </div>
-${!d ? '<div class="empty" style="margin-top:16px"><div class="ei">📊</div><p>데이터가 없습니다. 파일을 업로드해주세요</p></div>' : ''}`;
+${!d ? `<div class="empty" style="margin-top:16px;cursor:pointer" onclick="showDataGuide([
+  {icon:'📊',title:'${currentReportMonth} 캠페인별 성과',desc:'파일관리 → 네이버 일별 캠페인 파일 업로드'},
+  {icon:'🔑',title:'${currentReportMonth} 키워드 성과',desc:'파일관리 → 네이버 일별 키워드 파일 업로드'},
+  {icon:'💰',title:'${currentReportMonth} 광고비 데이터',desc:'파일관리 → 네이버 일별 성과 파일 업로드'}
+],'${currentReportMonth} 필요 데이터 안내')"><div class="ei">📊</div><p>데이터가 없습니다.<br><span style="font-size:12px;color:var(--blue)">클릭하면 필요한 데이터를 안내해드립니다</span></p></div>` : ''}`;
 }
 
 /* ════════════════════════════════════════
@@ -2039,7 +2110,8 @@ async function loadReportData(month){
 
   // REPORT_DATA에 저장 (PDF 미리보기 등에서 사용)
   REPORT_DATA[month] = data;
-
+// 데이터 부족 안내 팝업
+  setTimeout(()=>checkDataAndGuide(data, data.period), 800);
   // ── 차트 초기화 (이전 달 데이터 제거) ──
   if(reportCharts.weekly){try{reportCharts.weekly.destroy();}catch(e){} reportCharts.weekly=null;}
 
