@@ -1482,6 +1482,7 @@ function htmlNaver(){
     <button class="nav-tab" onclick="switchNaverTab('campaign',this)">📊 캠페인별</button>
     <button class="nav-tab" onclick="switchNaverTab('device',this)">📱 디바이스</button>
     <button class="nav-tab" onclick="switchNaverTab('keyword',this)">🔑 키워드</button>
+    <button class="nav-tab" onclick="switchNaverTab('hourly',this)">🕐 시간대별</button>
     
   </div>
   <div id="nt-tab-summary">
@@ -1617,6 +1618,11 @@ function htmlNaver(){
   <div id="nt-tab-keyword" style="display:none">
     <div id="keywordContent">
       <div class="empty"><div class="ei">🔑</div><p>키워드 데이터 불러오는 중...</p></div>
+    </div>
+  </div>
+  <div id="nt-tab-hourly" style="display:none">
+    <div id="hourlyContent">
+      <div class="empty"><div class="ei">🕐</div><p>시간대별 데이터 불러오는 중...</p></div>
     </div>
   </div>
   <div id="nt-tab-action" style="display:none">
@@ -6282,12 +6288,13 @@ function switchRptTab(id, el){
   sessionStorage.setItem('currentNaverTab', id);
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
-  ['summary','campaign','gfa','device','keyword'].forEach(t=>{
+  ['summary','campaign','gfa','device','keyword','hourly'].forEach(t=>{
     const p=document.getElementById('nt-tab-'+t);
     if(p)p.style.display=t===id?'block':'none';
   });
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
+  if(id==='hourly')  loadHourlyTab();
   if(id==='device') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
@@ -6414,7 +6421,224 @@ function switchRptTab(id, el){
     mk('naverTypePie',{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeData,backgroundColor:['rgba(3,199,90,.8)','rgba(79,70,229,.8)','rgba(245,158,11,.8)'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670'}}}}});
   },80);
 }
+async function loadHourlyTab(){
+  const el = document.getElementById('hourlyContent');
+  if(!el) return;
+  el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>불러오는 중...</p></div>`;
 
+  const isAdmin      = currentUser?.role==='admin';
+  const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!targetClient){ el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>업체를 선택해주세요</p></div>`; return; }
+
+  const fromDate = currentDateRange?.from || (currentReportMonth+'-01');
+  const toDate   = currentDateRange?.to   || (currentReportMonth+'-31');
+  const fromMonth = fromDate.slice(0,7);
+  const toMonth   = toDate.slice(0,7);
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
+      {headers:h}
+    );
+    const rows = await res.json();
+    if(!Array.isArray(rows)||!rows.length){
+      el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
+      return;
+    }
+
+    const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v=>(v||0).toLocaleString();
+
+    // 시간대 파싱 (00시~01시 → 0)
+    const parseHour = t => +String(t||'0').replace(/[^0-9].*/,'');
+
+    // 시간대별 합산
+    const hourMap = {};
+    for(let i=0;i<24;i++) hourMap[i]={hour:i,click:0,cost:0,conv:0,rev:0,imp:0};
+    rows.forEach(r=>{
+      const hr = parseHour(r.time_slot);
+      if(hr<0||hr>23) return;
+      hourMap[hr].click+=+r.click||0;
+      hourMap[hr].cost +=+r.cost||0;
+      hourMap[hr].conv +=+r.conv||0;
+      hourMap[hr].rev  +=+r.rev||0;
+      hourMap[hr].imp  +=+r.imp||0;
+    });
+    const hourList = Object.values(hourMap).sort((a,b)=>a.hour-b.hour);
+    const labels   = hourList.map(h=>`${String(h.hour).padStart(2,'0')}시`);
+
+    // 캠페인유형별 시간대 집계
+    const ctypes = [...new Set(rows.map(r=>r.campaign_type).filter(Boolean))];
+    const deviceTypes = [...new Set(rows.map(r=>r.device).filter(Boolean))];
+
+    // 피크타임 분석
+    const maxClick = Math.max(...hourList.map(h=>h.click),1);
+    const peakHour = hourList.reduce((a,b)=>b.click>a.click?b:a);
+    const peakCost = hourList.reduce((a,b)=>b.cost>a.cost?b:a);
+
+    // 요일별 집계 (date 컬럼 있는 경우)
+    const dowMap={0:{day:'일',click:0,cost:0,conv:0,rev:0},1:{day:'월',click:0,cost:0,conv:0,rev:0},2:{day:'화',click:0,cost:0,conv:0,rev:0},3:{day:'수',click:0,cost:0,conv:0,rev:0},4:{day:'목',click:0,cost:0,conv:0,rev:0},5:{day:'금',click:0,cost:0,conv:0,rev:0},6:{day:'토',click:0,cost:0,conv:0,rev:0}};
+    rows.forEach(r=>{
+      if(!r.date) return;
+      const dow=new Date(r.date).getDay();
+      dowMap[dow].click+=+r.click||0; dowMap[dow].cost+=+r.cost||0;
+      dowMap[dow].conv+=+r.conv||0; dowMap[dow].rev+=+r.rev||0;
+    });
+    const dowList=Object.values(dowMap);
+
+    el.innerHTML=`
+      <!-- KPI 피크타임 요약 -->
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card" style="border-top:4px solid var(--blue);text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">⚡ 클릭 피크타임</div>
+          <div style="font-size:32px;font-weight:800;color:var(--blue)">${String(peakHour.hour).padStart(2,'0')}시</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:4px">${fmtn(peakHour.click)}건 클릭</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">광고비 ${fmt(peakHour.cost)}</div>
+        </div>
+        <div class="card" style="border-top:4px solid var(--store);text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">💸 광고비 피크타임</div>
+          <div style="font-size:32px;font-weight:800;color:var(--store)">${String(peakCost.hour).padStart(2,'0')}시</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:4px">${fmt(peakCost.cost)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">클릭수 ${fmtn(peakCost.click)}건</div>
+        </div>
+        <div class="card" style="border-top:4px solid var(--naver);text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">🏆 전환 피크타임</div>
+          <div style="font-size:32px;font-weight:800;color:var(--naver)">${String(hourList.reduce((a,b)=>b.conv>a.conv?b:a).hour).padStart(2,'0')}시</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:4px">${fmtn(hourList.reduce((a,b)=>b.conv>a.conv?b:a).conv)}건 전환</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">전환매출 ${fmt(hourList.reduce((a,b)=>b.rev>a.rev?b:a).rev)}</div>
+        </div>
+      </div>
+
+      <!-- 시간대별 차트 -->
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">👆 시간대별 클릭수</div><div class="card-sub">전체 채널 합산</div></div></div>
+          <canvas id="hourlyClickBar"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">💰 시간대별 광고비</div><div class="card-sub">전체 채널 합산</div></div></div>
+          <canvas id="hourlyCostBar"></canvas>
+        </div>
+      </div>
+
+      <!-- 히트맵 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-hd"><div><div class="card-title">🗓️ 요일 × 시간대 클릭 히트맵</div><div class="card-sub">진할수록 클릭 많음</div></div></div>
+        <div id="hourlyHeatmap" style="overflow-x:auto;padding:8px 0"></div>
+      </div>
+
+      <!-- 요일별 성과 -->
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">📅 요일별 클릭수</div></div></div>
+          <canvas id="hourlyDowClick"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">💰 요일별 광고비</div></div></div>
+          <canvas id="hourlyDowCost"></canvas>
+        </div>
+      </div>
+
+      <!-- 시간대별 상세 표 -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600">🕐 시간대별 상세 성과</div>
+        </div>
+        <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+          <table class="tbl">
+            <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
+              <th>시간대</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>평균CPC</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+            </tr></thead>
+            <tbody>
+              ${hourList.map((h,i)=>{
+                const ctr=h.imp>0?(h.click/h.imp*100).toFixed(2)+'%':'—';
+                const cpc=h.click>0?fmt(Math.round(h.cost/h.click)):'—';
+                const roas=h.cost>0?(h.rev/h.cost*100).toFixed(1)+'%':'—';
+                const rc=h.cost>0&&h.rev/h.cost>=3?'var(--naver)':h.cost>0&&h.rev/h.cost>=1?'var(--gold)':'var(--red)';
+                const isMax=h.click===maxClick&&maxClick>0;
+                return `<tr style="background:${isMax?'rgba(59,130,246,.08)':i%2===0?'var(--surface)':'var(--white)'}">
+                  <td style="font-weight:${isMax?'700':'400'};color:${isMax?'var(--blue)':'var(--text1)'}">${String(h.hour).padStart(2,'0')}시~${String(h.hour+1).padStart(2,'0')}시${isMax?' ⚡':''}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(h.imp)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:${isMax?'700':'400'}">${fmtn(h.click)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${ctr}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(h.cost)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${cpc}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(h.conv)}건</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(h.rev)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc}">${roas}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+    // 차트 렌더
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const mkC=(id2,cfg)=>{const e2=document.getElementById(id2);if(!e2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(e2,cfg);}catch(e){}};
+
+    // 시간대별 클릭수
+    mkC('hourlyClickBar',{type:'bar',data:{
+      labels,
+      datasets:[{data:hourList.map(h=>h.click),backgroundColor:hourList.map(h=>h.click===maxClick&&maxClick>0?'rgba(59,130,246,1)':'rgba(59,130,246,.5)'),borderRadius:3}]
+    },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v.toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 시간대별 광고비
+    mkC('hourlyCostBar',{type:'bar',data:{
+      labels,
+      datasets:[{data:hourList.map(h=>h.cost),backgroundColor:'rgba(255,107,53,.6)',borderRadius:3}]
+    },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 요일별 클릭수
+    mkC('hourlyDowClick',{type:'bar',data:{
+      labels:dowList.map(d=>d.day+'요일'),
+      datasets:[{data:dowList.map(d=>d.click),backgroundColor:['rgba(239,68,68,.7)','rgba(59,130,246,.7)','rgba(59,130,246,.7)','rgba(59,130,246,.7)','rgba(59,130,246,.7)','rgba(59,130,246,.7)','rgba(245,158,11,.7)'],borderRadius:4}]
+    },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v.toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 요일별 광고비
+    mkC('hourlyDowCost',{type:'bar',data:{
+      labels:dowList.map(d=>d.day+'요일'),
+      datasets:[{data:dowList.map(d=>d.cost),backgroundColor:'rgba(168,85,247,.6)',borderRadius:4}]
+    },options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 요일×시간대 히트맵
+    const hmEl = document.getElementById('hourlyHeatmap');
+    if(hmEl){
+      const dowHourMap={};
+      rows.forEach(r=>{
+        if(!r.date) return;
+        const dow=new Date(r.date).getDay();
+        const hr=parseHour(r.time_slot);
+        const key=`${dow}_${hr}`;
+        if(!dowHourMap[key]) dowHourMap[key]=0;
+        dowHourMap[key]+=+r.click||0;
+      });
+      const maxHM = Math.max(...Object.values(dowHourMap),1);
+      const days=['일','월','화','수','목','금','토'];
+      let hmHtml=`<div style="display:flex;gap:4px">
+        <div style="width:28px"></div>`;
+      for(let hr=0;hr<24;hr++) hmHtml+=`<div style="width:28px;text-align:center;font-size:9px;color:var(--text3)">${String(hr).padStart(2,'0')}</div>`;
+      hmHtml+='</div>';
+      for(let dow=0;dow<7;dow++){
+        hmHtml+=`<div style="display:flex;gap:4px;margin-top:3px">
+          <div style="width:28px;font-size:10px;color:var(--text3);display:flex;align-items:center;font-weight:600">${days[dow]}</div>`;
+        for(let hr=0;hr<24;hr++){
+          const v=dowHourMap[`${dow}_${hr}`]||0;
+          const ratio=v/maxHM;
+          const bg=`rgba(59,130,246,${(ratio*0.85+0.05).toFixed(2)})`;
+          const color=ratio>0.5?'#fff':'transparent';
+          hmHtml+=`<div style="width:28px;height:24px;background:${bg};border-radius:3px;display:flex;align-items:center;justify-content:center" title="${days[dow]}요일 ${String(hr).padStart(2,'0')}시: ${v.toLocaleString()}건"><span style="font-size:8px;color:${color};font-weight:700">${v>0?v:''}</span></div>`;
+        }
+        hmHtml+='</div>';
+      }
+      hmEl.innerHTML=hmHtml;
+    }
+
+  }catch(e){
+    el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>시간대별 데이터 로드 실패: ${e.message}</p></div>`;
+  }
+}
 async function loadKeywordTab(){
   const el = document.getElementById('keywordContent');
   if(!el) return;
