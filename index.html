@@ -4011,9 +4011,15 @@ function saveOneFile(fileObj, client) {
 
           const doUpsert = async () => {
             const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+            const months = [...new Set(gfaRows.map(r=>r.month))];
+            for(const m of months){
+              await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}`,{
+                method:'DELETE', headers:dh
+              });
+            }
             return fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
-              headers:{...dh,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+              headers:{...dh,'Content-Type':'application/json','Prefer':'return=minimal'},
               body:JSON.stringify(gfaRows)
             });
           };
