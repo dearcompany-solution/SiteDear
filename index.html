@@ -4044,30 +4044,46 @@ function saveOneFile(fileObj, client) {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
         };
-        // 기존 데이터 삭제 후 새로 INSERT (upsert 대신 delete+insert 방식)
-        fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${month}`, {
-          method: 'DELETE', headers: h
-        }).then(() => {
-          return fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
-            method: 'POST',
-            headers: { ...h, 'Prefer': 'return=minimal' },
-            body: JSON.stringify(rows)
-          });
-        }).then(res => {
-          if (!res.ok) return res.text().then(t => { throw new Error(t); });
-          fileObj.status = '저장완료';
-          fileObj.savedMonth = month;
-          fileObj.savedType  = dtype;
-          fileObj.savedCount = rows.length;
-          renderUploadTab();
-          toast(`✅ ${fileObj.name} 저장완료 — ${rows.length}건`);
+        // 기존 데이터 삭제 후 배치 INSERT (500 오류 방지)
+        (async () => {
+          try {
+            // 1. 기존 데이터 삭제
+            const delRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${month}`,
+              { method: 'DELETE', headers: h }
+            );
+            if (!delRes.ok) throw new Error(await delRes.text());
+
+            // 2. 배치 단위로 나눠서 INSERT (1000행씩)
+            const BATCH = 1000;
+            let saved = 0;
+            for (let i = 0; i < rows.length; i += BATCH) {
+              const batch = rows.slice(i, i + BATCH);
+              const postRes = await fetch(
+                `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,
+                { method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(batch) }
+              );
+              if (!postRes.ok) throw new Error(await postRes.text());
+              saved += batch.length;
+              // 진행상황 표시
+              fileObj.status = `저장중 ${saved}/${rows.length}`;
+              renderUploadTab();
+            }
+
+            fileObj.status = '저장완료';
+            fileObj.savedMonth = month;
+            fileObj.savedType  = dtype;
+            fileObj.savedCount = rows.length;
+            renderUploadTab();
+            toast(`✅ ${fileObj.name} 저장완료 — ${rows.length}건`);
             saveUploadLog(client, fileObj.name, dtype, month, rows.length);
-        }).catch(err => {
-          fileObj.status = '저장실패'; renderUploadTab();
-          let msg = err.message;
-          try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e) {}
-          toast(`❌ ${fileObj.name} 저장 실패: ${msg}`);
-        });
+          } catch (err) {
+            fileObj.status = '저장실패'; renderUploadTab();
+            let msg = err.message;
+            try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e) {}
+            toast(`❌ ${fileObj.name} 저장 실패: ${msg}`);
+          }
+        })();
 
       } catch (err) {
         fileObj.status = '저장실패'; renderUploadTab();
