@@ -3794,8 +3794,8 @@ function saveOneFile(fileObj, client) {
               imp:   parseNum(row['노출수']),
               click: parseNum(row['클릭수']),
               cost:  parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
-              conv:  parseNum(row['총 전환수'] || row['전환수']),
-              rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'])
+              conv:  parseNum(row['총 전환수'] || row['전환수'] || row['구매완료 전환수'] || 0),
+              rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'] || row['구매완료 전환매출액(원)'] || 0)
             });
           } else if (hasKeyword) {
             const kw = String(row[kwCol] || '').trim();
@@ -3847,10 +3847,10 @@ function saveOneFile(fileObj, client) {
               ctr:           parseNum(row['클릭률(%)']),
               cpc:           parseNum(row['평균 CPC']),
               cost:          parseNum(row['총비용']),
-              conv:          parseNum(row['총 전환수']),
-              conv_rate:     parseNum(row['총 전환율(%)']),
-              rev:           parseNum(row['총 전환매출액(원)']||row['총 전환매출액']),
-              purchase_conv: parseNum(row['구매완료 전환수']),
+              conv:          parseNum(row['총 전환수'] || row['구매완료 전환수'] || 0),
+              conv_rate:     parseNum(row['총 전환율(%)'] || 0),
+              rev:           parseNum(row['총 전환매출액(원)'] || row['총 전환매출액'] || row['구매완료 전환매출액(원)'] || 0),
+              purchase_conv: parseNum(row['구매완료 전환수'] || 0),
               purchase_rev:  parseNum(row['구매완료 전환매출액(원)']||row['구매완료 전환매출액']),
               data_type:     'daily',
             });
