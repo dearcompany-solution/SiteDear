@@ -3865,12 +3865,12 @@ function saveOneFile(fileObj, client) {
           const doUpsert = async () => {
             const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
             const months = [...new Set(gfaRows.map(r=>r.month))];
+            // 해당 월 전체 삭제 후 재삽입 (일별/매체별 구분 없이 월 전체 삭제)
             for(const m of months){
-              if(isDailyPlacement || isDaily){
-                await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}&date=not.is.null`,{method:'DELETE',headers:dh});
-              } else {
-                await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}&date=is.null`,{method:'DELETE',headers:dh});
-              }
+              await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}`,{
+                method:'DELETE',
+                headers:dh
+              });
             }
             return fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
