@@ -1753,7 +1753,21 @@ function htmlReport(){
 
   <!-- 통합 요약 탭 -->
   <div id="rpt-tab-summary">
-  <div class="rpt-compare">
+
+  <!-- 차트 행 1: 캠페인유형 파이 + 일별 트렌드 -->
+  <div class="rpt-compare" style="margin-bottom:16px">
+    <div class="rpt-section">
+      <div class="rpt-section-title">🔄 캠페인유형별 광고비 비중</div>
+      <div class="rpt-chart-wrap"><canvas id="rptTypePie"></canvas></div>
+    </div>
+    <div class="rpt-section">
+      <div class="rpt-section-title">📅 일별 광고비 · 전환매출 추이</div>
+      <div class="rpt-chart-wrap"><canvas id="rptDailyTrend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 채널별 성과 표 + 주차별 차트 -->
+  <div class="rpt-compare" style="margin-bottom:16px">
     <div class="rpt-section">
       <div class="rpt-section-title">📡 채널별 성과 <span>광고비 · 전환매출 · ROAS</span></div>
       <div style="overflow-x:auto">
@@ -1764,16 +1778,18 @@ function htmlReport(){
       </div>
     </div>
     <div class="rpt-section">
-      <div class="rpt-section-title">📅 주차별 성과 <span>N쇼핑 Mobile 기준</span></div>
+      <div class="rpt-section-title">📅 주차별 성과 <span>전체 채널 합산</span></div>
       <div class="rpt-chart-wrap"><canvas id="weeklyChart"></canvas></div>
     </div>
   </div>
 
+  <!-- 시간대별 성과 -->
   <div class="rpt-section" style="margin-bottom:16px">
-    <div class="rpt-section-title">🕐 시간대별 성과 <span>파워링크 통합 기준</span></div>
+    <div class="rpt-section-title">🕐 시간대별 성과 <span>전체 채널 합산</span></div>
     <div id="rptHourly"></div>
   </div>
 
+  <!-- 키워드 + 인사이트 -->
   <div class="rpt-compare">
     <div class="rpt-section">
       <div class="rpt-section-title">🔑 주요 키워드 성과</div>
@@ -2392,6 +2408,44 @@ const tb=document.querySelector('#rptChannelTable tbody');
         x:ax,
         y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
         y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+Math.round(v).toLocaleString()},position:'right'}
+      },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}
+    });
+  }
+
+  // 캠페인유형별 파이차트
+  const pieEl = document.getElementById('rptTypePie');
+  if(pieEl){
+    if(reportCharts.typePie){try{reportCharts.typePie.destroy();}catch(e){}}
+    const typeMap={};
+    (data.channels||[]).forEach(c=>{
+      const t=c.name.includes('쇼핑')?'쇼핑검색':c.name.includes('파워링크')?'파워링크':'기타';
+      if(!typeMap[t])typeMap[t]=0; typeMap[t]+=c.cost;
+    });
+    const tLabels=Object.keys(typeMap);
+    const tData=tLabels.map(t=>typeMap[t]);
+    reportCharts.typePie=new Chart(pieEl,{
+      type:'doughnut',
+      data:{labels:tLabels,datasets:[{data:tData,backgroundColor:['rgba(3,199,90,.8)','rgba(79,70,229,.8)','rgba(245,158,11,.8)'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670',padding:12}}}}
+    });
+  }
+
+  // 일별 트렌드 차트
+  const trendEl = document.getElementById('rptDailyTrend');
+  if(trendEl && data.dailyList && data.dailyList.length){
+    if(reportCharts.dailyTrend){try{reportCharts.dailyTrend.destroy();}catch(e){}}
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const dlabels = data.dailyList.map(d=>d.date.slice(5));
+    reportCharts.dailyTrend=new Chart(trendEl,{
+      type:'bar',
+      data:{labels:dlabels,datasets:[
+        {label:'광고비',data:data.dailyList.map(d=>d.cost),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
+        {label:'전환매출',data:data.dailyList.map(d=>d.rev),type:'line',borderColor:'#03C75A',backgroundColor:'rgba(3,199,90,.07)',fill:true,tension:.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{
+        x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},
+        y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
+        y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10},callback:v=>'₩'+Math.round(v).toLocaleString()},position:'right'}
       },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}
     });
   }
