@@ -3596,7 +3596,7 @@ function saveOneFile(fileObj, client) {
           if(!campRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 캠페인 데이터 없음`); return; }
           fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
             method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
             body:JSON.stringify(campRows)
           }).then(res=>{
             if(!res.ok) return res.text().then(t=>{throw new Error(t);});
@@ -3641,7 +3641,7 @@ function saveOneFile(fileObj, client) {
           if(!deviceRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 매체 데이터 없음`); return; }
           fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
             method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
             body:JSON.stringify(deviceRows)
           }).then(res=>{
             if(!res.ok) return res.text().then(t=>{throw new Error(t);});
@@ -3752,22 +3752,13 @@ function saveOneFile(fileObj, client) {
           }
 
           const doUpsert = async () => {
-            if(isDaily){
-              const months = [...new Set(gfaRows.map(r=>r.month))];
-              for(const m of months){
-                await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}&date=not.is.null`,{
-                  method:'DELETE',
-                  headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-                });
-              }
-            }
             return fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
               headers:{
                 'Content-Type':'application/json',
                 'apikey':SUPABASE_ANON_KEY,
                 'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-                'Prefer':'resolution=merge-duplicates'
+                'Prefer':'resolution=merge-duplicates,return=minimal'
               },
               body:JSON.stringify(gfaRows)
             });
@@ -4171,7 +4162,7 @@ function processFiles(files){
           Object.entries(byType).forEach(([dtype, drows])=>{
             fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
               method:'POST',
-              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
               body:JSON.stringify(drows)
             }).then(res=>{
               if(!res.ok) return res.text().then(t=>{throw new Error(t);});
@@ -4368,7 +4359,7 @@ async function saveRowToSupabase(idx){
   const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
   const table=tableMap[r.data_type]||'daily_reports';
   try{
-    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'};
+    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'};
     const res=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{method:'POST',headers,body:JSON.stringify([r])});
     if(!res.ok)throw new Error(await res.text());
     toast('✅ 저장 완료');
@@ -4820,7 +4811,7 @@ async function saveEventToSupabase(ev){
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
         'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-        'Prefer':'resolution=merge-duplicates'
+        'Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify({
         client_key:   id,
