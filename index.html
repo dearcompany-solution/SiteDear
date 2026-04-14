@@ -6252,37 +6252,24 @@ async function loadKeywordTab(){
   }
 }
 async function loadRptGFATab(){
-  const el = document.getElementById('rptGfaContent');
-  if(!el) return;
-  el.innerHTML = `<div class="empty"><div class="ei">📡</div><p>불러오는 중...</p></div>`;
+  // rptGfaContent를 gfaContent로 임시 변경 후 loadGFATab 실행
+  const rptEl = document.getElementById('rptGfaContent');
+  if(!rptEl) return;
 
-  const isAdmin      = currentUser?.role==='admin';
-  const targetClient = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
-  if(!targetClient){ el.innerHTML=`<div class="empty"><div class="ei">📡</div><p>업체를 선택해주세요</p></div>`; return; }
+  // 네이버 탭의 gfaContent 숨기기
+  const naverEl = document.getElementById('gfaContent');
+  if(naverEl) naverEl.id = '__gfaContent_hidden';
 
-  const fromMonth = currentDateRange?.from?.slice(0,7) || currentReportMonth;
-  const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  // 보고서 탭 el을 gfaContent로 변경
+  rptEl.id = 'gfaContent';
 
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,
-      {headers:h}
-    );
-    const rows = await res.json();
+  // loadGFATab 실행 (이제 rptEl에 렌더됨)
+  await loadGFATab();
 
-    // loadGFATab과 동일한 로직 — gfaContent 대신 rptGfaContent에 렌더
-    const tempEl = document.getElementById('gfaContent');
-    const backup = tempEl ? tempEl.innerHTML : '';
-    // gfaContent를 임시로 rptGfaContent로 바꿔치기
-    if(tempEl) tempEl.id = 'gfaContent_backup';
-    el.id = 'gfaContent';
-    await loadGFATab();
-    el.id = 'rptGfaContent';
-    if(tempEl) tempEl.id = 'gfaContent';
-  }catch(e){
-    el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>GFA 데이터 로드 실패: ${e.message}</p></div>`;
-  }
+  // ID 원복
+  rptEl.id = 'rptGfaContent';
+  const hiddenEl = document.getElementById('__gfaContent_hidden');
+  if(hiddenEl) hiddenEl.id = 'gfaContent';
 }
   async function loadGFATab(){
   const el = document.getElementById('gfaContent');
