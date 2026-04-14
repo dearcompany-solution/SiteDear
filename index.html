@@ -3845,6 +3845,16 @@ function saveOneFile(fileObj, client) {
             }
           }
 
+          // 배열 내 중복 제거 (client_key+month+date+placement 기준)
+          const gfaRowsDeduped = [];
+          const gfaKeySet = new Set();
+          for(const r of gfaRows){
+            const k = `${r.client_key}|${r.month}|${r.date||''}|${r.placement||''}`;
+            if(!gfaKeySet.has(k)){ gfaKeySet.add(k); gfaRowsDeduped.push(r); }
+          }
+          gfaRows.length = 0;
+          gfaRows.push(...gfaRowsDeduped);
+
           if(!gfaRows.length){
             fileObj.status='저장실패'; renderUploadTab();
             toast(`⚠️ ${fileObj.name} — GFA 데이터 없음`); return;
