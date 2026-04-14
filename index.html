@@ -1866,7 +1866,24 @@ function htmlReport(){
 
   <!-- 월간 데이터 탭 -->
   <div id="rpt-tab-monthly" style="display:none">
-    <div class="rpt-compare">
+
+    <!-- 전월 대비 증감 KPI -->
+    <div id="moMomRow" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px"></div>
+
+    <!-- 주차별 바차트 -->
+    <div class="rpt-compare" style="margin-bottom:16px">
+      <div class="rpt-section">
+        <div class="rpt-section-title">📆 주차별 광고비 · 전환매출</div>
+        <div class="rpt-chart-wrap"><canvas id="moWeeklyBar"></canvas></div>
+      </div>
+      <div class="rpt-section">
+        <div class="rpt-section-title">📈 주차별 ROAS 추이</div>
+        <div class="rpt-chart-wrap"><canvas id="moWeeklyRoas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 채널별 + 주차별 표 -->
+    <div class="rpt-compare" style="margin-bottom:16px">
       <div class="rpt-section">
         <div class="rpt-section-title">📡 채널별 성과</div>
         <div style="overflow-x:auto">
@@ -1888,6 +1905,8 @@ function htmlReport(){
         </div>
       </div>
     </div>
+
+    <!-- 키워드 성과 -->
     <div class="rpt-section" style="margin-bottom:16px">
       <div class="rpt-section-title">🔑 주요 키워드 성과</div>
       <div style="overflow-x:auto">
@@ -6381,9 +6400,10 @@ function switchRptTab(id, el){
     const ct = document.querySelector('#moChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptMonthlyTbody');
+    const weekly = (d.weekly||[]).filter(w=>w.cost>0||w.imp>0);
     if(tb){
-      tb.innerHTML = (d.weekly||[]).filter(w=>w.cost>0||w.imp>0).length
-        ? d.weekly.filter(w=>w.cost>0||w.imp>0).map((w,i)=>{
+      tb.innerHTML = weekly.length
+        ? weekly.map((w,i)=>{
             const bg=i%2===0?'var(--surface)':'var(--white)';
             return `<tr style="background:${bg}">
               <td style="font-size:13px;font-weight:700;color:var(--blue)">${w.week}</td>
@@ -6398,6 +6418,61 @@ function switchRptTab(id, el){
     }
     const mkt = document.querySelector('#moKwTable tbody');
     if(mkt) mkt.innerHTML = kwRowsHtml;
+
+    // 전월 대비 증감 KPI row
+    const momEl = document.getElementById('moMomRow');
+    if(momEl){
+      const mom = d.mom || {};
+      const momItems = [
+        {lbl:'총 광고비', val:fmt(kpi.totalCost), diff:mom.cost, unit:'₩'},
+        {lbl:'총 클릭수', val:fmtn(kpi.totalClick), diff:mom.click, unit:''},
+        {lbl:'전환매출', val:fmt(kpi.totalRev), diff:mom.rev, unit:'₩'},
+        {lbl:'ROAS', val:kpi.roas?Math.round(kpi.roas*100)+'%':'0%', diff:mom.roas, unit:'x'},
+        {lbl:'전환수', val:fmtn(kpi.totalConv)+'건', diff:null, unit:''},
+      ];
+      momEl.innerHTML = momItems.map(item=>{
+        const diffVal = item.diff;
+        const isUp = diffVal > 0;
+        const isDown = diffVal < 0;
+        const diffHtml = diffVal!=null
+          ? `<div style="font-size:11px;margin-top:4px;color:${isUp?'var(--naver)':isDown?'var(--red)':'var(--text3)'}">
+              ${isUp?'▲':isDown?'▼':'—'} ${Math.abs(diffVal).toFixed(1)}% 전월비
+             </div>`
+          : '';
+        return `<div class="rpt-kpi" style="text-align:center">
+          <div class="rpt-kpi-lbl">${item.lbl}</div>
+          <div class="rpt-kpi-val" style="font-size:16px">${item.val}</div>
+          ${diffHtml}
+        </div>`;
+      }).join('');
+    }
+
+    // 주차별 차트
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const mkR=(id2,cfg)=>{const e2=document.getElementById(id2);if(!e2)return;try{if(reportCharts[id2])reportCharts[id2].destroy();reportCharts[id2]=new Chart(e2,cfg);}catch(e){}};
+
+    const wLabels = weekly.map(w=>w.week);
+    const wCosts  = weekly.map(w=>w.cost);
+    const wRevs   = weekly.map(w=>w.rev);
+    const wRoas   = weekly.map(w=>w.cost>0?+(w.rev/w.cost*100).toFixed(1):0);
+
+    // 주차별 광고비 · 전환매출 바+라인 차트
+    mkR('moWeeklyBar',{type:'bar',data:{labels:wLabels,datasets:[
+      {label:'광고비',data:wCosts,backgroundColor:'rgba(59,130,246,.5)',borderRadius:5,yAxisID:'y'},
+      {label:'전환매출',data:wRevs,type:'line',borderColor:'#03C75A',backgroundColor:'rgba(3,199,90,.07)',fill:true,tension:.3,borderWidth:2.5,pointRadius:5,yAxisID:'y1'}
+    ]},options:{responsive:true,maintainAspectRatio:false,scales:{
+      x:ax,
+      y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
+      y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10},callback:v=>'₩'+Math.round(v).toLocaleString()},position:'right'}
+    },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}});
+
+    // 주차별 ROAS 라인차트
+    mkR('moWeeklyRoas',{type:'line',data:{labels:wLabels,datasets:[
+      {label:'ROAS(%)',data:wRoas,borderColor:'rgba(168,85,247,1)',backgroundColor:'rgba(168,85,247,.1)',fill:true,tension:.3,borderWidth:2.5,pointRadius:5,pointBackgroundColor:'rgba(168,85,247,1)'}
+    ]},options:{responsive:true,maintainAspectRatio:false,scales:{
+      x:ax,
+      y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}
+    },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}});
   }
 }
   function switchNaverTab(id,el){
