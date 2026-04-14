@@ -1512,19 +1512,76 @@ function htmlNaver(){
 /* ════ STORE ════ */
 function htmlStore(){
   return `
-<div class="kpi6" style="grid-template-columns:repeat(3,1fr)">
-  <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 주문수</div><div class="kpi-val">0건</div></div>
-  <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 매출액</div><div class="kpi-val">₩0</div></div>
-  <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val">₩0</div></div>
-  <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">📊</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 전환율</div><div class="kpi-val">0%</div></div>
-  <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">반품·취소율</div><div class="kpi-val">0%</div></div>
-  <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">🏷️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">수수료</div><div class="kpi-val">₩0</div></div>
-</div>
-<div class="row2">
-  <div class="card"><div class="card-hd"><div><div class="card-title">일별 매출 · 주문수 추이</div></div></div><canvas id="storeTrend"></canvas></div>
-  <div class="card"><div class="card-hd"><div><div class="card-title">카테고리별 매출 비중</div></div></div><canvas id="storePie"></canvas></div>
-</div>
-<div class="empty" style="margin-top:16px"><div class="ei">🟠</div><p>스마트스토어 데이터를 파일로 업로드해주세요</p></div>`;}
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+    <button class="nav-tab active" onclick="switchStoreTab('summary',this)">🚀 요약</button>
+    <button class="nav-tab" onclick="switchStoreTab('sales',this)">📦 판매성과</button>
+    <button class="nav-tab" onclick="switchStoreTab('product',this)">🛍️ 상품성과</button>
+  </div>
+
+  <!-- 요약 탭 -->
+  <div id="st-tab-summary">
+    <div class="kpi6" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 주문수</div><div class="kpi-val" id="st-orders">0건</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 매출액</div><div class="kpi-val" id="st-rev">₩0</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-avg">₩0</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">📊</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 전환율</div><div class="kpi-val" id="st-cvr">0%</div></div>
+      <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">반품·취소율</div><div class="kpi-val" id="st-ret">0%</div></div>
+      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">🏷️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">수수료</div><div class="kpi-val" id="st-fee">₩0</div></div>
+    </div>
+    <div class="row2">
+      <div class="card"><div class="card-hd"><div><div class="card-title">일별 매출 · 주문수 추이</div></div></div><canvas id="storeTrend"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">카테고리별 매출 비중</div></div></div><canvas id="storePie"></canvas></div>
+    </div>
+    <div class="empty" style="margin-top:16px"><div class="ei">🟠</div><p>스마트스토어 데이터를 파일로 업로드해주세요</p></div>
+  </div>
+
+  <!-- 판매성과 탭 -->
+  <div id="st-tab-sales" style="display:none">
+    <div class="rpt-kpi-row">
+      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 주문수</div><div class="rpt-kpi-val" id="st-s-orders">—</div></div>
+      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 매출액</div><div class="rpt-kpi-val" id="st-s-rev">—</div></div>
+      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">평균 주문금액</div><div class="rpt-kpi-val" id="st-s-avg">—</div></div>
+      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환율</div><div class="rpt-kpi-val" id="st-s-cvr">—</div></div>
+      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">반품·취소율</div><div class="rpt-kpi-val" id="st-s-ret">—</div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-top:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">📦 일별 판매 성과</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>날짜</th><th>주문수</th><th>매출액</th><th>평균단가</th><th>전환율</th><th>반품수</th></tr></thead>
+          <tbody id="stSalesTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">스마트스토어 판매 데이터를 업로드해주세요</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상품성과 탭 -->
+  <div id="st-tab-product" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">🛍️ 상품별 판매 순위</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>순위</th><th>상품명</th><th>판매수량</th><th>매출액</th><th>평균단가</th><th>비중</th></tr></thead>
+          <tbody id="stProductTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">스마트스토어 상품 데이터를 업로드해주세요</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  `;}
+  function switchStoreTab(id, el){
+  document.querySelectorAll('#appContent .nav-tab').forEach(b=>{
+    if(b.getAttribute('onclick')?.includes('switchStoreTab')) b.classList.remove('active');
+  });
+  if(el) el.classList.add('active');
+  ['summary','sales','product'].forEach(t=>{
+    const p = document.getElementById('st-tab-'+t);
+    if(p) p.style.display = t===id ? 'block' : 'none';
+  });
+}
 /* ════ COMBINED ════ */
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
