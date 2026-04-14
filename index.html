@@ -1809,7 +1809,27 @@ function htmlReport(){
 
   <!-- 주간 데이터 탭 -->
   <div id="rpt-tab-weekly" style="display:none">
-    <div class="rpt-compare">
+
+    <!-- 요일별 성과 차트 -->
+    <div class="rpt-compare" style="margin-bottom:16px">
+      <div class="rpt-section">
+        <div class="rpt-section-title">📅 요일별 클릭수</div>
+        <div class="rpt-chart-wrap"><canvas id="wkDowClick"></canvas></div>
+      </div>
+      <div class="rpt-section">
+        <div class="rpt-section-title">💰 요일별 광고비</div>
+        <div class="rpt-chart-wrap"><canvas id="wkDowCost"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 일별 트렌드 차트 -->
+    <div class="rpt-section" style="margin-bottom:16px">
+      <div class="rpt-section-title">📈 일별 광고비 · 전환매출 추이</div>
+      <div class="rpt-chart-wrap"><canvas id="wkDailyTrend"></canvas></div>
+    </div>
+
+    <!-- 채널별 + 일별 표 -->
+    <div class="rpt-compare" style="margin-bottom:16px">
       <div class="rpt-section">
         <div class="rpt-section-title">📡 채널별 성과</div>
         <div style="overflow-x:auto">
@@ -1824,13 +1844,15 @@ function htmlReport(){
         <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
           <table class="tbl">
             <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
-              <th>날짜</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+              <th>날짜</th><th>요일</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
             </tr></thead>
-            <tbody id="rptWeeklyTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+            <tbody id="rptWeeklyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <!-- 키워드 성과 -->
     <div class="rpt-section" style="margin-bottom:16px">
       <div class="rpt-section-title">🔑 주요 키워드 성과</div>
       <div style="overflow-x:auto">
@@ -6281,7 +6303,7 @@ function switchRptTab(id, el){
 
   const $s = (id2,v)=>{ const e=document.getElementById(id2); if(e) e.textContent=v; };
 
-  if(id==='weekly'){
+ if(id==='weekly'){
     $s('rk-imp',   fmtn(kpi.totalImp));
     $s('rk-click', fmtn(kpi.totalClick));
     $s('rk-cost',  fmt(kpi.totalCost));
@@ -6290,13 +6312,16 @@ function switchRptTab(id, el){
     const ct = document.querySelector('#wkChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptWeeklyTbody');
+    const days=['일','월','화','수','목','금','토'];
     if(tb){
       tb.innerHTML = (d.dailyList||[]).length
         ? d.dailyList.map((r,i)=>{
             const bg=i%2===0?'var(--surface)':'var(--white)';
-            const wd=['일','월','화','수','목','금','토'][new Date(r.date).getDay()];
+            const wd=days[new Date(r.date).getDay()];
+            const isWknd=wd==='일'||wd==='토';
             return `<tr style="background:${bg}">
-              <td style="font-family:monospace;font-size:12px">${r.date} (${wd})</td>
+              <td style="font-family:monospace;font-size:12px">${r.date}</td>
+              <td style="font-size:12px;font-weight:600;color:${isWknd?'var(--red)':'var(--text1)'}">${wd}</td>
               <td style="font-family:monospace;font-size:12px">${fmtn(r.imp)}</td>
               <td style="font-family:monospace;font-size:12px">${fmtn(r.click)}</td>
               <td style="font-family:monospace;font-size:12px">${fmt(r.cost)}</td>
@@ -6304,10 +6329,47 @@ function switchRptTab(id, el){
               <td style="font-family:monospace;font-size:12px">${fmt(r.rev)}</td>
               <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(r.cost,r.rev)}">${calcR(r.cost,r.rev)}</td>
             </tr>`;}).join('')
-        : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+        : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
     }
     const wkt = document.querySelector('#wkKwTable tbody');
     if(wkt) wkt.innerHTML = kwRowsHtml;
+
+    // 요일별 집계
+    const dowMap={0:{day:'일',click:0,cost:0,conv:0,rev:0},1:{day:'월',click:0,cost:0,conv:0,rev:0},2:{day:'화',click:0,cost:0,conv:0,rev:0},3:{day:'수',click:0,cost:0,conv:0,rev:0},4:{day:'목',click:0,cost:0,conv:0,rev:0},5:{day:'금',click:0,cost:0,conv:0,rev:0},6:{day:'토',click:0,cost:0,conv:0,rev:0}};
+    (d.dailyList||[]).forEach(r=>{
+      const dow=new Date(r.date).getDay();
+      dowMap[dow].click+=+r.click||0; dowMap[dow].cost+=+r.cost||0;
+      dowMap[dow].conv+=+r.conv||0; dowMap[dow].rev+=+r.rev||0;
+    });
+    const dowList=Object.values(dowMap);
+    const dowLabels=dowList.map(d2=>d2.day+'요일');
+    const dowColors=dowList.map(d2=>d2.day==='일'?'rgba(239,68,68,.7)':d2.day==='토'?'rgba(245,158,11,.7)':'rgba(59,130,246,.7)');
+
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const mkR=(id2,cfg)=>{const e2=document.getElementById(id2);if(!e2)return;try{if(reportCharts[id2])reportCharts[id2].destroy();reportCharts[id2]=new Chart(e2,cfg);}catch(e){}};
+
+    // 요일별 클릭수
+    mkR('wkDowClick',{type:'bar',data:{
+      labels:dowLabels,
+      datasets:[{data:dowList.map(d2=>d2.click),backgroundColor:dowColors,borderRadius:5}]
+    },options:{responsive:true,maintainAspectRatio:false,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v.toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 요일별 광고비
+    mkR('wkDowCost',{type:'bar',data:{
+      labels:dowLabels,
+      datasets:[{data:dowList.map(d2=>d2.cost),backgroundColor:dowColors,borderRadius:5}]
+    },options:{responsive:true,maintainAspectRatio:false,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+
+    // 일별 트렌드
+    const dlabels=(d.dailyList||[]).map(r=>r.date.slice(5));
+    mkR('wkDailyTrend',{type:'bar',data:{labels:dlabels,datasets:[
+      {label:'광고비',data:(d.dailyList||[]).map(r=>r.cost),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
+      {label:'전환매출',data:(d.dailyList||[]).map(r=>r.rev),type:'line',borderColor:'#03C75A',backgroundColor:'rgba(3,199,90,.07)',fill:true,tension:.4,borderWidth:2,pointRadius:2,yAxisID:'y1'}
+    ]},options:{responsive:true,maintainAspectRatio:false,scales:{
+      x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},
+      y:{...ax,position:'left',ticks:{...ax.ticks,color:'#3B82F6',callback:v=>'₩'+Math.round(v).toLocaleString()}},
+      y1:{grid:{display:false},ticks:{color:'#03C75A',font:{size:10},callback:v=>'₩'+Math.round(v).toLocaleString()},position:'right'}
+    },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}});
   }
 
   if(id==='monthly'){
