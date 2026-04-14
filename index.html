@@ -3795,11 +3795,30 @@ function saveOneFile(fileObj, client) {
               });
             } else if(isDaily){
               const rawDate = row['기간'] || '';
-              ...
+              const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+              if(!dateStr || dateStr.length < 8) continue;
+              const rowMonth = dateStr.slice(0,7);
+              if(gfaMonth && rowMonth !== gfaMonth) continue;
               gfaRows.push({
-                ...
+                client_key:   client,
+                month:        rowMonth,
+                date:         dateStr,
                 placement:    'GFA 전체',
-                ...
+                account_name: row['광고 계정 이름'] || '',
+                cost:         parseNum(row['총비용']),
+                imp:          parseNum(row['노출수']),
+                cpm:          parseNum(row['평균 CPM']),
+                click:        parseNum(row['클릭수']),
+                cpc:          parseNum(row['평균 CPC']),
+                ctr:          parseNum(row['클릭률(%)']),
+                conv:         parseNum(row['구매완료 수']),
+                rev:          parseNum(row['구매완료 전환매출액']),
+                roas:         parseNum(row['구매완료 광고수익률(%)']),
+                cart_conv:    parseNum(row['장바구니 담기 수']),
+                cart_rev:     parseNum(row['장바구니 전환매출액']),
+                total_conv:   parseNum(row['총 전환수']),
+                total_rev:    parseNum(row['총 전환매출액']),
+                total_roas:   parseNum(row['총 광고수익률(%)']),
               });
             } else if(isPlacement){
               gfaRows.push({
