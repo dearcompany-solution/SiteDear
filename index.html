@@ -4051,18 +4051,22 @@ function saveOneFile(fileObj, client) {
           }
 
           const doUpsert = async () => {
-            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=minimal'};
             const months = [...new Set(gfaRows.map(r=>r.month))];
             for(const m of months){
-              await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}`,{
+              const delRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}`,{
                 method:'DELETE', headers:dh
               });
+              if(!delRes.ok){ throw new Error('기존 데이터 삭제 실패: '+await delRes.text()); }
             }
-            return fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
+            // 삭제 완료 후 잠시 대기
+            await new Promise(r=>setTimeout(r,300));
+            const postRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
-              headers:{...dh,'Content-Type':'application/json','Prefer':'return=minimal'},
+              headers:{...dh,'Content-Type':'application/json'},
               body:JSON.stringify(gfaRows)
             });
+            return postRes;
           };
 
           doUpsert().then(res=>{
