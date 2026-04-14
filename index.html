@@ -1561,7 +1561,7 @@ function htmlReport(){
     <button class="nav-tab" onclick="switchRptTab('gfa',this)">📡 GFA</button>
   </div>
 
-  <div class="rpt-kpi-row">
+    <div class="rpt-kpi-row" id="rptMainKpiRow">
     <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="rk-imp">—</div><div class="rpt-kpi-sub" id="rk-imp-sub"></div></div>
     <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="rk-click">—</div><div class="rpt-kpi-sub" id="rk-click-sub"></div></div>
     <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="rk-cost">—</div><div class="rpt-kpi-sub" id="rk-cost-sub"></div></div>
@@ -5990,10 +5990,12 @@ function switchRptTab(id, el){
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','weekly','monthly','gfa'].forEach(t=>{
+ ['summary','weekly','monthly','gfa'].forEach(t=>{
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
+  const kpiRow = document.getElementById('rptMainKpiRow');
+  if(kpiRow) kpiRow.style.display = id==='gfa' ? 'none' : 'grid';
   if(id==='gfa') setTimeout(loadRptGFATab, 50);
 
   const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
