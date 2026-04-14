@@ -4059,7 +4059,6 @@ function saveOneFile(fileObj, client) {
               });
               if(!delRes.ok){ throw new Error('기존 데이터 삭제 실패: '+await delRes.text()); }
             }
-            // 삭제 완료 후 잠시 대기
             await new Promise(r=>setTimeout(r,300));
             const postRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
