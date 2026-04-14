@@ -1537,48 +1537,80 @@ function htmlNaver(){
     </div>
   </div>
   <div id="nt-tab-device" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:14px;font-weight:600">📱 디바이스별 성과</div>
-        ${!channels.length?`<span style="font-size:12px;color:var(--text3)">파일 관리에서 데이터를 업로드해주세요</span>`:''}
+    <!-- PC vs 모바일 KPI 요약 -->
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card" style="border-top:4px solid var(--blue);text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">💻 PC 합계</div>
+        <div style="font-size:26px;font-weight:700;color:var(--blue)">${fmtn(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.click,0))}건</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">클릭수</div>
+        <div style="font-size:14px;font-weight:600;color:var(--naver);margin-top:8px">${fmt(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.cost,0))}</div>
+        <div style="font-size:11px;color:var(--text3)">광고비</div>
+        <div style="font-size:14px;font-weight:600;color:var(--blue);margin-top:8px">${fmt(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.rev,0))}</div>
+        <div style="font-size:11px;color:var(--text3)">전환매출</div>
       </div>
-      <div style="padding:16px">
-        <div class="row2b" style="margin-bottom:16px">
-          <div class="card" style="border-top:4px solid var(--blue);text-align:center">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">💻 PC</div>
-            <div style="font-size:28px;font-weight:700;color:var(--blue)">${fmtn(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.click,0))}건</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">총 클릭수</div>
-            <div style="font-size:13px;font-weight:600;color:var(--naver);margin-top:6px">${fmt(channels.filter(c=>c.name.includes('PC')).reduce((s,c)=>s+c.cost,0))}</div>
-            <div style="font-size:11px;color:var(--text3)">광고비</div>
-          </div>
-          <div class="card" style="border-top:4px solid var(--store);text-align:center">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">📱 MOBILE</div>
-            <div style="font-size:28px;font-weight:700;color:var(--store)">${fmtn(channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')||c.name.includes('모바일')).reduce((s,c)=>s+c.click,0))}건</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">총 클릭수</div>
-            <div style="font-size:13px;font-weight:600;color:var(--naver);margin-top:6px">${fmt(channels.filter(c=>c.name.includes('Mo')||c.name.includes('Mobile')||c.name.includes('모바일')).reduce((s,c)=>s+c.cost,0))}</div>
-            <div style="font-size:11px;color:var(--text3)">광고비</div>
-          </div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="tbl">
-            <thead><tr>
-              <th>캠페인</th><th>디바이스</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
-            </tr></thead>
-            <tbody>${channels.length
-              ? channels.map((c,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+      <div class="card" style="border-top:4px solid var(--store);text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">📱 모바일 합계</div>
+        <div style="font-size:26px;font-weight:700;color:var(--store)">${fmtn(channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일')).reduce((s,c)=>s+c.click,0))}건</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">클릭수</div>
+        <div style="font-size:14px;font-weight:600;color:var(--naver);margin-top:8px">${fmt(channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일')).reduce((s,c)=>s+c.cost,0))}</div>
+        <div style="font-size:11px;color:var(--text3)">광고비</div>
+        <div style="font-size:14px;font-weight:600;color:var(--store);margin-top:8px">${fmt(channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일')).reduce((s,c)=>s+c.rev,0))}</div>
+        <div style="font-size:11px;color:var(--text3)">전환매출</div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">📊 PC vs 모바일 광고비 비중</div></div></div>
+        <canvas id="devicePieCost" height="160"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">💰 PC vs 모바일 전환매출 비중</div></div></div>
+        <canvas id="devicePieRev" height="160"></canvas>
+      </div>
+    </div>
+    <!-- 일별 PC/모바일 추이 -->
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">📅 PC vs 모바일 일별 광고비</div></div></div>
+        <canvas id="deviceDailyCost"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">📈 PC vs 모바일 일별 클릭수</div></div></div>
+        <canvas id="deviceDailyClick"></canvas>
+      </div>
+    </div>
+    <!-- 시간대별 히트맵 -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hd"><div><div class="card-title">🕐 시간대별 클릭수 히트맵</div><div class="card-sub">진할수록 클릭 많음</div></div></div>
+      <div id="deviceHeatmap" style="overflow-x:auto;padding:8px 0"></div>
+    </div>
+    <!-- 상세 표 -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600">📋 디바이스별 상세 성과</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>캠페인</th><th>디바이스</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
+          </tr></thead>
+          <tbody>${channels.length
+            ? channels.map((c,i)=>{
+                const ctr = c.imp>0?(c.click/c.imp*100).toFixed(2)+'%':'—';
+                const roas = c.cost>0?(c.rev/c.cost*100).toFixed(1)+'%':'—';
+                const rc = c.cost>0&&c.rev/c.cost>=3?'var(--naver)':c.cost>0&&c.rev/c.cost>=1?'var(--gold)':'var(--red)';
+                return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
                   <td style="font-weight:600;font-size:12.5px">${c.name}</td>
                   <td style="font-size:12px">${c.name.includes('PC')?'💻 PC':'📱 모바일'}</td>
                   <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.imp)}</td>
                   <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.click)}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${ctr}</td>
                   <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.cost)}</td>
                   <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(c.conv)}건</td>
                   <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(c.rev)}</td>
-                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${c.cost>0&&c.rev/c.cost>=3?'var(--naver)':c.cost>0&&c.rev/c.cost>=1?'var(--gold)':'var(--red)'}">${c.roas?Math.round(c.roas)+'%':'—'}</td>
-                </tr>`).join('')
-              : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음 — 캠페인 파일을 업로드해주세요</td></tr>`}
-            </tbody>
-          </table>
-        </div>
+                  <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${rc}">${roas}</td>
+                </tr>`;}).join('')
+            : `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -6256,7 +6288,72 @@ function switchRptTab(id, el){
   });
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
-  if(id==='campaign') setTimeout(()=>{
+  if(id==='device') setTimeout(()=>{
+    const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const d = REPORT_DATA[currentReportMonth];
+    const daily = d?.dailyList || [];
+    const channels = d?.channels || [];
+
+    // PC / 모바일 분리
+    const pcCh   = channels.filter(c=>c.name.includes('PC'));
+    const moCh   = channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일'));
+    const pcCost  = pcCh.reduce((s,c)=>s+c.cost,0);
+    const moCost  = moCh.reduce((s,c)=>s+c.cost,0);
+    const pcRev   = pcCh.reduce((s,c)=>s+c.rev,0);
+    const moRev   = moCh.reduce((s,c)=>s+c.rev,0);
+
+    // 도넛 차트 - 광고비 비중
+    mk('devicePieCost',{type:'doughnut',data:{labels:['💻 PC','📱 모바일'],datasets:[{data:[pcCost,moCost],backgroundColor:['rgba(59,130,246,.8)','rgba(255,107,53,.8)'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670'}}}}});
+
+    // 도넛 차트 - 전환매출 비중
+    mk('devicePieRev',{type:'doughnut',data:{labels:['💻 PC','📱 모바일'],datasets:[{data:[pcRev,moRev],backgroundColor:['rgba(59,130,246,.8)','rgba(255,107,53,.8)'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670'}}}}});
+
+    // 일별 PC/모바일 광고비 추이
+    const dates = [...new Set(daily.map(r=>r.date))].sort();
+    const pcDaily  = dates.map(dt=>daily.filter(r=>r.date===dt&&(r.device==='PC'||r.device==='pc')).reduce((s,r)=>s+(+r.cost||0),0));
+    const moDaily  = dates.map(dt=>daily.filter(r=>r.date===dt&&r.device!=='PC'&&r.device!=='pc'&&r.device).reduce((s,r)=>s+(+r.cost||0),0));
+    const pcClick  = dates.map(dt=>daily.filter(r=>r.date===dt&&(r.device==='PC'||r.device==='pc')).reduce((s,r)=>s+(+r.click||0),0));
+    const moClick  = dates.map(dt=>daily.filter(r=>r.date===dt&&r.device!=='PC'&&r.device!=='pc'&&r.device).reduce((s,r)=>s+(+r.click||0),0));
+    const lbls = dates.map(d2=>d2.slice(5));
+
+    mk('deviceDailyCost',{type:'bar',data:{labels:lbls,datasets:[
+      {label:'💻 PC',data:pcDaily,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3},
+      {label:'📱 모바일',data:moDaily,backgroundColor:'rgba(255,107,53,.7)',borderRadius:3}
+    ]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,stacked:false,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#4a5670'}}}}});
+
+    mk('deviceDailyClick',{type:'line',data:{labels:lbls,datasets:[
+      {label:'💻 PC',data:pcClick,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:2},
+      {label:'📱 모바일',data:moClick,borderColor:'rgba(255,107,53,1)',backgroundColor:'rgba(255,107,53,.1)',fill:true,tension:.4,pointRadius:2}
+    ]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>v.toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#4a5670'}}}}});
+
+    // 시간대별 히트맵 (hourly 데이터 기반)
+    const hourly = d?.hourly || [];
+    const heatEl = document.getElementById('deviceHeatmap');
+    if(heatEl){
+      if(!hourly.length){
+        heatEl.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3)">시간대별 파일을 업로드해주세요</div>`;
+      } else {
+        const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}시`);
+        const hMap = {};
+        hourly.forEach(r=>{ const h=+((r.hour||'0').replace(/[^0-9]/g,'')); if(!hMap[h])hMap[h]=0; hMap[h]+=(+r.click||0); });
+        const maxV = Math.max(...Object.values(hMap),1);
+        const cells = hours.map((h,i)=>{
+          const v = hMap[i]||0;
+          const ratio = v/maxV;
+          const bg = `rgba(59,130,246,${(ratio*0.8+0.05).toFixed(2)})`;
+          const color = ratio>0.5?'#fff':'#1a2235';
+          return `<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:60px;height:54px;background:${bg};border-radius:6px;margin:2px;cursor:default" title="${h}: ${v.toLocaleString()}건">
+            <div style="font-size:10px;color:${color};font-weight:600">${h.replace('시','')}</div>
+            <div style="font-size:11px;color:${color};font-weight:700">${v>0?v.toLocaleString():'-'}</div>
+          </div>`;
+        }).join('');
+        heatEl.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:0;padding:8px">${cells}</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px 8px">* 숫자는 클릭수 · 진할수록 많음</div>`;
+      }
+    }
+  },80);
+    if(id==='campaign') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     const d = REPORT_DATA[currentReportMonth];
