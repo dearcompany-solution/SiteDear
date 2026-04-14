@@ -6585,8 +6585,32 @@ async function loadKeywordTab(){
       renderKwTable();
     };
 
+    // 노출순위 구간별 분포
+    const rankGroups = {'1위':0,'2~3위':0,'4~5위':0,'6~10위':0,'11위이상':0};
+    kwList.forEach(k=>{
+      if(!k.rank) return;
+      if(k.rank<=1) rankGroups['1위']+=k.imp;
+      else if(k.rank<=3) rankGroups['2~3위']+=k.imp;
+      else if(k.rank<=5) rankGroups['4~5위']+=k.imp;
+      else if(k.rank<=10) rankGroups['6~10위']+=k.imp;
+      else rankGroups['11위이상']+=k.imp;
+    });
+
+    // CTR TOP10
+    const topCTR = [...kwList].filter(k=>k.imp>=10).sort((a,b)=>b.ctr-a.ctr).slice(0,10);
+
     el.innerHTML = `
       ${dashboardHtml}
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">📊 노출순위별 노출수 분포</div><div class="card-sub">순위 구간별 노출수 합산</div></div></div>
+          <canvas id="kwRankBar" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">🎯 CTR TOP 10 키워드</div><div class="card-sub">노출 10회 이상 기준</div></div></div>
+          <canvas id="kwCtrBar" height="180"></canvas>
+        </div>
+      </div>
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:14px;font-weight:600">🔑 키워드 전체 목록 <span style="font-size:12px;color:var(--text3);font-weight:400">${kwList.length}개 · 컬럼 클릭으로 정렬</span></div>
@@ -6599,6 +6623,44 @@ async function loadKeywordTab(){
         </div>
       </div>`;
     renderKwTable();
+
+    // 차트 렌더링
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const mkC=(id2,cfg)=>{const e2=document.getElementById(id2);if(!e2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(e2,cfg);}catch(e){}};
+
+    // 노출순위 분포 바차트
+    mkC('kwRankBar',{type:'bar',
+      data:{
+        labels:Object.keys(rankGroups),
+        datasets:[{
+          data:Object.values(rankGroups),
+          backgroundColor:['rgba(3,199,90,.8)','rgba(59,130,246,.8)','rgba(245,158,11,.8)','rgba(168,85,247,.8)','rgba(239,68,68,.8)'],
+          borderRadius:6
+        }]
+      },
+      options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v.toLocaleString()}}},plugins:{legend:{display:false}}}
+    });
+
+    // CTR TOP10 바차트 (가로)
+    mkC('kwCtrBar',{type:'bar',
+      data:{
+        labels:topCTR.map(k=>k.keyword.length>10?k.keyword.slice(0,10)+'…':k.keyword),
+        datasets:[{
+          data:topCTR.map(k=>+k.ctr.toFixed(2)),
+          backgroundColor:'rgba(59,130,246,.7)',
+          borderRadius:4
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true,
+        scales:{
+          x:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}},
+          y:{...ax,ticks:{...ax.ticks,font:{size:10}}}
+        },
+        plugins:{legend:{display:false}}
+      }
+    });
 
   }catch(e){
     el.innerHTML=`<div class="empty"><div class="ei">❌</div><p>키워드 데이터 로드 실패: ${e.message}</p></div>`;
