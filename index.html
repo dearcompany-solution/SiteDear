@@ -1611,13 +1611,6 @@ function htmlReport(){
 
   <!-- 주간 데이터 탭 -->
   <div id="rpt-tab-weekly" style="display:none">
-    <div class="rpt-kpi-row">
-      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="wk-imp">—</div></div>
-      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="wk-click">—</div></div>
-      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="wk-cost">—</div></div>
-      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="wk-rev">—</div></div>
-      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="wk-roas">—</div></div>
-    </div>
     <div class="rpt-compare">
       <div class="rpt-section">
         <div class="rpt-section-title">📡 채널별 성과</div>
@@ -1653,14 +1646,6 @@ function htmlReport(){
 
   <!-- 월간 데이터 탭 -->
   <div id="rpt-tab-monthly" style="display:none">
-    <div class="rpt-kpi-row">
-      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 노출수</div><div class="rpt-kpi-val" id="mo-imp">—</div></div>
-      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 클릭수</div><div class="rpt-kpi-val" id="mo-click">—</div></div>
-      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">총 광고비</div><div class="rpt-kpi-val" id="mo-cost">—</div></div>
-      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="mo-rev">—</div></div>
-      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="mo-roas">—</div></div>
-    </div>
-    
     <div class="rpt-compare">
       <div class="rpt-section">
         <div class="rpt-section-title">📡 채널별 성과</div>
@@ -6036,11 +6021,11 @@ function switchRptTab(id, el){
   const $s = (id2,v)=>{ const e=document.getElementById(id2); if(e) e.textContent=v; };
 
   if(id==='weekly'){
-    $s('wk-imp',   fmtn(kpi.totalImp));
-    $s('wk-click', fmtn(kpi.totalClick));
-    $s('wk-cost',  fmt(kpi.totalCost));
-    $s('wk-rev',   fmt(kpi.totalRev));
-    $s('wk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+    $s('rk-imp',   fmtn(kpi.totalImp));
+    $s('rk-click', fmtn(kpi.totalClick));
+    $s('rk-cost',  fmt(kpi.totalCost));
+    $s('rk-rev',   fmt(kpi.totalRev));
+    $s('rk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
     const ct = document.querySelector('#wkChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptWeeklyTbody');
@@ -6065,11 +6050,11 @@ function switchRptTab(id, el){
   }
 
   if(id==='monthly'){
-    $s('mo-imp',   fmtn(kpi.totalImp));
-    $s('mo-click', fmtn(kpi.totalClick));
-    $s('mo-cost',  fmt(kpi.totalCost));
-    $s('mo-rev',   fmt(kpi.totalRev));
-    $s('mo-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+    $s('rk-imp',   fmtn(kpi.totalImp));
+    $s('rk-click', fmtn(kpi.totalClick));
+    $s('rk-cost',  fmt(kpi.totalCost));
+    $s('rk-rev',   fmt(kpi.totalRev));
+    $s('rk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
     const ct = document.querySelector('#moChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptMonthlyTbody');
