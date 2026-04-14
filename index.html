@@ -1413,7 +1413,7 @@ function htmlNaver(){
     <button class="nav-tab" onclick="switchNaverTab('campaign',this)">📊 캠페인별</button>
     <button class="nav-tab" onclick="switchNaverTab('device',this)">📱 디바이스</button>
     <button class="nav-tab" onclick="switchNaverTab('keyword',this)">🔑 키워드</button>
-    <button class="nav-tab" onclick="switchNaverTab('action',this)">🎯 액션플랜</button>
+    
   </div>
   <div id="nt-tab-summary">
     
@@ -1558,6 +1558,7 @@ function htmlReport(){
     <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
     <button class="nav-tab" onclick="switchRptTab('weekly',this)">📅 주간 데이터</button>
     <button class="nav-tab" onclick="switchRptTab('monthly',this)">📆 월간 데이터</button>
+    <button class="nav-tab" onclick="switchRptTab('gfa',this)">📡 GFA</button>
   </div>
 
   <div class="rpt-kpi-row">
@@ -1657,6 +1658,7 @@ function htmlReport(){
       <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환매출</div><div class="rpt-kpi-val" id="mo-rev">—</div></div>
       <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">ROAS</div><div class="rpt-kpi-val" id="mo-roas">—</div></div>
     </div>
+    
     <div class="rpt-compare">
       <div class="rpt-section">
         <div class="rpt-section-title">📡 채널별 성과</div>
@@ -1689,6 +1691,13 @@ function htmlReport(){
       </div>
     </div>
   </div>
+
+  <!-- GFA 탭 -->
+  <div id="rpt-tab-gfa" style="display:none">
+    <div id="gfaContent">
+      <div class="empty"><div class="ei">📡</div><p>GFA 탭을 클릭하면 데이터를 불러옵니다</p></div>
+    </div>
+  </div>
   `;
 }
 
@@ -1698,10 +1707,15 @@ function switchRptTab(id, el){
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','weekly','monthly'].forEach(t=>{
+  ['summary','weekly','monthly','gfa'].forEach(t=>{
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
+  if(id==='gfa'){
+    const el=document.getElementById('rpt-tab-gfa');
+    if(el) el.innerHTML=`<div id="gfaContent"><div class="empty"><div class="ei">📡</div><p>GFA 데이터 불러오는 중...</p></div></div>`;
+    loadGFATab();
+  }
 
   const fmt  = v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
   const fmtn = v=>Math.round(+v||0).toLocaleString('ko-KR');
@@ -6038,7 +6052,7 @@ function switchRptTab(id, el){
   sessionStorage.setItem('currentNaverTab', id);
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
-  ['summary','campaign','gfa','device','keyword','action'].forEach(t=>{
+  ['summary','campaign','gfa','device','keyword'].forEach(t=>{
     const p=document.getElementById('nt-tab-'+t);
     if(p)p.style.display=t===id?'block':'none';
   });
