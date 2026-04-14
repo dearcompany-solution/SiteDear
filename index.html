@@ -2100,14 +2100,16 @@ async function fetchReportData(month){
     // 기간이 여러 달에 걸칠 경우 월 범위로 조회
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
-    const [dailyRes,kwRes,hourlyRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+    const [dailyRes,kwRes,hourlyRes,gfaRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
     ]);
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
+    const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
     const totalConv=sum(dailyArr,'conv'), totalRev=sum(dailyArr,'rev');
@@ -2155,11 +2157,45 @@ async function fetchReportData(month){
     const kwMap={};
     kwArr.forEach(r=>{
       const key=`${r.keyword}__${r.campaign_type}__${r.device}`;
-      if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,cost:0,click:0,conv:0,rev:0};
+      if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,imp:0,cost:0,click:0,conv:0,rev:0,avg_rank:[]};
+      kwMap[key].imp +=+r.imp||0;
       kwMap[key].cost+=+r.cost||0; kwMap[key].click+=+r.click||0;
       kwMap[key].conv+=+r.conv||0; kwMap[key].rev+=+r.rev||0;
+      if(r.avg_rank) kwMap[key].avg_rank.push(+r.avg_rank);
     });
-    const topKeywords=Object.values(kwMap).map(k=>({...k,...calcMetrics(k.imp,k.click,k.cost,k.conv,k.rev)})).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,20);
+    const topKeywords=Object.values(kwMap).map(k=>({
+      ...k,
+      rank: k.avg_rank.length ? k.avg_rank.reduce((s,v)=>s+v,0)/k.avg_rank.length : 0,
+      ...calcMetrics(k.imp,k.click,k.cost,k.conv,k.rev)
+    })).sort((a,b)=>b.rev-a.rev||b.cost-a.cost).slice(0,50);
+
+    // GFA 집계
+    const gfaDailyArr = gfaArr.filter(r=>r.date);
+    const gfaPlacementArr = gfaArr.filter(r=>!r.date);
+    const gfaTotalCost  = sum(gfaArr,'cost');
+    const gfaTotalImp   = sum(gfaArr,'imp');
+    const gfaTotalClick = sum(gfaArr,'click');
+    const gfaTotalConv  = sum(gfaArr,'conv');
+    const gfaTotalRev   = sum(gfaArr,'rev');
+    const gfaTotalCartConv = sum(gfaArr,'cart_conv');
+    const gfaPlacementMap={};
+    gfaPlacementArr.forEach(r=>{
+      const p=r.placement||'기타';
+      if(!gfaPlacementMap[p]) gfaPlacementMap[p]={placement:p,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0};
+      gfaPlacementMap[p].cost+=+r.cost||0; gfaPlacementMap[p].imp+=+r.imp||0;
+      gfaPlacementMap[p].click+=+r.click||0; gfaPlacementMap[p].conv+=+r.conv||0;
+      gfaPlacementMap[p].rev+=+r.rev||0; gfaPlacementMap[p].cart_conv+=+r.cart_conv||0;
+    });
+    const gfaPlacements=Object.values(gfaPlacementMap).sort((a,b)=>b.cost-a.cost);
+    const gfaDailyMap={};
+    gfaDailyArr.forEach(r=>{
+      const d=r.date;
+      if(!gfaDailyMap[d]) gfaDailyMap[d]={date:d,cost:0,imp:0,click:0,conv:0,rev:0,cart_conv:0};
+      gfaDailyMap[d].cost+=+r.cost||0; gfaDailyMap[d].imp+=+r.imp||0;
+      gfaDailyMap[d].click+=+r.click||0; gfaDailyMap[d].conv+=+r.conv||0;
+      gfaDailyMap[d].rev+=+r.rev||0; gfaDailyMap[d].cart_conv+=+r.cart_conv||0;
+    });
+    const gfaDailyList=Object.values(gfaDailyMap).sort((a,b)=>a.date.localeCompare(b.date));
     const dailyMap={};
     dailyArr.forEach(r=>{
       const d=r.date||''; if(!d) return;
@@ -2195,6 +2231,11 @@ async function fetchReportData(month){
       channels, weekly, hourly, topKeywords, insights:[],
       dailyList, dowList,
       device:{pcCost,moCost,pcConv,moConv,pcRev,moRev},
+      gfa:{
+        totalCost:gfaTotalCost, totalImp:gfaTotalImp, totalClick:gfaTotalClick,
+        totalConv:gfaTotalConv, totalRev:gfaTotalRev, totalCartConv:gfaTotalCartConv,
+        placements:gfaPlacements, dailyList:gfaDailyList
+      },
     };
   }catch(e){
     console.warn('데이터 집계 실패:',e);
