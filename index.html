@@ -1506,9 +1506,19 @@ function htmlNaver(){
     </div>
   </div>
   <div id="nt-tab-campaign" style="display:none">
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div><div class="card-sub">채널별 비교</div></div></div>
+        <canvas id="campDailyCost"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">💰 일별 전환매출 추이</div><div class="card-sub">채널별 비교</div></div></div>
+        <canvas id="campDailyRev"></canvas>
+      </div>
+    </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:14px;font-weight:600">📊 캠페인별 성과</div>
+        <div style="font-size:14px;font-weight:600">📊 캠페인별 성과 합계</div>
         ${!channels.length?`<span style="font-size:12px;color:var(--text3)">파일 관리에서 캠페인 파일을 업로드해주세요</span>`:''}
       </div>
       <div style="overflow-x:auto">
@@ -6246,7 +6256,38 @@ function switchRptTab(id, el){
   });
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
-  if(id==='summary') setTimeout(()=>{
+  if(id==='campaign') setTimeout(()=>{
+    const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    const d = REPORT_DATA[currentReportMonth];
+    const daily = d?.dailyList || [];
+
+    // 채널별 일별 데이터 집계
+    const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.device||''})`))]
+      .filter(c=>c.trim()!='()');
+    const dates = [...new Set(daily.map(r=>r.date))].sort();
+    const colors = ['rgba(3,199,90,1)','rgba(79,70,229,1)','rgba(245,158,11,1)','rgba(239,68,68,1)','rgba(59,130,246,1)','rgba(168,85,247,1)'];
+
+    const datasets_cost = channels_set.map((ch,i)=>{
+      const data = dates.map(dt=>{
+        const rows = daily.filter(r=>`${r.campaign_type||''} (${r.device||''})` === ch && r.date===dt);
+        return rows.reduce((s,r)=>s+(+r.cost||0),0);
+      });
+      return {label:ch, data, borderColor:colors[i%colors.length], backgroundColor:colors[i%colors.length].replace(',1)',',0.1)'), fill:false, tension:.4, pointRadius:2};
+    });
+
+    const datasets_rev = channels_set.map((ch,i)=>{
+      const data = dates.map(dt=>{
+        const rows = daily.filter(r=>`${r.campaign_type||''} (${r.device||''})` === ch && r.date===dt);
+        return rows.reduce((s,r)=>s+(+r.rev||0),0);
+      });
+      return {label:ch, data, borderColor:colors[i%colors.length], backgroundColor:colors[i%colors.length].replace(',1)',',0.1)'), fill:false, tension:.4, pointRadius:2};
+    });
+
+    mk('campDailyCost',{type:'line',data:{labels:dates.map(d2=>d2.slice(5)),datasets:datasets_cost},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#4a5670'}}}}});
+    mk('campDailyRev',{type:'line',data:{labels:dates.map(d2=>d2.slice(5)),datasets:datasets_rev},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#4a5670'}}}}});
+  },80);
+    if(id==='summary') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     const d = REPORT_DATA[currentReportMonth];
