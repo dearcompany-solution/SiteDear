@@ -793,7 +793,7 @@ function closeDataGuide(){
   document.getElementById('dataGuideOverlay').classList.remove('open');
 }
 
-checkDataAndGuide(data, period){
+function checkDataAndGuide(data, period){
   if(!data || data._empty) return;
   // KPI 데이터 자체가 없을 때만 팝업 표시 (데이터가 일부 있으면 표시 안함)
   if(data.kpi && data.kpi.totalCost > 0) return;
