@@ -3656,8 +3656,9 @@ function saveOneFile(fileObj, client) {
         
                 // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
         if(hasGFA){
-          const isDaily     = cols.includes('기간');
+          const isDaily     = cols.includes('기간') && !cols.includes('게재 위치');
           const isPlacement = cols.includes('게재 위치');
+          const isDailyPlacement = cols.includes('기간') && cols.includes('게재 위치');
 
          // 월 추출 — 일별파일은 '기간'에서, 매체별파일은 파일명에서 추출
           let gfaMonth = month;
@@ -3693,18 +3694,17 @@ function saveOneFile(fileObj, client) {
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
 
-           if(isDaily){
+           if(isDailyPlacement){
               const rawDate = row['기간'] || '';
               const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
               if(!dateStr || dateStr.length < 8) continue;
               const rowMonth = dateStr.slice(0,7);
-              // gfaMonth와 다른 월 데이터는 건너뜀 (다른 월 데이터 혼입 방지)
               if(gfaMonth && rowMonth !== gfaMonth) continue;
               gfaRows.push({
                 client_key:   client,
                 month:        rowMonth,
                 date:         dateStr,
-                placement:    'GFA 전체',
+                placement:    row['게재 위치'] || 'GFA 전체',
                 account_name: row['광고 계정 이름'] || '',
                 cost:         parseNum(row['총비용']),
                 imp:          parseNum(row['노출수']),
@@ -3720,6 +3720,14 @@ function saveOneFile(fileObj, client) {
                 total_conv:   parseNum(row['총 전환수']),
                 total_rev:    parseNum(row['총 전환매출액']),
                 total_roas:   parseNum(row['총 광고수익률(%)']),
+              });
+            } else if(isDaily){
+              const rawDate = row['기간'] || '';
+              ...
+              gfaRows.push({
+                ...
+                placement:    'GFA 전체',
+                ...
               });
             } else if(isPlacement){
               gfaRows.push({
@@ -3752,14 +3760,18 @@ function saveOneFile(fileObj, client) {
           }
 
           const doUpsert = async () => {
+            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+            const months = [...new Set(gfaRows.map(r=>r.month))];
+            for(const m of months){
+              if(isDailyPlacement || isDaily){
+                await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}&date=not.is.null`,{method:'DELETE',headers:dh});
+              } else {
+                await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}&date=is.null`,{method:'DELETE',headers:dh});
+              }
+            }
             return fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
               method:'POST',
-              headers:{
-                'Content-Type':'application/json',
-                'apikey':SUPABASE_ANON_KEY,
-                'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-                'Prefer':'resolution=merge-duplicates,return=minimal'
-              },
+              headers:{...dh,'Content-Type':'application/json','Prefer':'return=minimal'},
               body:JSON.stringify(gfaRows)
             });
           };
