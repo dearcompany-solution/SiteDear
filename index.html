@@ -793,18 +793,20 @@ function closeDataGuide(){
   document.getElementById('dataGuideOverlay').classList.remove('open');
 }
 
-function checkDataAndGuide(data, period){
+checkDataAndGuide(data, period){
   if(!data || data._empty) return;
+  // KPI 데이터 자체가 없을 때만 팝업 표시 (데이터가 일부 있으면 표시 안함)
+  if(data.kpi && data.kpi.totalCost > 0) return;
   const missing = [];
   const p = period || currentReportMonth;
+  if(!data.kpi || !data.kpi.totalCost)
+    missing.push({icon:'💰', title:`${p} 광고비 데이터`, desc:'파일관리 → 네이버 일별 성과 파일 업로드'});
   if(!data.channels || !data.channels.length)
     missing.push({icon:'📊', title:`${p} 캠페인별 성과`, desc:'파일관리 → 네이버 일별 캠페인 파일 업로드'});
   if(!data.topKeywords || !data.topKeywords.length)
     missing.push({icon:'🔑', title:`${p} 키워드 성과`, desc:'파일관리 → 네이버 일별 키워드 파일 업로드'});
   if(!data.hourly || !data.hourly.length)
     missing.push({icon:'🕐', title:`${p} 시간대별 성과`, desc:'파일관리 → 네이버 시간대별 파일 업로드'});
-  if(!data.kpi || !data.kpi.totalCost)
-    missing.push({icon:'💰', title:`${p} 광고비 데이터`, desc:'파일관리 → 네이버 일별 성과 파일 업로드'});
   if(missing.length > 0)
     showDataGuide(missing, `${p} 기간 데이터 현황`);
 }
