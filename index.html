@@ -5988,10 +5988,11 @@ function switchRptTab(id, el){
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','weekly','monthly'].forEach(t=>{
+  ['summary','weekly','monthly','gfa'].forEach(t=>{
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
+  if(id==='gfa') loadRptGFATab();
 
   const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
   const fmtn = v=>(v||0).toLocaleString();
