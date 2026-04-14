@@ -5992,7 +5992,7 @@ function switchRptTab(id, el){
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
-  if(id==='gfa') loadRptGFATab();
+  if(id==='gfa') setTimeout(loadRptGFATab, 50);
 
   const fmt  = v=>'₩'+Math.round(v||0).toLocaleString();
   const fmtn = v=>(v||0).toLocaleString();
