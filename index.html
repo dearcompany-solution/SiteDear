@@ -1985,11 +1985,12 @@ async function fetchReportData(month){
     // 기간이 여러 달에 걸칠 경우 월 범위로 조회
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
+    const ck = encodeURIComponent(targetClient);
     const [dailyRes,kwRes,hourlyRes,gfaRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
     ]);
     const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
