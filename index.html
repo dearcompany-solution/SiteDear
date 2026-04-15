@@ -1986,16 +1986,22 @@ async function fetchReportData(month){
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
-    const [dailyRes,kwRes,hourlyRes,gfaRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+    const fetchAll = async (baseUrl) => {
+      const rows = []; const PAGE = 1000; let offset = 0;
+      while(true){
+        const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
+        const data = await res.json();
+        if(!Array.isArray(data)||!data.length) break;
+        rows.push(...data); if(data.length < PAGE) break; offset += PAGE;
+      }
+      return rows;
+    };
+    const [dailyArr, kwArr, hourlyArr, gfaArr] = await Promise.all([
+      fetchAll(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
-    const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
-    const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
-    const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
-    const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
     const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
@@ -3992,7 +3998,6 @@ function saveOneFile(fileObj, client) {
               if(!delRes.ok){ throw new Error('기존 데이터 삭제 실패: '+await delRes.text()); }
             }
             await new Promise(r=>setTimeout(r,300));
-            // 배치로 나눠서 INSERT (200건씩)
             const BATCH = 200;
             for(let i=0; i<gfaRows.length; i+=BATCH){
               const batch = gfaRows.slice(i, i+BATCH);
@@ -6631,12 +6636,12 @@ async function loadHourlyTab(){
   const toMonth   = toDate.slice(0,7);
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
+  const fetchAllHr = async (baseUrl) => {
+    const result=[]; const PAGE=1000; let offset=0;
+    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
+  };
   try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
-      {headers:h}
-    );
-    const rows = await res.json();
+    const rows = await fetchAllHr(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
       return;
@@ -6847,12 +6852,12 @@ async function loadKeywordTab(){
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
+  const fetchAllKw = async (baseUrl) => {
+    const result=[]; const PAGE=1000; let offset=0;
+    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
+  };
   try{
-    const res  = await fetch(
-      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
-      {headers:h}
-    );
-    const rows = await res.json();
+    const rows = await fetchAllKw(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
@@ -7202,14 +7207,13 @@ async function loadRptGFATab(){
       </div>`;
   };
 
+  const fetchAllGfa = async (baseUrl) => {
+    const result=[]; const PAGE=1000; let offset=0;
+    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
+  };
   try{
-    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
-    let rows = await res.json();
-
-    // 데이터가 없거나 배열이 아닐 경우 빈 배열로 처리하여 대시보드 틀(0) 유지
-    if(!Array.isArray(rows)){
-      rows = [];
-    }
+    let rows = await fetchAllGfa(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`);
+    if(!Array.isArray(rows)) rows = [];
 
     // 일별(date 있는 것) / 매체별(date null인 것) 분리
     const dailyData     = rows.filter(r=>r.date);
