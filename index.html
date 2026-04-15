@@ -4028,7 +4028,7 @@ function saveOneFile(fileObj, client) {
         };
         // 기존 데이터 삭제 후 배치 INSERT (500 오류 방지)
         (async () => {
-          try {
+          try { 
             // 1. 기존 데이터 삭제
             const delRes = await fetch(
               `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${month}`,
