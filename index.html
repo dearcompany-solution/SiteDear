@@ -646,10 +646,14 @@ let adminPage=1;
 let charts={};
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let selectedCalDate=null;
-let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:'2026-02-01',to:'2026-02-28'};
+const _now = new Date();
+const _y = _now.getFullYear();
+const _m = String(_now.getMonth()+1).padStart(2,'0');
+const _lastDay = new Date(_y, _now.getMonth()+1, 0).getDate();
+let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:`${_y}-${_m}-01`, to:`${_y}-${_m}-${_lastDay}`};
 
 /* ════ 보고서 상태 ════ */
-let currentReportMonth='2026-02';
+let currentReportMonth = (JSON.parse(sessionStorage.getItem('currentDateRange'))?.from || new Date().toISOString()).slice(0,7);
 let reportCharts={};
 
 /* ════════════════════════════════════════
@@ -1989,8 +1993,8 @@ async function fetchReportData(month){
     const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
-    const totalConv = sum(dailyArr,'conv') || sum(dailyArr,'purchase_conv');
-    const totalRev  = sum(dailyArr,'rev')  || sum(dailyArr,'purchase_rev');
+    const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
+    const totalRev  = sum(dailyArr,'rev')>0  ? sum(dailyArr,'rev')  : sum(dailyArr,'purchase_rev');
     const totalPurchaseConv=sum(dailyArr,'purchase_conv'), totalPurchaseRev=sum(dailyArr,'purchase_rev');
     const totalCartRev=sum(dailyArr,'cart_rev');
     function calcMetrics(imp,click,cost,conv,rev){
@@ -2007,8 +2011,8 @@ async function fetchReportData(month){
       chMap[key].imp  +=+r.imp||0;
       chMap[key].click+=+r.click||0;
       chMap[key].cost +=+r.cost||0;
-      chMap[key].conv +=(+r.conv||0) || (+r.purchase_conv||0);
-      chMap[key].rev  +=(+r.rev||0)  || (+r.purchase_rev||0);
+      chMap[key].conv +=(+r.conv>0) ? +r.conv : (+r.purchase_conv||0);
+      chMap[key].rev  +=(+r.rev>0)  ? +r.rev  : (+r.purchase_rev||0);
     });
     const channelOrder = n => {
       if(n.includes('통합') && (n.includes('PC')||n.includes('pc'))) return 0;
@@ -2023,8 +2027,11 @@ async function fetchReportData(month){
       const day=new Date(r.date).getDate();
       const wk=day<=7?'1주':day<=14?'2주':day<=21?'3주':'4주';
       if(!weekMap[wk]) weekMap[wk]={week:wk,imp:0,click:0,cost:0,conv:0,rev:0};
-      weekMap[wk].imp+=+r.imp||0; weekMap[wk].click+=+r.click||0;
-      weekMap[wk].cost+=+r.cost||0; weekMap[wk].conv+=+r.conv||0; weekMap[wk].rev+=+r.rev||0;
+      weekMap[wk].imp  +=+r.imp||0;
+      weekMap[wk].click+=+r.click||0;
+      weekMap[wk].cost +=+r.cost||0;
+      weekMap[wk].conv +=(+r.conv>0) ? +r.conv : (+r.purchase_conv||0);
+      weekMap[wk].rev  +=(+r.rev>0)  ? +r.rev  : (+r.purchase_rev||0);
     });
     const weekly=['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
     const hourMap={};
