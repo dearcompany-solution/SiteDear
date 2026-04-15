@@ -1989,7 +1989,8 @@ async function fetchReportData(month){
     const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
-    const totalConv=sum(dailyArr,'conv'), totalRev=sum(dailyArr,'rev');
+    const totalConv = sum(dailyArr,'conv') || sum(dailyArr,'purchase_conv');
+    const totalRev  = sum(dailyArr,'rev')  || sum(dailyArr,'purchase_rev');
     const totalPurchaseConv=sum(dailyArr,'purchase_conv'), totalPurchaseRev=sum(dailyArr,'purchase_rev');
     const totalCartRev=sum(dailyArr,'cart_rev');
     function calcMetrics(imp,click,cost,conv,rev){
@@ -2003,8 +2004,11 @@ async function fetchReportData(month){
       if(!r.campaign_type && !r.device) return; // 둘 다 빈 행 제외
       const key=`${r.campaign_type||''} (${r.device||''})`;
       if(!chMap[key]) chMap[key]={name:key,imp:0,click:0,cost:0,conv:0,rev:0};
-      chMap[key].imp+=+r.imp||0; chMap[key].click+=+r.click||0;
-      chMap[key].cost+=+r.cost||0; chMap[key].conv+=+r.conv||0; chMap[key].rev+=+r.rev||0;
+      chMap[key].imp  +=+r.imp||0;
+      chMap[key].click+=+r.click||0;
+      chMap[key].cost +=+r.cost||0;
+      chMap[key].conv +=(+r.conv||0) || (+r.purchase_conv||0);
+      chMap[key].rev  +=(+r.rev||0)  || (+r.purchase_rev||0);
     });
     const channelOrder = n => {
       if(n.includes('통합') && (n.includes('PC')||n.includes('pc'))) return 0;
@@ -3588,7 +3592,15 @@ function saveOneFile(fileObj, client) {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const text = e.target.result.replace(/^\uFEFF/, ''); // BOM 제거
+        // EUC-KR 디코딩 시도 후 UTF-8 fallback
+        let text = '';
+        try {
+          const decoder = new TextDecoder('euc-kr');
+          text = decoder.decode(e.target.result);
+        } catch(enc) {
+          text = new TextDecoder('utf-8').decode(e.target.result);
+        }
+        text = text.replace(/^\uFEFF/, ''); // BOM 제거
         const lines = text.split(/\r?\n/);
 
         // ① 헤더 행 자동 탐색 (최대 10행 내에서)
@@ -4019,7 +4031,7 @@ function saveOneFile(fileObj, client) {
         toast('❌ CSV 오류: ' + err.message);
       }
     };
-    reader.readAsText(fileObj.file, 'UTF-8');
+    reader.readAsArrayBuffer(fileObj.file);
 
   /* ── XLSX / XLS ── */
   } else if (ext === 'xlsx' || ext === 'xls') {
