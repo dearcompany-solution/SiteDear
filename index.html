@@ -3610,19 +3610,31 @@ function saveOneFile(fileObj, client) {
         text = text.replace(/^\uFEFF/, ''); // BOM 제거
         const lines = text.split(/\r?\n/);
 
-        // ① 헤더 행 자동 탐색 (최대 10행 내에서)
+        // ① 구분자 자동 감지 (탭 or 쉼표)
+        const sepSample = lines.find(l => l.trim().length > 0) || '';
+        const sep = (sepSample.split('\t').length > sepSample.split(',').length) ? '\t' : ',';
+
+        // ② 구분자에 맞는 파싱 함수
+        const parseLine = (line) => {
+          if(sep === '\t') return line.split('\t').map(v => v.trim().replace(/^"|"$/g,''));
+          return csvParseLine(line);
+        };
+
+        // ③ 헤더 행 자동 탐색 — 전체 행에서 키 컬럼 포함 행 찾기
         let headerIdx = -1, cols = [];
-        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드','게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체'];
-        for (let i = 0; i < Math.min(lines.length, 20); i++) {
-          const c = csvParseLine(lines[i]);
-          if (c.some(x => TARGET_COLS.includes(x.trim()))) {
-            headerIdx = i; cols = c.map(x => x.trim()); break;
+        const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드',
+          '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수'];
+        for (let i = 0; i < Math.min(lines.length, 50); i++) {
+          if (!lines[i].trim()) continue;
+          const c = parseLine(lines[i]).map(x => x.trim());
+          if (c.filter(x => TARGET_COLS.includes(x)).length >= 2) {
+            headerIdx = i; cols = c; break;
           }
         }
         if (headerIdx === -1) {
           fileObj.status = '저장실패'; renderUploadTab();
-          toast(`⚠️ ${fileObj.name} — 헤더 인식 실패\n(일별/시간대별/검색어 컬럼이 없습니다)`);
-          console.warn('CSV 헤더 탐색 실패. 첫 5행:', lines.slice(0,5));
+          console.warn('CSV 헤더 탐색 실패. 구분자:', sep, '첫 5행:', lines.slice(0,5).map(l=>parseLine(l)));
+          toast(`⚠️ ${fileObj.name} — 헤더 인식 실패. 콘솔(F12)에서 실제 컬럼명 확인 바랍니다.`);
           return;
         }
 
@@ -3647,7 +3659,7 @@ function saveOneFile(fileObj, client) {
         for (let i = headerIdx + 1; i < lines.length; i++) {
           const line = lines[i];
           if (!line.trim()) continue;
-          const vals = csvParseLine(line);
+          const vals = parseLine(line);
           if (vals.every(v => !v)) continue;
 
           const row = {};
