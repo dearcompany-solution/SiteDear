@@ -1087,11 +1087,13 @@ function renderContent(id){
   (async()=>{
     const d=await fetchReportData(currentReportMonth);
     if(d) REPORT_DATA[currentReportMonth]=d;
-    c.innerHTML=htmlNaver();
+    c.innerHTML=htmlNaver(); // KPI 포함 전체 재렌더
     const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
+    const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
     setTimeout(()=>{
-      const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
       switchNaverTab(savedNaverTab, tabEl);
+      // summary 탭이면 차트도 명시적으로 다시 그리기
+      if(savedNaverTab === 'summary') switchNaverTab('summary', tabEl);
     },100);
   })();
   break;
@@ -1980,17 +1982,18 @@ async function fetchReportData(month){
     const fromDate = currentDateRange?.from || (month+'-01');
     const toDate   = currentDateRange?.to   || (month+'-31');
     const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    // 기간이 여러 달에 걸칠 경우 월 범위로 조회
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
 
     // 페이지네이션으로 전체 데이터 가져오기 (Supabase 1000건 limit 우회)
-    const fetchAll = async (url) => {
+    const fetchAll = async (baseUrl) => {
       const rows = [];
       const PAGE = 1000;
       let offset = 0;
       while(true){
-        const res = await fetch(`${url}&limit=${PAGE}&offset=${offset}`, {headers:h});
+        const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`, {headers:h});
         const data = await res.json();
         if(!Array.isArray(data) || !data.length) break;
         rows.push(...data);
@@ -2006,9 +2009,6 @@ async function fetchReportData(month){
       fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
       fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
-    const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
-    const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
-    const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
     const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
@@ -6638,12 +6638,21 @@ async function loadHourlyTab(){
   const toMonth   = toDate.slice(0,7);
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
+  const fetchAll = async (baseUrl) => {
+    const result = []; const PAGE = 1000; let offset = 0;
+    while(true){
+      const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
+      const data = await res.json();
+      if(!Array.isArray(data)||!data.length) break;
+      result.push(...data);
+      if(data.length < PAGE) break;
+      offset += PAGE;
+    }
+    return result;
+  };
+
   try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
-      {headers:h}
-    );
-    const rows = await res.json();
+    const rows = await fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
       return;
@@ -6854,12 +6863,21 @@ async function loadKeywordTab(){
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
+  const fetchAll = async (baseUrl) => {
+    const result = []; const PAGE = 1000; let offset = 0;
+    while(true){
+      const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
+      const data = await res.json();
+      if(!Array.isArray(data)||!data.length) break;
+      result.push(...data);
+      if(data.length < PAGE) break;
+      offset += PAGE;
+    }
+    return result;
+  };
+
   try{
-    const res  = await fetch(
-      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
-      {headers:h}
-    );
-    const rows = await res.json();
+    const rows = await fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
@@ -7115,6 +7133,19 @@ async function loadRptGFATab(){
   const roasColor= (cost,rev) => cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
   const WEEKDAYS = ['일','월','화','수','목','금','토'];
 
+  const fetchAll = async (baseUrl) => {
+    const result = []; const PAGE = 1000; let offset = 0;
+    while(true){
+      const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
+      const data = await res.json();
+      if(!Array.isArray(data)||!data.length) break;
+      result.push(...data);
+      if(data.length < PAGE) break;
+      offset += PAGE;
+    }
+    return result;
+  };
+
   // 빈 틀 렌더 함수 — 데이터 없어도 표 틀은 유지
   const renderShell = (rows=[], placementRows='', dailyRows='', dailyCount=0) => {
     const totalCost  = rows.reduce((s,r)=>s+(+r.cost||0),0);
@@ -7210,13 +7241,8 @@ async function loadRptGFATab(){
   };
 
   try{
-    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
-    let rows = await res.json();
-
-    // 데이터가 없거나 배열이 아닐 경우 빈 배열로 처리하여 대시보드 틀(0) 유지
-    if(!Array.isArray(rows)){
-      rows = [];
-    }
+    let rows = await fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`);
+    if(!Array.isArray(rows)) rows = [];
 
     // 일별(date 있는 것) / 매체별(date null인 것) 분리
     const dailyData     = rows.filter(r=>r.date);
