@@ -1079,18 +1079,16 @@ function renderContent(id){
   document.getElementById('pgSub').textContent=t[1];
   switch(id){
     case 'naver':
-      c.innerHTML=htmlNaver();
-      setTimeout(async()=>{
-        const d=await fetchReportData(currentReportMonth);
-        if(d) REPORT_DATA[currentReportMonth]=d;
-        c.innerHTML=htmlNaver();
-        // 마지막 탭 복원
-        const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
-        const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
-        switchNaverTab(savedNaverTab, tabEl);
-        setTimeout(renderCharts,50);
-      },50);
-      break;
+  c.innerHTML=htmlNaver();
+  (async()=>{
+    const d=await fetchReportData(currentReportMonth);
+    if(d) REPORT_DATA[currentReportMonth]=d;
+    c.innerHTML=htmlNaver();
+    const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
+    const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
+    setTimeout(()=>{ switchNaverTab(savedNaverTab, tabEl); },80);
+  })();
+  break;
     case 'store':    c.innerHTML=htmlStore();break;
     case 'combined':
       c.innerHTML=htmlCombined();
@@ -2076,13 +2074,14 @@ async function fetchReportData(month){
     });
     const gfaDailyList=Object.values(gfaDailyMap).sort((a,b)=>a.date.localeCompare(b.date));
     const dailyMap={};
-    dailyArr.forEach(r=>{
-      const d=r.date||''; if(!d) return;
-      if(!dailyMap[d]) dailyMap[d]={date:d,imp:0,click:0,cost:0,conv:0,rev:0};
-      dailyMap[d].imp+=+r.imp||0; dailyMap[d].click+=+r.click||0;
-      dailyMap[d].cost+=+r.cost||0; dailyMap[d].conv+=+r.conv||0; dailyMap[d].rev+=+r.rev||0;
-    });
-    const dailyList=Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+dailyArr.forEach(r=>{
+  const d=r.date||''; if(!d) return;
+  if(!dailyMap[d]) dailyMap[d]={date:d,imp:0,click:0,cost:0,conv:0,rev:0};
+  dailyMap[d].imp+=+r.imp||0; dailyMap[d].click+=+r.click||0;
+  dailyMap[d].cost+=+r.cost||0; dailyMap[d].conv+=+r.conv||0; dailyMap[d].rev+=+r.rev||0;
+});
+const dailyList=Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+const rawDailyList=dailyArr.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b.date));
     const dowMap={0:{day:'일',imp:0,click:0,cost:0,conv:0,rev:0},1:{day:'월',imp:0,click:0,cost:0,conv:0,rev:0},2:{day:'화',imp:0,click:0,cost:0,conv:0,rev:0},3:{day:'수',imp:0,click:0,cost:0,conv:0,rev:0},4:{day:'목',imp:0,click:0,cost:0,conv:0,rev:0},5:{day:'금',imp:0,click:0,cost:0,conv:0,rev:0},6:{day:'토',imp:0,click:0,cost:0,conv:0,rev:0}};
     dailyArr.forEach(r=>{
       if(!r.date) return;
@@ -2108,7 +2107,7 @@ async function fetchReportData(month){
       kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
       channels, weekly, hourly, topKeywords, insights:[],
-      dailyList, dowList,
+      dailyList, rawDailyList, dowList,
       device:{pcCost,moCost,pcConv,moConv,pcRev,moRev},
       gfa:{
         totalCost:gfaTotalCost, totalImp:gfaTotalImp, totalClick:gfaTotalClick,
@@ -6435,7 +6434,7 @@ function switchRptTab(id, el){
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     const d = REPORT_DATA[currentReportMonth];
-    const daily = d?.dailyList || [];
+    const daily = d?.rawDailyList || d?.dailyList || [];
     const channels = d?.channels || [];
 
     // PC / 모바일 분리
