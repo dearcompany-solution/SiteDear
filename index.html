@@ -1979,18 +1979,33 @@ async function fetchReportData(month){
     if(!targetClient) return null;
     const fromDate = currentDateRange?.from || (month+'-01');
     const toDate   = currentDateRange?.to   || (month+'-31');
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Range-Unit':'items','Range':'0-9999'};
-    // 기간이 여러 달에 걸칠 경우 월 범위로 조회
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
-    const [dailyRes,kwRes,hourlyRes,gfaRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+
+    // 페이지네이션으로 전체 데이터 가져오기 (Supabase 1000건 limit 우회)
+    const fetchAll = async (url) => {
+      const rows = [];
+      const PAGE = 1000;
+      let offset = 0;
+      while(true){
+        const res = await fetch(`${url}&limit=${PAGE}&offset=${offset}`, {headers:h});
+        const data = await res.json();
+        if(!Array.isArray(data) || !data.length) break;
+        rows.push(...data);
+        if(data.length < PAGE) break;
+        offset += PAGE;
+      }
+      return rows;
+    };
+
+    const [dailyArr, kwArr, hourlyArr, gfaArr] = await Promise.all([
+      fetchAll(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+      fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
-    const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
     const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
     const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
     const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
