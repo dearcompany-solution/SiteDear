@@ -2480,7 +2480,7 @@ async function loadMonthlyTrend(){
   try{
     const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
     let url = `${SUPABASE_URL}/rest/v1/ad_reports?select=month,period_label,total_rev,total_cost,roas&order=month.desc&limit=12`;
-    if(clientKey) url += `&client_key=eq.${clientKey}`;
+    if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
@@ -2633,9 +2633,9 @@ async function openReportPdf(){
   let gfaRows=[], kwRows=[], campRows=[];
   try{
     const [gfaRes, kwRes, campRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
-      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${targetClient}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${encodeURIComponent(targetClient)}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=5000`,{headers:h}),
     ]);
     gfaRows  = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     kwRows   = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
@@ -3217,7 +3217,7 @@ async function loadUploadLogs(clientFilter, monthFilter){
     const isAdmin = currentUser?.role==='admin';
     const targetClient = clientFilter || (isAdmin ? (activeClientId||'') : (currentUser?.id||''));
     let url = `${SUPABASE_URL}/rest/v1/upload_logs?select=*&order=uploaded_at.desc&limit=200`;
-    if(targetClient) url += `&client_key=eq.${targetClient}`;
+    if(targetClient) url += `&client_key=eq.${encodeURIComponent(targetClient)}`;
     if(monthFilter)  url += `&month=eq.${monthFilter}`;
     const res = await fetch(url,{headers:h});
     const logs = await res.json();
@@ -3986,7 +3986,7 @@ function saveOneFile(fileObj, client) {
             const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=minimal'};
             const months = [...new Set(gfaRows.map(r=>r.month))];
             for(const m of months){
-              const delRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${client}&month=eq.${m}`,{
+              const delRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{
                 method:'DELETE', headers:dh
               });
               if(!delRes.ok){ throw new Error('기존 데이터 삭제 실패: '+await delRes.text()); }
@@ -4031,7 +4031,7 @@ function saveOneFile(fileObj, client) {
           try {
             // 1. 기존 데이터 삭제
             const delRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${month}`,
+              `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${month}`,
               { method: 'DELETE', headers: h }
             );
             if (!delRes.ok) throw new Error(await delRes.text());
@@ -4255,7 +4255,7 @@ if (hdrIdx === -1) {
           Object.keys(byType).forEach(dtype => {
             months.forEach(m => {
               deletePromises.push(
-                fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${client}&month=eq.${m}`, {
+                fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`, {
                   method: 'DELETE', headers: h2
                 })
               );
@@ -4593,7 +4593,7 @@ async function loadDataFromSupabase(){
   const table=tableMap[type]||'daily_reports';
   try{
     let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&order=date.desc&limit=500`;
-    if(client)url+=`&client_key=eq.${client}`;
+    if(client)url+=`&client_key=eq.${encodeURIComponent(client)}`;
     if(month)url+=`&month=eq.${month}`;
     const res=await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
     const rows=await res.json();
@@ -4729,7 +4729,7 @@ let currentChatClient = null;  // 현재 열린 채팅 클라이언트
 async function loadMessages(clientKey){
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/messages?client_key=eq.${clientKey}&order=created_at.asc&limit=100`,
+      `${SUPABASE_URL}/rest/v1/messages?client_key=eq.${encodeURIComponent(clientKey)}&order=created_at.asc&limit=100`,
       {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
     );
     const rows = await res.json();
@@ -4826,9 +4826,9 @@ function subscribeMessages(clientKey){
     ws.onopen = () => {
       // 채널 join
       ws.send(JSON.stringify({
-        topic: `realtime:public:messages:client_key=eq.${clientKey}`,
+        topic: `realtime:public:messages:client_key=eq.${encodeURIComponent(clientKey)}`,
         event: 'phx_join',
-        payload: {config:{broadcast:{self:false},presence:{key:''},postgres_changes:[{event:'INSERT',schema:'public',table:'messages',filter:`client_key=eq.${clientKey}`}]}},
+        payload: {config:{broadcast:{self:false},presence:{key:''},postgres_changes:[{event:'INSERT',schema:'public',table:'messages',filter:`client_key=eq.${encodeURIComponent(clientKey)}`}]}},
         ref: '1'
       }));
       console.log('✅ Realtime 연결됨');
@@ -4886,7 +4886,7 @@ async function updateMsgBadge(){
     const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
     if(!clientKey) return;
     let url = `${SUPABASE_URL}/rest/v1/messages?is_read=eq.false&sender_role=neq.${currentUser.role}&select=id`;
-    if(clientKey) url += `&client_key=eq.${clientKey}`;
+    if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
     const res = await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
     const rows = await res.json();
     const badge = document.getElementById('msgBadge');
@@ -5083,7 +5083,7 @@ async function loadCalEvents(){
   try{
     const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
     let url = `${SUPABASE_URL}/rest/v1/calendar_events?select=*&order=event_date.asc`;
-    if(clientKey) url += `&client_key=eq.${clientKey}`;
+    if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
@@ -5301,7 +5301,7 @@ async function loadRequests(){
   try{
     const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
     let url = `${SUPABASE_URL}/rest/v1/requests?select=*&order=created_at.desc`;
-    if(clientKey) url += `&client_key=eq.${clientKey}`;
+    if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
@@ -6627,7 +6627,7 @@ async function loadHourlyTab(){
 
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
+      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
       {headers:h}
     );
     const rows = await res.json();
@@ -6843,7 +6843,7 @@ async function loadKeywordTab(){
 
   try{
     const res  = await fetch(
-      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
+      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
       {headers:h}
     );
     const rows = await res.json();
@@ -7197,7 +7197,7 @@ async function loadRptGFATab(){
   };
 
   try{
-    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${targetClient}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
     let rows = await res.json();
 
     // 데이터가 없거나 배열이 아닐 경우 빈 배열로 처리하여 대시보드 틀(0) 유지
