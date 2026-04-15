@@ -3610,31 +3610,33 @@ function saveOneFile(fileObj, client) {
         text = text.replace(/^\uFEFF/, ''); // BOM 제거
         const lines = text.split(/\r?\n/);
 
-        // ① 구분자 자동 감지 (탭 or 쉼표)
-        const sepSample = lines.find(l => l.trim().length > 0) || '';
+        // ① 구분자 자동 감지 (탭 or 쉼표) — 빈 줄 제외 후 판단
+        const sepSample = lines.find(l => l.trim().length > 5) || '';
         const sep = (sepSample.split('\t').length > sepSample.split(',').length) ? '\t' : ',';
 
-        // ② 구분자에 맞는 파싱 함수
+        // ② 구분자 + 따옴표 제거 파싱 함수
         const parseLine = (line) => {
-          if(sep === '\t') return line.split('\t').map(v => v.trim().replace(/^"|"$/g,''));
-          return csvParseLine(line);
+          if (sep === '\t') return line.split('\t').map(v => v.trim().replace(/^"+|"+$/g,''));
+          // 쉼표: 간단히 split 후 따옴표 제거 (중첩 따옴표 포함)
+          return line.split(',').map(v => v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
         };
 
-        // ③ 헤더 행 자동 탐색 — 전체 행에서 키 컬럼 포함 행 찾기
+        // ③ 헤더 행 자동 탐색 — TARGET_COLS 2개 이상 포함된 행
         let headerIdx = -1, cols = [];
         const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드',
-          '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수'];
+          '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수','클릭수'];
         for (let i = 0; i < Math.min(lines.length, 50); i++) {
           if (!lines[i].trim()) continue;
           const c = parseLine(lines[i]).map(x => x.trim());
-          if (c.filter(x => TARGET_COLS.includes(x)).length >= 2) {
+          const matchCount = c.filter(x => TARGET_COLS.includes(x)).length;
+          if (matchCount >= 2) {
             headerIdx = i; cols = c; break;
           }
         }
         if (headerIdx === -1) {
           fileObj.status = '저장실패'; renderUploadTab();
-          console.warn('CSV 헤더 탐색 실패. 구분자:', sep, '첫 5행:', lines.slice(0,5).map(l=>parseLine(l)));
-          toast(`⚠️ ${fileObj.name} — 헤더 인식 실패. 콘솔(F12)에서 실제 컬럼명 확인 바랍니다.`);
+          console.warn('CSV 헤더 탐색 실패:', fileObj.name, '\n구분자:', sep, '\n첫 5행:', lines.slice(0,5));
+          toast(`⚠️ ${fileObj.name} — 헤더 인식 실패`);
           return;
         }
 
@@ -3660,10 +3662,12 @@ function saveOneFile(fileObj, client) {
           const line = lines[i];
           if (!line.trim()) continue;
           const vals = parseLine(line);
-          if (vals.every(v => !v)) continue;
+          if (!vals.length || vals.every(v => !String(v).trim())) continue;
+          // 합계행 제거 (첫 컬럼이 '합계' 또는 '전체' 이면 스킵)
+          if (['합계','전체','Total','TOTAL'].includes(String(vals[0]).trim())) continue;
 
           const row = {};
-          cols.forEach((col, idx) => { row[col] = (vals[idx] || '').trim(); });
+          cols.forEach((col, idx) => { row[col] = String(vals[idx] ?? '').trim(); });
 
           if (hasDaily) {
             const rawDate = row['일별'] || '';
@@ -3699,7 +3703,7 @@ function saveOneFile(fileObj, client) {
             rows.push({
               data_type: 'hourly', client_key: client, month, time_slot: t,
               campaign_type: row['캠페인유형'] || '',
-              device: row['PC/모바일 매체'] || row['PC/모바일'] || '',
+              device: row['PC/모바일 매체'] || row['PC/모바일'] || '전체',
               imp:   parseNum(row['노출수']),
               click: parseNum(row['클릭수']),
               cost:  parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
@@ -3910,14 +3914,14 @@ function saveOneFile(fileObj, client) {
                 click:        parseNum(row['클릭수']),
                 cpc:          parseNum(row['평균 CPC']),
                 ctr:          parseNum(row['클릭률(%)']),
-                conv:         parseNum(row['구매완료 수']),
-                rev:          parseNum(row['구매완료 전환매출액']),
-                roas:         parseNum(row['구매완료 광고수익률(%)']),
-                cart_conv:    parseNum(row['장바구니 담기 수']),
-                cart_rev:     parseNum(row['장바구니 전환매출액']),
-                total_conv:   parseNum(row['총 전환수']),
-                total_rev:    parseNum(row['총 전환매출액']),
-                total_roas:   parseNum(row['총 광고수익률(%)']),
+                conv:         parseNum(row['구매완료 수'] || row['구매완료 전환수'] || 0),
+                rev:          parseNum(row['구매완료 전환매출액'] || row['구매완료 전환매출액(원)'] || 0),
+                roas:         parseNum(row['구매완료 광고수익률(%)'] || 0),
+                cart_conv:    parseNum(row['장바구니 담기 수'] || 0),
+                cart_rev:     parseNum(row['장바구니 전환매출액'] || row['장바구니 전환매출액(원)'] || 0),
+                total_conv:   parseNum(row['총 전환수'] || 0),
+                total_rev:    parseNum(row['총 전환매출액'] || 0),
+                total_roas:   parseNum(row['총 광고수익률(%)'] || 0),
               });
             } else if(isPlacement){
               gfaRows.push({
