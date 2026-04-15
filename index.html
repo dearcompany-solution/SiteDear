@@ -1087,10 +1087,14 @@ function renderContent(id){
   (async()=>{
     const d=await fetchReportData(currentReportMonth);
     if(d) REPORT_DATA[currentReportMonth]=d;
-    c.innerHTML=htmlNaver();
+    c.innerHTML=htmlNaver(); // KPI 포함 전체 재렌더
     const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
     const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
-    setTimeout(()=>{ switchNaverTab(savedNaverTab, tabEl); },80);
+    setTimeout(()=>{
+      switchNaverTab(savedNaverTab, tabEl);
+      // summary 탭이면 차트도 명시적으로 다시 그리기
+      if(savedNaverTab === 'summary') switchNaverTab('summary', tabEl);
+    },100);
   })();
   break;
     case 'store':    c.innerHTML=htmlStore();break;
@@ -1357,8 +1361,8 @@ function dpApply(){
   sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
   sessionStorage.setItem('currentReportMonth', currentReportMonth);
 
-  // 기간 바뀌면 캐시 초기화 — 새 기간으로 다시 조회
-  REPORT_DATA[currentReportMonth] = null;
+  // 기간 바뀌면 전체 캐시 초기화
+  Object.keys(REPORT_DATA).forEach(k => { REPORT_DATA[k] = null; });
 
   const disp = s => s.replace(/-/g,'.').slice(0,10);
   document.getElementById('drangeLabel').textContent = `${disp(dpState.start)} ~ ${disp(dpState.end)}`;
