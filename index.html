@@ -1087,13 +1087,11 @@ function renderContent(id){
   (async()=>{
     const d=await fetchReportData(currentReportMonth);
     if(d) REPORT_DATA[currentReportMonth]=d;
-    c.innerHTML=htmlNaver(); // KPI 포함 전체 재렌더
+    c.innerHTML=htmlNaver();
     const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
-    const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
     setTimeout(()=>{
+      const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
       switchNaverTab(savedNaverTab, tabEl);
-      // summary 탭이면 차트도 명시적으로 다시 그리기
-      if(savedNaverTab === 'summary') switchNaverTab('summary', tabEl);
     },100);
   })();
   break;
