@@ -1089,10 +1089,12 @@ function renderContent(id){
     if(d) REPORT_DATA[currentReportMonth]=d;
     c.innerHTML=htmlNaver(); // KPI 포함 전체 재렌더
     const savedNaverTab = sessionStorage.getItem('currentNaverTab') || 'summary';
+    const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
     setTimeout(()=>{
-      const tabEl = document.querySelector(`.nav-tab[onclick*="switchNaverTab('${savedNaverTab}'"]`);
       switchNaverTab(savedNaverTab, tabEl);
-    },120);
+      // summary 탭이면 차트도 명시적으로 다시 그리기
+      if(savedNaverTab === 'summary') switchNaverTab('summary', tabEl);
+    },100);
   })();
   break;
     case 'store':    c.innerHTML=htmlStore();break;
@@ -1984,22 +1986,16 @@ async function fetchReportData(month){
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
-    const fetchAll = async (baseUrl) => {
-      const rows = []; const PAGE = 1000; let offset = 0;
-      while(true){
-        const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
-        const data = await res.json();
-        if(!Array.isArray(data)||!data.length) break;
-        rows.push(...data); if(data.length < PAGE) break; offset += PAGE;
-      }
-      return rows;
-    };
-    const [dailyArr, kwArr, hourlyArr, gfaArr] = await Promise.all([
-      fetchAll(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*`),
-      fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
-      fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
-      fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+    const [dailyRes,kwRes,hourlyRes,gfaRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,{headers:h}),
+      fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,{headers:h}),
     ]);
+    const dailyArr  = await dailyRes.json().then(r=>Array.isArray(r)?r:[]);
+    const kwArr     = await kwRes.json().then(r=>Array.isArray(r)?r:[]);
+    const hourlyArr = await hourlyRes.json().then(r=>Array.isArray(r)?r:[]);
+    const gfaArr    = await gfaRes.json().then(r=>Array.isArray(r)?r:[]);
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
     const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
@@ -3763,7 +3759,7 @@ function saveOneFile(fileObj, client) {
           const campRows = [];
           for(let i = headerIdx+1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+            const vals = csvParseLine(line);
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -3811,7 +3807,7 @@ function saveOneFile(fileObj, client) {
           const deviceRows = [];
           for(let i = headerIdx+1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+            const vals = csvParseLine(line);
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -3863,7 +3859,7 @@ function saveOneFile(fileObj, client) {
           if(isDaily){
             // 일별 파일: 첫 데이터행의 '기간' 컬럼에서 추출
             if(lines.length > headerIdx+1){
-              const firstVals = lines[headerIdx+1].split(',').map(v=>v.trim().replace(/^"+|"+$/g,''));
+              const firstVals = csvParseLine(lines[headerIdx+1]);
               const firstRow = {};
               cols.forEach((col,idx)=>{ firstRow[col]=(firstVals[idx]||'').trim(); });
               const rawD = firstRow['기간'] || '';
@@ -3887,7 +3883,7 @@ function saveOneFile(fileObj, client) {
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i];
             if(!line.trim()) continue;
-            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+            const vals = csvParseLine(line);
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -3910,11 +3906,11 @@ function saveOneFile(fileObj, client) {
                 click:        parseNum(row['클릭수']),
                 cpc:          parseNum(row['평균 CPC']),
                 ctr:          parseNum(row['클릭률(%)']),
-                conv:         parseNum(row['구매완료 수']||row['구매완료 전환수']||0),
-                rev:          parseNum(row['구매완료 전환매출액']||row['구매완료 전환매출액(원)']||0),
-                roas:         parseNum(row['구매완료 광고수익률(%)']||0),
-                cart_conv:    parseNum(row['장바구니 담기 수']||0),
-                cart_rev:     parseNum(row['장바구니 전환매출액']||row['장바구니 전환매출액(원)']||0),
+                conv:         parseNum(row['구매완료 수']),
+                rev:          parseNum(row['구매완료 전환매출액']),
+                roas:         parseNum(row['구매완료 광고수익률(%)']),
+                cart_conv:    parseNum(row['장바구니 담기 수']),
+                cart_rev:     parseNum(row['장바구니 전환매출액']),
                 total_conv:   parseNum(row['총 전환수']),
                 total_rev:    parseNum(row['총 전환매출액']),
                 total_roas:   parseNum(row['총 광고수익률(%)']),
@@ -3959,11 +3955,11 @@ function saveOneFile(fileObj, client) {
                 click:        parseNum(row['클릭수']),
                 cpc:          parseNum(row['평균 CPC']),
                 ctr:          parseNum(row['클릭률(%)']),
-                conv:         parseNum(row['구매완료 수']||row['구매완료 전환수']||0),
-                rev:          parseNum(row['구매완료 전환매출액']||row['구매완료 전환매출액(원)']||0),
-                roas:         parseNum(row['구매완료 광고수익률(%)']||0),
-                cart_conv:    parseNum(row['장바구니 담기 수']||0),
-                cart_rev:     parseNum(row['장바구니 전환매출액']||row['장바구니 전환매출액(원)']||0),
+                conv:         parseNum(row['구매완료 수']),
+                rev:          parseNum(row['구매완료 전환매출액']),
+                roas:         parseNum(row['구매완료 광고수익률(%)']),
+                cart_conv:    parseNum(row['장바구니 담기 수']),
+                cart_rev:     parseNum(row['장바구니 전환매출액']),
                 total_conv:   parseNum(row['총 전환수']),
                 total_rev:    parseNum(row['총 전환매출액']),
                 total_roas:   parseNum(row['총 광고수익률(%)']),
@@ -5609,7 +5605,7 @@ function selClient(id){
   // ▼ 추가: 현재 열린 페이지가 데이터 페이지면 자동 갱신
   const curPage = sessionStorage.getItem('currentPage') || '';
   if(['combined','naver','store','report'].includes(curPage)){
-    Object.keys(REPORT_DATA).forEach(k=>{ REPORT_DATA[k]=null; });
+    REPORT_DATA[currentReportMonth] = null;
     refreshAllPages();
   }
 
@@ -6629,12 +6625,12 @@ async function loadHourlyTab(){
   const toMonth   = toDate.slice(0,7);
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  const fetchAllHr = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
-    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
-  };
   try{
-    const rows = await fetchAllHr(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=10000`,
+      {headers:h}
+    );
+    const rows = await res.json();
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
       return;
@@ -6845,12 +6841,12 @@ async function loadKeywordTab(){
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  const fetchAllKw = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
-    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
-  };
   try{
-    const rows = await fetchAllKw(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
+    const res  = await fetch(
+      `${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=5000`,
+      {headers:h}
+    );
+    const rows = await res.json();
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
@@ -7200,13 +7196,14 @@ async function loadRptGFATab(){
       </div>`;
   };
 
-  const fetchAllGfa = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
-    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
-  };
   try{
-    let rows = await fetchAllGfa(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`);
-    if(!Array.isArray(rows)) rows = [];
+    const res  = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+    let rows = await res.json();
+
+    // 데이터가 없거나 배열이 아닐 경우 빈 배열로 처리하여 대시보드 틀(0) 유지
+    if(!Array.isArray(rows)){
+      rows = [];
+    }
 
     // 일별(date 있는 것) / 매체별(date null인 것) 분리
     const dailyData     = rows.filter(r=>r.date);
@@ -7345,8 +7342,8 @@ async function loadRptGFATab(){
         weekMap[wk].imp   += +r.imp  ||0;
         weekMap[wk].click += +r.click||0;
         weekMap[wk].cost  += +r.cost ||0;
-        weekMap[wk].conv  += (+r.conv>0)?+r.conv:(+r.purchase_conv||0);
-        weekMap[wk].rev   += (+r.rev>0) ?+r.rev :(+r.purchase_rev||0);
+        weekMap[wk].conv  += +r.conv ||0;
+        weekMap[wk].rev   += +r.rev  ||0;
         weekMap[wk].days  += 1;
       });
       const weeks = ['1주','2주','3주','4주'].filter(w=>weekMap[w]);
