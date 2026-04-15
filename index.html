@@ -1979,7 +1979,7 @@ async function fetchReportData(month){
     if(!targetClient) return null;
     const fromDate = currentDateRange?.from || (month+'-01');
     const toDate   = currentDateRange?.to   || (month+'-31');
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Range-Unit':'items','Range':'0-9999'};
     // 기간이 여러 달에 걸칠 경우 월 범위로 조회
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
