@@ -3992,16 +3992,22 @@ function saveOneFile(fileObj, client) {
               if(!delRes.ok){ throw new Error('기존 데이터 삭제 실패: '+await delRes.text()); }
             }
             await new Promise(r=>setTimeout(r,300));
-            const postRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
-              method:'POST',
-              headers:{...dh,'Content-Type':'application/json'},
-              body:JSON.stringify(gfaRows)
-            });
-            return postRes;
+            // 배치로 나눠서 INSERT (200건씩)
+            const BATCH = 200;
+            for(let i=0; i<gfaRows.length; i+=BATCH){
+              const batch = gfaRows.slice(i, i+BATCH);
+              const postRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports`,{
+                method:'POST',
+                headers:{...dh,'Content-Type':'application/json'},
+                body:JSON.stringify(batch)
+              });
+              if(!postRes.ok){ throw new Error(await postRes.text()); }
+            }
+            return {ok:true};
           };
 
           doUpsert().then(res=>{
-            if(!res.ok) return res.text().then(t=>{throw new Error(t);});
+            if(!res.ok) return res.text ? res.text().then(t=>{throw new Error(t);}) : null;
             fileObj.status='저장완료'; fileObj.savedMonth=gfaMonth; fileObj.savedCount=gfaRows.length;
             renderUploadTab();
             toast(`✅ ${fileObj.name} GFA ${isDaily?'일별':'매체별'} — ${gfaRows.length}개 저장 완료!`);
