@@ -3707,8 +3707,13 @@ function saveOneFile(fileObj, client) {
           } else if (hasHourly) {
             const t = row['시간대별'] || '';
             if (!t) continue;
+            const hRawDate = row['일별'] || '';
+            const hDate = hRawDate ? hRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
+            const hMonth = hDate?.length >= 7 ? hDate.slice(0,7) : month;
             rows.push({
-              data_type: 'hourly', client_key: client, month, time_slot: t,
+              data_type: 'hourly', client_key: client, month: hMonth,
+              date: hDate?.length >= 8 ? hDate : null,
+              time_slot: t,
               campaign_type: row['캠페인유형'] || '',
               device: row['PC/모바일 매체'] || row['PC/모바일'] || '전체',
               imp:   parseNum(row['노출수']),
