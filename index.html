@@ -3676,7 +3676,25 @@ function saveOneFile(fileObj, client) {
           const row = {};
           cols.forEach((col, idx) => { row[col] = (vals[idx] ?? '').trim(); });
 
-          if (hasDaily) {
+          if (hasHourly) {
+            const t = row['시간대별'] || '';
+            if (!t) continue;
+            const hRawDate = row['일별'] || '';
+            const hDate = hRawDate ? hRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
+            const hMonth = hDate?.length >= 7 ? hDate.slice(0,7) : month;
+            rows.push({
+              data_type: 'hourly', client_key: client, month: hMonth,
+              date: hDate?.length >= 8 ? hDate : null,
+              time_slot: t,
+              campaign_type: row['캠페인유형'] || '',
+              device: row['PC/모바일 매체'] || row['PC/모바일'] || '전체',
+              imp:   parseNum(row['노출수']),
+              click: parseNum(row['클릭수']),
+              cost:  parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
+              conv:  parseNum(row['총 전환수'] || row['전환수'] || row['구매완료 전환수'] || 0),
+              rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'] || row['구매완료 전환매출액(원)'] || 0)
+            });
+          } else if (hasDaily) {
             const rawDate = row['일별'] || '';
             const dateStr = rawDate.replace(/\./g, '-').replace(/-+$/, '').slice(0, 10);
             if (!dateStr || dateStr.length < 8) continue;
@@ -3704,24 +3722,8 @@ function saveOneFile(fileObj, client) {
               avg_rank:      parseNum(row['평균노출순위'] || row['평균 노출순위'] || 0),
               roas:          parseNum(row['총 광고수익률(%)'] || row['광고수익률'] || 0),
             });
-          } else if (hasHourly) {
-            const t = row['시간대별'] || '';
-            if (!t) continue;
-            const hRawDate = row['일별'] || '';
-            const hDate = hRawDate ? hRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
-            const hMonth = hDate?.length >= 7 ? hDate.slice(0,7) : month;
-            rows.push({
-              data_type: 'hourly', client_key: client, month: hMonth,
-              date: hDate?.length >= 8 ? hDate : null,
-              time_slot: t,
-              campaign_type: row['캠페인유형'] || '',
-              device: row['PC/모바일 매체'] || row['PC/모바일'] || '전체',
-              imp:   parseNum(row['노출수']),
-              click: parseNum(row['클릭수']),
-              cost:  parseNum(row['총비용(VAT포함,원)'] || row['총비용(VAT포함)'] || row['총비용']),
-              conv:  parseNum(row['총 전환수'] || row['전환수'] || row['구매완료 전환수'] || 0),
-              rev:   parseNum(row['총 전환매출액(원)'] || row['전환매출액(원)'] || row['전환매출액'] || row['구매완료 전환매출액(원)'] || 0)
-            });
+          } else if (false) { // hasHourly는 위로 이동됨 - 이 블록 비활성화
+            const _unused = null;
           } else if (hasKeyword) {
             const kw = String(row[kwCol] || '').trim();
             if (!kw) continue;
