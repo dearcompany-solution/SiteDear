@@ -7210,10 +7210,8 @@ async function loadRptGFATab(){
 
     // 일별(date 있는 것) / 매체별(date null인 것) 분리
     const dailyData     = rows.filter(r=>r.date);
-    // date 있는 행도 placement로 집계 (일별+매체 합산 파일 대응)
-    const placementData = rows.filter(r=>!r.date).length > 0
-      ? rows.filter(r=>!r.date)
-      : rows.filter(r=>r.date);
+    const noDateRows    = rows.filter(r=>!r.date);
+    const placementData = noDateRows.length > 0 ? noDateRows : dailyData;
 
     // ── 게재위치별 집계 (매체별 파일 기준) ──
     const placementMap = {};
