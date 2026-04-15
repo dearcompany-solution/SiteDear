@@ -3600,12 +3600,15 @@ function saveOneFile(fileObj, client) {
     reader.onload = e => {
       try {
         // EUC-KR 디코딩 시도 후 UTF-8 fallback
+        // UTF-8 BOM 우선, 실패 시 EUC-KR 시도
         let text = '';
         try {
-          const decoder = new TextDecoder('euc-kr');
-          text = decoder.decode(e.target.result);
-        } catch(enc) {
           text = new TextDecoder('utf-8').decode(e.target.result);
+          // EUC-KR 깨짐 감지: UTF-8로 읽었는데 한글이 없으면 EUC-KR 재시도
+          if (!/[가-힣]/.test(text.slice(0, 200))) throw new Error('not utf8');
+        } catch(enc) {
+          try { text = new TextDecoder('euc-kr').decode(e.target.result); }
+          catch(e2) { text = new TextDecoder('utf-8').decode(e.target.result); }
         }
         text = text.replace(/^\uFEFF/, ''); // BOM 제거
         const lines = text.split(/\r?\n/);
@@ -3622,25 +3625,28 @@ function saveOneFile(fileObj, client) {
         };
 
         // ③ 헤더 행 자동 탐색
+        // ① 헤더 행 자동 탐색
         let headerIdx = -1, cols = [];
         const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드',
           '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수','클릭수'];
-        for (let i = 0; i < Math.min(lines.length, 50); i++) {
-          if (!lines[i].trim()) continue;
-          // 제목행 스킵: 따옴표로 시작하는 행 or "캠페인 보고서" 포함 행
-          const raw = lines[i].trim();
-          if (raw.startsWith('"') && raw.includes('보고서')) continue;
-          if (raw.startsWith('"') && raw.includes('캠페인')) continue;
-          const c = raw.split(',').map(x => x.trim().replace(/^"+|"+$/g,''));
-          const matchCount = c.filter(x => TARGET_COLS.includes(x)).length;
-          if (matchCount >= 2) {
-            headerIdx = i; cols = c; break;
+        for (let i = 0; i < Math.min(lines.length, 30); i++) {
+          const raw = lines[i];
+          if (!raw || !raw.trim()) continue;
+          // 네이버 제목행 스킵: 따옴표로 시작하고 숫자ID 포함된 행
+          if (/^"[^"]*보고서/.test(raw) || /^"[^"]*캠페인/.test(raw)) continue;
+          // 쉼표로 단순 split 후 따옴표 제거
+          const c = raw.split(',').map(x => x.trim().replace(/^"+|"+$/g, ''));
+          const matched = c.filter(x => TARGET_COLS.includes(x));
+          if (matched.length >= 2) {
+            headerIdx = i;
+            cols = c;
+            break;
           }
         }
         if (headerIdx === -1) {
           fileObj.status = '저장실패'; renderUploadTab();
-          console.warn('CSV 헤더 탐색 실패:', fileObj.name, '\n첫 5행:', lines.slice(0,5));
           toast(`⚠️ ${fileObj.name} — 헤더 인식 실패`);
+          console.warn('헤더 탐색 실패:', fileObj.name, lines.slice(0,5));
           return;
         }
 
@@ -3664,8 +3670,8 @@ function saveOneFile(fileObj, client) {
         const rows = [];
         for (let i = headerIdx + 1; i < lines.length; i++) {
           const line = lines[i];
-          if (!line.trim()) continue;
-          const vals = line.split(',').map(v => v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+          if (!line || !line.trim()) continue;
+          const vals = line.split(',').map(v => v.trim().replace(/^"+|"+$/g, '').replace(/""/g, '"'));
           if (!vals.length || vals.every(v => !v)) continue;
           if (['합계','전체','Total','TOTAL'].includes(vals[0])) continue;
 
