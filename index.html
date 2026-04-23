@@ -6689,7 +6689,7 @@ async function loadHourlyTab(){
 
     el.innerHTML=`
       <!-- KPI 피크타임 요약 -->
-      <div class="row2b" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:16px">
         <div class="card" style="border-top:4px solid var(--blue);text-align:center">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px">⚡ 클릭 피크타임</div>
           <div style="font-size:32px;font-weight:800;color:var(--blue)">${String(peakHour.hour).padStart(2,'0')}시</div>
