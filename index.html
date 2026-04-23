@@ -3726,7 +3726,7 @@ function saveOneFile(fileObj, client) {
             const kwCost  = parseNum(row[costCol] || row['총비용'] || 0);
             const kwClick = parseNum(row['클릭수'] || 0);
             const kwImp   = parseNum(row['노출수'] || 0);
-            if (kwCost === 0 && kwClick === 0) continue; // 비용+클릭 둘다 0이면 스킵
+            if (kwCost === 0 && kwClick === 0 && kwImp === 0) continue; // 노출+비용+클릭 모두 0이면 스킵
             const kwRawDate = row['일별']||'';
             const kwDate = kwRawDate ? kwRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
             const kwMonth = kwDate?.length >= 7 ? kwDate.slice(0,7) : month;
