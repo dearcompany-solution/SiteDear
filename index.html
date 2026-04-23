@@ -2122,7 +2122,7 @@ const rawDailyList=dailyArr.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b
     const pcCost=sum(pcArr,'cost'),moCost=sum(moArr,'cost');
     const pcConv=sum(pcArr,'conv'),moConv=sum(moArr,'conv');
     const pcRev=sum(pcArr,'rev'),moRev=sum(moArr,'rev');
-    const m0=calcMetrics(totalImp,totalClick,totalCost,totalConv,totalRev);
+    const m0=calcMetrics(totalImp,totalClick,totalCost,totalPurchaseConv,totalPurchaseRev);
     const {roas,ctr,cpc,cvr,cpa,roi}=m0;
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,mn]=month.split('-');
