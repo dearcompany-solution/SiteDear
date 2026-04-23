@@ -6589,7 +6589,6 @@ const daily = d?.rawDailyList || d?.dailyList || [];
 
 // 채널별 일별 데이터 집계
 const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.device||''})`))].filter(c=>c.trim()!='()');
-      .filter(c=>c.trim()!='()');
     const dates = [...new Set(daily.map(r=>r.date))].sort();
     const colors = ['rgba(3,199,90,1)','rgba(79,70,229,1)','rgba(245,158,11,1)','rgba(239,68,68,1)','rgba(59,130,246,1)','rgba(168,85,247,1)'];
 
