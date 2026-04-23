@@ -3713,11 +3713,12 @@ function saveOneFile(fileObj, client) {
               time_slot: t,
               campaign_type: row['캠페인유형'] || '',
               device: row[devCol] || '전체',
-              imp:   parseNum(row['노출수']),
-              click: parseNum(row['클릭수']),
-              cost:  parseNum(row[costCol]),
-              conv:  parseNum(row[convCol] || row['구매완료 전환수'] || 0),
-              rev:   parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0)
+              imp:      Math.round(parseNum(row['노출수'])),
+              click:    Math.round(parseNum(row['클릭수'])),
+              cost:     Math.round(parseNum(row[costCol])),
+              avg_rank: parseNum(row[rankCol] || 0),
+              conv:     Math.round(parseNum(row[convCol] || row['구매완료 전환수'] || 0)),
+              rev:      Math.round(parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0))
             });
           } else if (hasKeyword) {
             const kw = String(row[kwCol] || '').trim();
@@ -4476,8 +4477,9 @@ function csvParseLine(line){
 
 function parseNum(v){
   if(v===''||v===null||v===undefined)return 0;
-  if(typeof v==='number')return v;
-  return parseFloat(String(v).replace(/[,원\s]/g,''))||0;
+  if(typeof v==='number')return Number.isInteger(v)?v:Math.round(v);
+  const n = parseFloat(String(v).replace(/[,원\s]/g,''))||0;
+  return Math.round(n*100)/100; // 소수점 2자리까지 (avg_rank 등)
 }
 
 function parseExcelFile(idx){
