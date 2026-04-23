@@ -3773,11 +3773,6 @@ function saveOneFile(fileObj, client) {
             });
           }
         }
-      } catch(parseErr) {
-        console.error('CSV 파싱 오류:', parseErr);
-        fileObj.status = '저장실패'; renderUploadTab();
-        toast('❌ CSV 오류: ' + parseErr.message);
-      }
 
         // 캠페인별 파싱
         if(hasCampaign){
