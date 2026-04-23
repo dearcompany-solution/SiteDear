@@ -3821,7 +3821,7 @@ function saveOneFile(fileObj, client) {
           const campRows = [];
           for(let i = headerIdx+1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = csvParseLine(line);
+            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -3869,7 +3869,7 @@ function saveOneFile(fileObj, client) {
           const deviceRows = [];
           for(let i = headerIdx+1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = csvParseLine(line);
+            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -3921,7 +3921,7 @@ function saveOneFile(fileObj, client) {
           if(isDaily){
             // 일별 파일: 첫 데이터행의 '기간' 컬럼에서 추출
             if(lines.length > headerIdx+1){
-              const firstVals = csvParseLine(lines[headerIdx+1]);
+              const firstVals = lines[headerIdx+1].split(',').map(v=>v.trim().replace(/^"+|"+$/g,''));
               const firstRow = {};
               cols.forEach((col,idx)=>{ firstRow[col]=(firstVals[idx]||'').trim(); });
               const rawD = firstRow['기간'] || '';
@@ -3945,7 +3945,7 @@ function saveOneFile(fileObj, client) {
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i];
             if(!line.trim()) continue;
-            const vals = csvParseLine(line);
+            const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
             if(vals.every(v=>!v)) continue;
             const row = {};
             cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
