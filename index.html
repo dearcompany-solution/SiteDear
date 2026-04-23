@@ -6975,15 +6975,15 @@ async function loadKeywordTab(){
     let kwSortAsc = false;
 
     const kwCols = [
-      {key:'keyword', label:'키워드',  sortFn: k=>k.keyword},
-      {key:'imp',     label:'노출수',  sortFn: k=>k.imp},
-      {key:'click',   label:'클릭수',  sortFn: k=>k.click},
-      {key:'ctr',     label:'CTR',     sortFn: k=>k.ctr},
-      {key:'cost',    label:'광고비',  sortFn: k=>k.cost},
-      {key:'cpc',     label:'평균CPC', sortFn: k=>k.cpc},
-      {key:'conv',    label:'전환수',  sortFn: k=>k.conv},
-      {key:'rev',     label:'전환매출',sortFn: k=>k.rev},
-      {key:'roas',    label:'ROAS',    sortFn: k=>k.roas},
+      {key:'keyword', label:'키워드',  sortFn: k=>k.keyword, width:'180px'},
+      {key:'imp',     label:'노출수',  sortFn: k=>k.imp,     width:'90px'},
+      {key:'click',   label:'클릭수',  sortFn: k=>k.click,   width:'80px'},
+      {key:'ctr',     label:'CTR',     sortFn: k=>k.ctr,     width:'70px'},
+      {key:'cost',    label:'광고비',  sortFn: k=>k.cost,    width:'100px'},
+      {key:'cpc',     label:'평균CPC', sortFn: k=>k.cpc,     width:'90px'},
+      {key:'conv',    label:'전환수',  sortFn: k=>k.conv,    width:'80px'},
+      {key:'rev',     label:'전환매출',sortFn: k=>k.rev,     width:'110px'},
+      {key:'roas',    label:'ROAS',    sortFn: k=>k.roas,    width:'80px'},
     ];
 
     const renderKwTable = () => {
@@ -7002,7 +7002,7 @@ async function loadKeywordTab(){
       const arrow = (key) => key===kwSortCol ? (kwSortAsc?' ▲':' ▼') : ' ↕';
 
       const heads = kwCols.map(c=>
-        `<th ${thStyle(c.key)} onclick="window._kwSort('${c.key}')">${c.label}${arrow(c.key)}</th>`
+        `<th ${thStyle(c.key)} onclick="window._kwSort('${c.key}')" style="width:${c.width||'auto'};cursor:pointer;user-select:none;white-space:nowrap">${c.label}${arrow(c.key)}</th>`
       ).join('');
 
       const rows2 = sorted.map((k,i)=>`
