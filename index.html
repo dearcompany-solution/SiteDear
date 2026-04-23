@@ -3865,7 +3865,7 @@ function saveOneFile(fileObj, client) {
             saveUploadLog(client, fileObj.name, 'device', month, deviceRows.length);
           }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 매체 저장 실패: '+err.message); });
           return;
-        }
+        } 
 
         
                 // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
