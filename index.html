@@ -1507,8 +1507,34 @@ function htmlNaver(){
       <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">${fmt(kpi.totalPurchaseRev)}</div></div>
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
     </div>
+
+    <!-- 월별 비교 카드 -->
+    <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden" id="monthlyCompareCard">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div class="card-title">📅 월별 성과 비교</div>
+        <div class="card-sub">최근 월별 핵심 지표</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="monthlyCompareTable">
+          <thead>
+            <tr>
+              <th style="width:80px">월</th>
+              <th>광고비</th>
+              <th>노출수</th>
+              <th>클릭수</th>
+              <th>CTR</th>
+              <th>전환수</th>
+              <th>전환매출</th>
+              <th>ROAS</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyCompareTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="row2b" style="margin-bottom:16px">
-      <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div>
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 채널별 ROAS</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverRoasBar"></canvas></div>
     </div>
     <div class="row2b">
@@ -2123,6 +2149,22 @@ const rawDailyList=dailyArr.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b
     const pcConv=sum(pcArr,'conv'),moConv=sum(moArr,'conv');
     const pcRev=sum(pcArr,'rev'),moRev=sum(moArr,'rev');
     const m0=calcMetrics(totalImp,totalClick,totalCost,totalPurchaseConv,totalPurchaseRev);
+
+    // 월별 집계
+    const monthlyMap = {};
+    dailyArr.forEach(r=>{
+      const m = (r.date||r.month||'').slice(0,7);
+      if(!m) return;
+      if(!monthlyMap[m]) monthlyMap[m]={month:m,cost:0,imp:0,click:0,conv:0,rev:0,purchase_conv:0,purchase_rev:0};
+      monthlyMap[m].cost+=+r.cost||0;
+      monthlyMap[m].imp+=+r.imp||0;
+      monthlyMap[m].click+=+r.click||0;
+      monthlyMap[m].conv+=+r.conv||0;
+      monthlyMap[m].rev+=+r.rev||0;
+      monthlyMap[m].purchase_conv+=+r.purchase_conv||0;
+      monthlyMap[m].purchase_rev+=+r.purchase_rev||0;
+    });
+    const monthlyList = Object.values(monthlyMap).sort((a,b)=>a.month.localeCompare(b.month));
     const {roas,ctr,cpc,cvr,cpa,roi}=m0;
     const acc=ACCOUNTS.find(a=>a.id===targetClient);
     const [y,mn]=month.split('-');
@@ -2131,6 +2173,7 @@ const rawDailyList=dailyArr.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b
       :`${y}년 ${parseInt(mn)}월`;
     return {
       client:targetClient, period:periodLabel, manager:acc?.manager||'—',
+      monthlyList,
       kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
       channels, weekly, hourly, topKeywords, insights:[],
@@ -6634,6 +6677,33 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
 });
     mk('naverSummaryBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chCosts,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
     mk('naverRoasBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chRoas,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
+
+    // 월별 비교 테이블 렌더링
+    const monthlyTbody = document.getElementById('monthlyCompareTbody');
+    if(monthlyTbody && d?.monthlyList?.length){
+      const fmt2 = v => '₩'+Math.round(v||0).toLocaleString();
+      const fmtn2 = v => (v||0).toLocaleString();
+      const months = d.monthlyList;
+      monthlyTbody.innerHTML = months.map((m,idx)=>{
+        const roas = m.cost>0 ? (m.purchase_rev/m.cost*100).toFixed(1)+'%' : '—';
+        const ctr  = m.imp>0  ? (m.click/m.imp*100).toFixed(2)+'%' : '—';
+        const roasColor = m.cost>0&&m.purchase_rev/m.cost>=3?'var(--naver)':m.cost>0&&m.purchase_rev/m.cost>=1?'var(--gold)':'var(--red)';
+        // 전월 대비 증감
+        const prev = months[idx-1];
+        const diff = prev && prev.cost>0 ? ((m.cost-prev.cost)/prev.cost*100).toFixed(1) : null;
+        const diffHtml = diff ? `<span style="font-size:10px;color:${+diff>0?'var(--red)':'var(--naver)'};margin-left:4px">${+diff>0?'▲':'▼'}${Math.abs(diff)}%</span>` : '';
+        return `<tr>
+          <td style="font-weight:700">${m.month}</td>
+          <td style="font-family:monospace">${fmt2(m.cost)}${diffHtml}</td>
+          <td style="font-family:monospace">${fmtn2(m.imp)}</td>
+          <td style="font-family:monospace">${fmtn2(m.click)}</td>
+          <td style="font-family:monospace">${ctr}</td>
+          <td style="font-family:monospace">${fmtn2(m.purchase_conv)}건</td>
+          <td style="font-family:monospace">${fmt2(m.purchase_rev)}</td>
+          <td style="font-family:monospace;font-weight:700;color:${roasColor}">${roas}</td>
+        </tr>`;
+      }).join('');
+    }
 
     // 일별 광고비 추이 (실제 데이터)
     const daily = d?.dailyList || [];
