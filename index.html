@@ -3713,12 +3713,11 @@ function saveOneFile(fileObj, client) {
               time_slot: t,
               campaign_type: row['캠페인유형'] || '',
               device: row[devCol] || '전체',
-              imp:      Math.round(parseNum(row['노출수'])),
-              click:    Math.round(parseNum(row['클릭수'])),
-              cost:     Math.round(parseNum(row[costCol])),
-              avg_rank: parseNum(row[rankCol] || 0),
-              conv:     Math.round(parseNum(row[convCol] || row['구매완료 전환수'] || 0)),
-              rev:      Math.round(parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0))
+              imp:   parseNum(row['노출수']),
+              click: parseNum(row['클릭수']),
+              cost:  parseNum(row[costCol]),
+              conv:  parseNum(row[convCol] || row['구매완료 전환수'] || 0),
+              rev:   parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0)
             });
           } else if (hasKeyword) {
             const kw = String(row[kwCol] || '').trim();
@@ -4055,6 +4054,7 @@ function saveOneFile(fileObj, client) {
         // 기존 데이터 삭제 후 배치 INSERT (500 오류 방지)
         (async () => {
           try { 
+            console.log(`[저장시작] dtype=${dtype} rows=${rows.length} client=${client} month=${month}`);
             // 1. 기존 데이터 삭제
             const delRes = await fetch(
               `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${month}`,
@@ -4076,6 +4076,7 @@ function saveOneFile(fileObj, client) {
                 console.error(`배치 ${i}~${i+BATCH} 실패:`, errText);
                 throw new Error(errText);
               }
+              console.log(`배치 ${i}~${i+BATCH} 성공`);
               saved += batch.length;
               fileObj.status = `저장중 ${saved}/${rows.length}`;
               renderUploadTab();
@@ -4477,9 +4478,8 @@ function csvParseLine(line){
 
 function parseNum(v){
   if(v===''||v===null||v===undefined)return 0;
-  if(typeof v==='number')return Number.isInteger(v)?v:Math.round(v);
-  const n = parseFloat(String(v).replace(/[,원\s]/g,''))||0;
-  return Math.round(n*100)/100; // 소수점 2자리까지 (avg_rank 등)
+  if(typeof v==='number')return v;
+  return parseFloat(String(v).replace(/[,원\s]/g,''))||0;
 }
 
 function parseExcelFile(idx){
