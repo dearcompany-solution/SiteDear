@@ -6578,10 +6578,10 @@ function switchRptTab(id, el){
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     const d = REPORT_DATA[currentReportMonth];
-    const daily = d?.dailyList || [];
+const daily = d?.rawDailyList || d?.dailyList || [];
 
-    // 채널별 일별 데이터 집계
-    const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.device||''})`))]
+// 채널별 일별 데이터 집계
+const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.device||''})`))].filter(c=>c.trim()!='()');
       .filter(c=>c.trim()!='()');
     const dates = [...new Set(daily.map(r=>r.date))].sort();
     const colors = ['rgba(3,199,90,1)','rgba(79,70,229,1)','rgba(245,158,11,1)','rgba(239,68,68,1)','rgba(59,130,246,1)','rgba(168,85,247,1)'];
