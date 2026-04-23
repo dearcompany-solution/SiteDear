@@ -6684,23 +6684,46 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       const fmt2 = v => '₩'+Math.round(v||0).toLocaleString();
       const fmtn2 = v => (v||0).toLocaleString();
       const months = d.monthlyList;
+      const maxCost = Math.max(...months.map(m=>m.cost),1);
+      const maxRev  = Math.max(...months.map(m=>m.purchase_rev),1);
+      const maxRoas = Math.max(...months.map(m=>m.cost>0?m.purchase_rev/m.cost:0),1);
+
       monthlyTbody.innerHTML = months.map((m,idx)=>{
-        const roas = m.cost>0 ? (m.purchase_rev/m.cost*100).toFixed(1)+'%' : '—';
-        const ctr  = m.imp>0  ? (m.click/m.imp*100).toFixed(2)+'%' : '—';
-        const roasColor = m.cost>0&&m.purchase_rev/m.cost>=3?'var(--naver)':m.cost>0&&m.purchase_rev/m.cost>=1?'var(--gold)':'var(--red)';
-        // 전월 대비 증감
-        const prev = months[idx-1];
-        const diff = prev && prev.cost>0 ? ((m.cost-prev.cost)/prev.cost*100).toFixed(1) : null;
-        const diffHtml = diff ? `<span style="font-size:10px;color:${+diff>0?'var(--red)':'var(--naver)'};margin-left:4px">${+diff>0?'▲':'▼'}${Math.abs(diff)}%</span>` : '';
+        const roasVal  = m.cost>0 ? m.purchase_rev/m.cost : 0;
+        const roasStr  = m.cost>0 ? (roasVal*100).toFixed(1)+'%' : '—';
+        const ctr      = m.imp>0  ? (m.click/m.imp*100).toFixed(2)+'%' : '—';
+        const roasColor= roasVal>=3?'var(--naver)':roasVal>=1?'var(--gold)':'var(--red)';
+        const prev     = months[idx-1];
+        const costDiff = prev&&prev.cost>0 ? ((m.cost-prev.cost)/prev.cost*100) : null;
+        const revDiff  = prev&&prev.purchase_rev>0 ? ((m.purchase_rev-prev.purchase_rev)/prev.purchase_rev*100) : null;
+
+        const bar = (val, max, color) => {
+          const pct = Math.min(val/max*100, 100).toFixed(1);
+          return `<div style="background:var(--border);border-radius:3px;height:6px;margin-top:4px;width:100%">
+            <div style="background:${color};width:${pct}%;height:6px;border-radius:3px;transition:width .4s"></div>
+          </div>`;
+        };
+        const diffBadge = (diff) => diff===null ? '' :
+          `<span style="font-size:10px;font-weight:600;color:${diff>0?'var(--store)':'var(--naver)'};margin-left:6px">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}%</span>`;
+
         return `<tr>
-          <td style="font-weight:700">${m.month}</td>
-          <td style="font-family:monospace">${fmt2(m.cost)}${diffHtml}</td>
-          <td style="font-family:monospace">${fmtn2(m.imp)}</td>
-          <td style="font-family:monospace">${fmtn2(m.click)}</td>
-          <td style="font-family:monospace">${ctr}</td>
-          <td style="font-family:monospace">${fmtn2(m.purchase_conv)}건</td>
-          <td style="font-family:monospace">${fmt2(m.purchase_rev)}</td>
-          <td style="font-family:monospace;font-weight:700;color:${roasColor}">${roas}</td>
+          <td style="font-weight:800;font-size:13px">${m.month}</td>
+          <td>
+            <div style="font-family:monospace;font-size:12px">${fmt2(m.cost)}${diffBadge(costDiff)}</div>
+            ${bar(m.cost, maxCost, 'rgba(79,70,229,.7)')}
+          </td>
+          <td style="font-family:monospace;font-size:12px">${fmtn2(m.imp)}</td>
+          <td style="font-family:monospace;font-size:12px">${fmtn2(m.click)}</td>
+          <td style="font-family:monospace;font-size:12px">${ctr}</td>
+          <td style="font-family:monospace;font-size:12px">${fmtn2(m.purchase_conv)}건</td>
+          <td>
+            <div style="font-family:monospace;font-size:12px">${fmt2(m.purchase_rev)}${diffBadge(revDiff)}</div>
+            ${bar(m.purchase_rev, maxRev, 'rgba(3,199,90,.7)')}
+          </td>
+          <td>
+            <div style="font-family:monospace;font-size:13px;font-weight:700;color:${roasColor}">${roasStr}</div>
+            ${bar(roasVal, maxRoas, roasColor)}
+          </td>
         </tr>`;
       }).join('');
     }
