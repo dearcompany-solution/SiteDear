@@ -3737,12 +3737,12 @@ function saveOneFile(fileObj, client) {
               keyword: String(kw).trim(),
               campaign_type: row['유형'] || row['캠페인유형'] || '',
               device: row[devCol] || '',
-              imp:      parseNum(row['노출수']),
-              click:    parseNum(row['클릭수']),
-              cost:     parseNum(row[costCol]),
+              imp:      Math.round(parseNum(row['노출수'])),
+              click:    Math.round(parseNum(row['클릭수'])),
+              cost:     Math.round(parseNum(row[costCol])),
               avg_rank: parseNum(row[rankCol] || 0),
-              conv:     parseNum(row[convCol] || row['구매완료 전환수'] || 0),
-              rev:      parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0)
+              conv:     Math.round(parseNum(row[convCol] || row['구매완료 전환수'] || 0)),
+              rev:      Math.round(parseNum(row[revCol] || row['구매완료 전환매출액(원)'] || 0))
             });
           } else if (hasDaily) {
             const rawDate = row['일별'] || '';
