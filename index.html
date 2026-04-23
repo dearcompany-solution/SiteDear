@@ -7235,7 +7235,11 @@ async function loadRptGFATab(){
   };
   try{
     let rows = await fetchAllGfa(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`);
-    if(!Array.isArray(rows)) rows = [];
+if(!Array.isArray(rows)) rows = [];
+// 날짜 범위 필터 적용
+const fromDate = currentDateRange?.from || `${fromMonth}-01`;
+const toDate   = currentDateRange?.to   || `${toMonth}-31`;
+rows = rows.filter(r => !r.date || (r.date >= fromDate && r.date <= toDate));
 
     // 일별(date 있는 것) / 매체별(date null인 것) 분리
     const dailyData     = rows.filter(r=>r.date);
