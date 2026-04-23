@@ -1,12 +1,11 @@
 {
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/index.html",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
+        {"key": "Cache-Control", "value": "no-store"},
+        {"key": "Surrogate-Control", "value": "no-store"},
+        {"key": "CDN-Cache-Control", "value": "no-store"}
       ]
     }
   ]
