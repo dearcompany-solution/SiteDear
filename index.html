@@ -3849,6 +3849,8 @@ function saveOneFile(fileObj, client) {
               rev:           parseNum(row['총 전환매출액(원)']||row['총 전환매출액']),
               purchase_conv: parseNum(row['구매완료 전환수']),
               purchase_rev:  parseNum(row['구매완료 전환매출액(원)']||row['구매완료 전환매출액']),
+              cart_conv:     parseNum(row['장바구니 담기 수']||0),
+              cart_rev:      parseNum(row['장바구니 전환매출액(원)']||row['장바구니 전환매출액']||0),
               data_type:     'daily',
             });
           }
