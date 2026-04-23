@@ -6621,7 +6621,15 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     const chLabels = channels.length ? channels.map(c=>c.name) : ['데이터 없음'];
     const chCosts  = channels.length ? channels.map(c=>c.cost) : [0];
     const chRoas   = channels.length ? channels.map(c=>c.cost>0?+(c.rev/c.cost*100).toFixed(1):0) : [0];
-    const chColors = ['rgba(3,199,90,.8)','rgba(3,199,90,.5)','rgba(79,70,229,.8)','rgba(79,70,229,.5)','rgba(245,158,11,.8)','rgba(239,68,68,.8)'];
+    const chColors = chLabels.map(label => {
+  if(label.includes('PC'))      return 'rgba(79,70,229,.85)';   // 파란색 - PC
+  if(label.includes('모바일'))  return 'rgba(3,199,90,.85)';    // 초록색 - 모바일
+  if(label.includes('쇼핑'))   return 'rgba(245,158,11,.85)';   // 주황색 - 쇼핑
+  if(label.includes('파워링크')) return 'rgba(59,130,246,.85)'; // 하늘색 - 파워링크
+  // 순서대로 색상 부여
+  const palette = ['rgba(79,70,229,.85)','rgba(3,199,90,.85)','rgba(245,158,11,.85)','rgba(239,68,68,.85)','rgba(59,130,246,.85)','rgba(168,85,247,.85)'];
+  return palette[chLabels.indexOf(label) % palette.length];
+});
     mk('naverSummaryBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chCosts,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
     mk('naverRoasBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chRoas,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
 
