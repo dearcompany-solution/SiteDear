@@ -4061,8 +4061,8 @@ function saveOneFile(fileObj, client) {
             );
             if (!delRes.ok) throw new Error(await delRes.text());
 
-            // 2. 배치 단위로 나눠서 INSERT (1000행씩)
-            const BATCH = 1000;
+            // 2. 배치 단위로 나눠서 INSERT (200행씩)
+            const BATCH = 200;
             let saved = 0;
             for (let i = 0; i < rows.length; i += BATCH) {
               const batch = rows.slice(i, i + BATCH);
