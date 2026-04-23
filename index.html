@@ -4061,8 +4061,8 @@ function saveOneFile(fileObj, client) {
             );
             if (!delRes.ok) throw new Error(await delRes.text());
 
-            // 2. 배치 단위로 나눠서 INSERT (200행씩)
-            const BATCH = 200;
+            // 2. 배치 단위로 나눠서 INSERT (100행씩, timeout 방지)
+            const BATCH = 100;
             let saved = 0;
             for (let i = 0; i < rows.length; i += BATCH) {
               const batch = rows.slice(i, i + BATCH);
@@ -4070,11 +4070,16 @@ function saveOneFile(fileObj, client) {
                 `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,
                 { method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(batch) }
               );
-              if (!postRes.ok) throw new Error(await postRes.text());
+              if (!postRes.ok) {
+                const errText = await postRes.text();
+                console.error(`배치 ${i}~${i+BATCH} 실패:`, errText);
+                throw new Error(errText);
+              }
               saved += batch.length;
-              // 진행상황 표시
               fileObj.status = `저장중 ${saved}/${rows.length}`;
               renderUploadTab();
+              // 배치 간 50ms 대기 (서버 부하 방지)
+              await new Promise(r=>setTimeout(r,50));
             }
 
             fileObj.status = '저장완료';
