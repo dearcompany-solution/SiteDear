@@ -3773,6 +3773,8 @@ function saveOneFile(fileObj, client) {
             });
           }
         }
+        } catch(parseErr) {
+          console.error('파싱 오류:', parseErr);
         }
 
         // 캠페인별 파싱
