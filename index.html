@@ -2055,6 +2055,7 @@ async function fetchReportData(month){
     const hourly=Object.values(hourMap).map(h=>({...h,pct:totalClick>0?h.click/totalClick:0}));
     const kwMap={};
     kwArr.forEach(r=>{
+      if((+r.cost||0)===0 && (+r.click||0)===0) return; // 비용+클릭 0 제외
       const key=`${r.keyword}__${r.campaign_type}__${r.device}`;
       if(!kwMap[key]) kwMap[key]={keyword:r.keyword,type:r.campaign_type,device:r.device,imp:0,cost:0,click:0,conv:0,rev:0,avg_rank:[]};
       kwMap[key].imp +=+r.imp||0;
@@ -3719,7 +3720,11 @@ function saveOneFile(fileObj, client) {
             const kw = String(row[kwCol] || '').trim();
             if (!kw) continue;
             if (/^#[A-Z]+[!?]?$/.test(kw) || kw === '#N/A' || kw.startsWith('#')) continue;
-            const kwRawDate = row['일별'] || '';
+            const kwCost  = parseNum(row[costCol] || row['총비용'] || 0);
+            const kwClick = parseNum(row['클릭수'] || 0);
+            const kwImp   = parseNum(row['노출수'] || 0);
+            if (kwCost === 0 && kwClick === 0) continue; // 비용+클릭 둘다 0이면 스킵
+            const kwRawDate = row['일별']||'';
             const kwDate = kwRawDate ? kwRawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10) : null;
             const kwMonth = kwDate?.length >= 7 ? kwDate.slice(0,7) : month;
             rows.push({
