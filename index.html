@@ -6760,7 +6760,7 @@ async function loadHourlyTab(){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
   const fetchAllHr = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
+    const result=[]; const PAGE=5000; let offset=0;
     while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
   };
   try{
@@ -6978,7 +6978,7 @@ async function loadKeywordTab(){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
   const fetchAllKw = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
+    const result=[]; const PAGE=5000; let offset=0;
     while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
   };
   try{
@@ -7333,7 +7333,7 @@ async function loadRptGFATab(){
   };
 
   const fetchAllGfa = async (baseUrl) => {
-    const result=[]; const PAGE=1000; let offset=0;
+    const result=[]; const PAGE=5000; let offset=0;
     while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
   };
   try{
