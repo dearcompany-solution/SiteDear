@@ -2016,6 +2016,16 @@ async function fetchReportData(month){
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
+    // RPC로 집계 + 일별 추이만 페이지네이션
+    const rpcCall = async (fn, params) => {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: {...h, 'Content-Type': 'application/json'},
+        body: JSON.stringify(params)
+      });
+      return res.json();
+    };
+
     const fetchAll = async (baseUrl) => {
       const rows = []; const PAGE = 5000; let offset = 0;
       while(true){
@@ -2026,12 +2036,28 @@ async function fetchReportData(month){
       }
       return rows;
     };
-    const [dailyArr, kwArr, hourlyArr, gfaArr] = await Promise.all([
-      fetchAll(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${ck}&date=gte.${fromDate}&date=lte.${toDate}&select=*`),
+
+    // 병렬 조회
+    const [kpiResult, trendResult, kwArr, hourlyArr, gfaArr] = await Promise.all([
+      rpcCall('get_daily_summary', {p_client_key: targetClient, p_from_date: fromDate, p_to_date: toDate}),
+      rpcCall('get_daily_trend',   {p_client_key: targetClient, p_from_date: fromDate, p_to_date: toDate}),
       fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
       fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
       fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
+
+    const kpiData = kpiResult || {};
+    const dailyArr = Array.isArray(trendResult) ? trendResult : [];
+
+    // KPI 직접 설정 (RPC 집계값 사용)
+    const totalCost        = +kpiData.totalCost        || 0;
+    const totalImp         = +kpiData.totalImp         || 0;
+    const totalClick       = +kpiData.totalClick       || 0;
+    const totalConv        = +kpiData.totalConv        || 0;
+    const totalRev         = +kpiData.totalRev         || 0;
+    const totalPurchaseConv= +kpiData.totalPurchaseConv|| 0;
+    const totalPurchaseRev = +kpiData.totalPurchaseRev || 0;
+    const totalCartRev     = 0;
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
     const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
