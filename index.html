@@ -2017,7 +2017,7 @@ async function fetchReportData(month){
     const toMonth   = toDate.slice(0,7);
     const ck = encodeURIComponent(targetClient);
     const fetchAll = async (baseUrl) => {
-      const rows = []; const PAGE = 1000; let offset = 0;
+      const rows = []; const PAGE = 5000; let offset = 0;
       while(true){
         const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h});
         const data = await res.json();
