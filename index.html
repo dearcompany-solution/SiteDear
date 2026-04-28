@@ -2042,7 +2042,7 @@ async function fetchReportData(month){
       rpcCall('get_daily_summary', {p_client_key: targetClient, p_from_date: fromDate, p_to_date: toDate}),
       rpcCall('get_daily_trend',   {p_client_key: targetClient, p_from_date: fromDate, p_to_date: toDate}),
       fetchAll(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
-      fetchAll(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
+      rpcCall('get_hourly_data',   {p_client_key: targetClient, p_from_date: fromDate, p_to_date: toDate}),
       fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
 
@@ -2096,14 +2096,18 @@ async function fetchReportData(month){
       weekMap[wk].rev  +=(+r.rev>0)  ? +r.rev  : (+r.purchase_rev||0);
     });
     const weekly=['1주','2주','3주','4주'].map(w=>weekMap[w]||{week:w,imp:0,click:0,cost:0,conv:0,rev:0});
+    const hourlyArrSafe = Array.isArray(hourlyArr) ? hourlyArr : [];
     const hourMap={};
-    hourlyArr.forEach(r=>{
+    hourlyArrSafe.forEach(r=>{
       const t=r.time_slot||'';
-      if(!hourMap[t]) hourMap[t]={time:t,click:0,cost:0,conv:0,rev:0};
+      const hr = +String(t).replace(/[^0-9].*/,'');
+      const key = String(hr).padStart(2,'0')+'시~'+String(hr+1<24?hr+1:0).padStart(2,'0')+'시';
+      if(!hourMap[t]) hourMap[t]={time:t,hour:hr,click:0,cost:0,conv:0,rev:0,imp:0};
       hourMap[t].click+=+r.click||0; hourMap[t].cost+=+r.cost||0;
       hourMap[t].conv+=+r.conv||0; hourMap[t].rev+=+r.rev||0;
+      hourMap[t].imp+=+r.imp||0;
     });
-    const hourly=Object.values(hourMap).map(h=>({...h,pct:totalClick>0?h.click/totalClick:0}));
+    const hourly=Object.values(hourMap).sort((a,b)=>a.hour-b.hour).map(h=>({...h,pct:totalClick>0?h.click/totalClick:0}));
     const kwMap={};
     kwArr.forEach(r=>{
       if((+r.cost||0)===0 && (+r.click||0)===0) return; // 비용+클릭 0 제외
