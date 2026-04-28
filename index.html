@@ -6998,17 +6998,17 @@ async function loadKeywordTab(){
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  const fetchAllKw = async (baseUrl) => {
-    const result=[]; const PAGE=5000; let offset=0;
-    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
-  };
   try{
-    let rows = await fetchAllKw(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
-    if(!Array.isArray(rows)) rows = [];
-    // 날짜 범위 필터
-    const fromDate = currentDateRange?.from || `${fromMonth}-01`;
-    const toDate   = currentDateRange?.to   || `${toMonth}-31`;
-    rows = rows.filter(r => !r.date || (r.date >= fromDate && r.date <= toDate));
+    const kwResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_keyword_data`, {
+      method: 'POST',
+      headers: {...h, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        p_client_key: targetClient,
+        p_from_month: fromMonth,
+        p_to_month:   toMonth
+      })
+    }).then(r=>r.json());
+    let rows = Array.isArray(kwResult) ? kwResult : [];
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
