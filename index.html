@@ -7003,7 +7003,12 @@ async function loadKeywordTab(){
     while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
   };
   try{
-    const rows = await fetchAllKw(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
+    let rows = await fetchAllKw(`${SUPABASE_URL}/rest/v1/keyword_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
+    if(!Array.isArray(rows)) rows = [];
+    // 날짜 범위 필터
+    const fromDate = currentDateRange?.from || `${fromMonth}-01`;
+    const toDate   = currentDateRange?.to   || `${toMonth}-31`;
+    rows = rows.filter(r => !r.date || (r.date >= fromDate && r.date <= toDate));
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
