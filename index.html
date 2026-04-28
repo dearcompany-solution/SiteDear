@@ -6780,14 +6780,19 @@ async function loadHourlyTab(){
   const toMonth   = toDate.slice(0,7);
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  const fetchAllHr = async (baseUrl) => {
-    const result=[]; const PAGE=5000; let offset=0;
-    while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
-  };
   try{
-    const rows = await fetchAllHr(`${SUPABASE_URL}/rest/v1/hourly_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`);
-    if(!Array.isArray(rows)||!rows.length){
-      el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
+    const hourlyResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_hourly_data`, {
+      method: 'POST',
+      headers: {...h, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        p_client_key: targetClient,
+        p_from_date: fromDate,
+        p_to_date:   toDate
+      })
+    }).then(r=>r.json());
+    let rows = Array.isArray(hourlyResult) ? hourlyResult : [];
+    if(!rows.length){
+      el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
       return;
     }
 
