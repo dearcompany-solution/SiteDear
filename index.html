@@ -6634,7 +6634,7 @@ function switchRptTab(id, el){
       } else {
         const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}시`);
         const hMap = {};
-        hourly.forEach(r=>{ const h=+((r.hour||'0').replace(/[^0-9]/g,'')); if(!hMap[h])hMap[h]=0; hMap[h]+=(+r.click||0); });
+        hourly.forEach(r=>{ const h=+(r.hour??0); if(!hMap[h])hMap[h]=0; hMap[h]+=(+r.click||0); });
         const maxV = Math.max(...Object.values(hMap),1);
         const cells = hours.map((h,i)=>{
           const v = hMap[i]||0;
