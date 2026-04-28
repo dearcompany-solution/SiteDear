@@ -4351,42 +4351,48 @@ if (hdrIdx === -1) {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
           };
-          // 월별로 그룹핑해서 delete+insert
-          const months = [...new Set(allRows.map(r=>r.month))];
-          const deletePromises = [];
-          Object.keys(byType).forEach(dtype => {
-            months.forEach(m => {
-              deletePromises.push(
-                fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`, {
-                  method: 'DELETE', headers: h2
-                })
-              );
-            });
-          });
-          Promise.all(deletePromises).then(() => {
-            Object.entries(byType).forEach(([dtype, drows]) => {
-              fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`, {
-                method: 'POST',
-                headers: { ...h2, 'Prefer': 'return=minimal' },
-                body: JSON.stringify(drows)
-              }).then(res => {
-                if (!res.ok) return res.text().then(t => { throw new Error(t); });
-                doneCount++;
-                parsedTableData.push(...drows);
-                if (doneCount === typeCount) {
-                  fileObj.status = '저장완료';
-                  fileObj.savedCount = allRows.length;
-                  renderUploadTab();
-                  toast(`✅ ${fileObj.name} — ${allRows.length}개 저장 완료!`);
-                }
-              }).catch(err => {
-                fileObj.status = '저장실패'; renderUploadTab();
-                let msg = err.message;
-                try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e2) {}
-                toast(`❌ ${fileObj.name} [${dtype}] 저장 실패: ${msg}`);
-              });
-            });
-          });
+         // 월별로 그룹핑해서 delete+insert (async/await로 순서 보장)
+(async () => {
+  try {
+    const months = [...new Set(allRows.map(r=>r.month))];
+    // 1. DELETE 순차 실행 + 성공 확인
+    for (const dtype of Object.keys(byType)) {
+      for (const m of months) {
+        const delRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,
+          { method: 'DELETE', headers: h2 }
+        );
+        if (!delRes.ok) throw new Error(`DELETE 실패 [${dtype}/${m}]: ` + await delRes.text());
+        console.log(`[DELETE OK] ${dtype} / ${m}`);
+      }
+    }
+    await new Promise(r => setTimeout(r, 300)); // DB 반영 대기
+    // 2. INSERT 배치 (100건씩)
+    const BATCH = 100;
+    for (const [dtype, drows] of Object.entries(byType)) {
+      for (let i = 0; i < drows.length; i += BATCH) {
+        const batch = drows.slice(i, i + BATCH);
+        const postRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,
+          { method: 'POST', headers: { ...h2, 'Prefer': 'return=minimal' }, body: JSON.stringify(batch) }
+        );
+        if (!postRes.ok) throw new Error(`INSERT 실패 [${dtype}] ${i}~${i+BATCH}: ` + await postRes.text());
+        console.log(`[INSERT OK] ${dtype} ${i}~${i+BATCH}`);
+        await new Promise(r => setTimeout(r, 50));
+      }
+      parsedTableData.push(...drows);
+    }
+    fileObj.status = '저장완료';
+    fileObj.savedCount = allRows.length;
+    renderUploadTab();
+    toast(`✅ ${fileObj.name} — ${allRows.length}개 저장 완료!`);
+  } catch (err) {
+    fileObj.status = '저장실패'; renderUploadTab();
+    let msg = err.message;
+    try { const j = JSON.parse(msg); msg = j.message || j.hint || msg; } catch(e2) {}
+    toast(`❌ ${fileObj.name} 저장 실패: ${msg}`);
+  }
+})();
 
         } catch (err) {
           fileObj.status = '저장실패'; renderUploadTab();
