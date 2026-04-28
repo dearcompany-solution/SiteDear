@@ -2059,11 +2059,6 @@ async function fetchReportData(month){
     const totalPurchaseRev = +kpiData.totalPurchaseRev || 0;
     const totalCartRev     = 0;
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
-    const totalImp=sum(dailyArr,'imp'), totalClick=sum(dailyArr,'click'), totalCost=sum(dailyArr,'cost');
-    const totalConv = sum(dailyArr,'conv')>0 ? sum(dailyArr,'conv') : sum(dailyArr,'purchase_conv');
-    const totalRev  = sum(dailyArr,'rev')>0  ? sum(dailyArr,'rev')  : sum(dailyArr,'purchase_rev');
-    const totalPurchaseConv=sum(dailyArr,'purchase_conv'), totalPurchaseRev=sum(dailyArr,'purchase_rev');
-    const totalCartRev=sum(dailyArr,'cart_rev');
     function calcMetrics(imp,click,cost,conv,rev){
       imp=+imp||0;click=+click||0;cost=+cost||0;conv=+conv||0;rev=+rev||0;
       return {imp,click,cost,conv,rev,
