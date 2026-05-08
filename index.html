@@ -6903,7 +6903,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     mk('campDailyRev',{type:'line',data:{labels:dates.map(d2=>d2.slice(5)),datasets:datasets_rev},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#4a5670'}}}}});
   },80);
     if(id==='summary') setTimeout(async ()=>{
-    const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+    const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{const ex=Chart.getChart(el2);if(ex)ex.destroy();if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){console.warn('mk 에러',id2,e);}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
     const d = REPORT_DATA[currentReportMonth];
     const channels = d?.channels || [];
