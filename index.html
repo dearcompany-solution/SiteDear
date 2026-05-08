@@ -466,6 +466,15 @@ canvas{max-height:210px}
 .dp-custom input:focus{border-color:var(--blue)}
 .dp-apply{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
 .dp-apply:hover{background:#2563eb}
+@keyframes feedbackGlow {
+  0%   { box-shadow: 0 0 0px rgba(59,130,246,0); }
+  50%  { box-shadow: 0 0 10px rgba(59,130,246,0.5), 0 0 20px rgba(59,130,246,0.2); }
+  100% { box-shadow: 0 0 0px rgba(59,130,246,0); }
+}
+.has-feedback {
+  animation: feedbackGlow 2.5s ease-in-out infinite;
+}
+</style>
 </style>
 </head>
 <body>
@@ -5622,6 +5631,41 @@ async function toggleFeedbackCheck(id, currentStatus){
   toast(newStatus==='확인완료' ? '✅ 확인완료로 변경됐습니다' : '↩️ 대기중으로 변경됐습니다');
   loadRptFeedbacks();
 }
+  async function applyFeedbackGlow(){
+  const isAdmin = currentUser?.role==='admin';
+  const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!clientKey) return;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?client_key=eq.${encodeURIComponent(clientKey)}&status=eq.대기중&select=page`,{headers:h});
+    const rows = res.ok ? await res.json() : [];
+    // 기존 글로우 제거
+    document.querySelectorAll('.has-feedback').forEach(el=>el.classList.remove('has-feedback'));
+    if(!rows.length) return;
+    // 페이지별 피드백 있는 카드에 글로우 적용
+    rows.forEach(r=>{
+      const page = r.page||'';
+      if(page.includes('요약') || page.includes('summary')){
+        document.getElementById('nt-tab-summary')?.querySelectorAll('.kpi,.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+      if(page.includes('키워드')){
+        document.getElementById('nt-tab-keyword')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+      if(page.includes('시간대')){
+        document.getElementById('nt-tab-hourly')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+      if(page.includes('GFA')){
+        document.getElementById('nt-tab-gfa')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+      if(page.includes('캠페인')){
+        document.getElementById('nt-tab-campaign')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+      if(page.includes('디바이스')){
+        document.getElementById('nt-tab-device')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+      }
+    });
+  } catch(e){ console.warn('글로우 적용 실패:', e); }
+}
   function navigateToFeedbackPage(page, e){
   if(e.target.closest('button,input,textarea')) return;
   // 보고서 내부 탭인 경우
@@ -6928,6 +6972,7 @@ function switchRptTab(id, el){
   });
   if(id==='search')  loadSearchTab();
   if(id==='gfa')     loadGFATab();
+  setTimeout(applyFeedbackGlow, 500);
   if(id==='keyword') loadKeywordTab();
   if(id==='hourly')  loadHourlyTab();
   if(id==='device') setTimeout(()=>{
