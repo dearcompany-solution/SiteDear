@@ -6902,12 +6902,34 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     mk('naverSummaryBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chCosts,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
     mk('naverRoasBar',{type:'bar',data:{labels:chLabels,datasets:[{data:chRoas,backgroundColor:chColors,borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false}}}});
 
-    // 월별 비교 테이블 렌더링
+    // 월별 비교 테이블 렌더링 (최근 3개월)
     const monthlyTbody = document.getElementById('monthlyCompareTbody');
-    if(monthlyTbody && d?.monthlyList?.length){
+    if(monthlyTbody){
+      monthlyTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text3)">불러오는 중...</td></tr>';
+      // 최근 3개월 계산
+      const [cy, cm] = currentReportMonth.split('-').map(Number);
+      const recentMonths = [];
+      for(let i=2; i>=0; i--){
+        let mm = cm - i; let yy = cy;
+        if(mm<=0){ mm+=12; yy--; }
+        recentMonths.push(`${yy}-${String(mm).padStart(2,'0')}`);
+      }
+      // 각 달 데이터 fetch (캐시 우선)
+      const monthDataArr = await Promise.all(recentMonths.map(async mo=>{
+        if(!REPORT_DATA[mo]) REPORT_DATA[mo] = await fetchReportData(mo);
+        return REPORT_DATA[mo];
+      }));
+      // 월별 집계
+      const monthRows = recentMonths.map((mo, idx)=>{
+        const md = monthDataArr[idx];
+        if(!md || md._empty) return {month:mo,cost:0,imp:0,click:0,conv:0,purchase_conv:0,purchase_rev:0,empty:true};
+        const ml = md.monthlyList?.find(m=>m.month===mo) || md.monthlyList?.[0];
+        if(!ml) return {month:mo,cost:0,imp:0,click:0,conv:0,purchase_conv:0,purchase_rev:0,empty:true};
+        return {...ml, month:mo};
+      });
       const fmt2 = v => '₩'+Math.round(v||0).toLocaleString();
       const fmtn2 = v => (v||0).toLocaleString();
-      const months = d.monthlyList;
+      const months = monthRows;
       const maxCost = Math.max(...months.map(m=>m.cost),1);
       const maxRev  = Math.max(...months.map(m=>m.purchase_rev),1);
       const maxRoas = Math.max(...months.map(m=>m.cost>0?m.purchase_rev/m.cost:0),1);
@@ -6950,7 +6972,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
           </td>
         </tr>`;
       }).join('');
-    }
+    } // monthlyTbody
 
     // 일별 광고비 추이 (실제 데이터)
     const daily = d?.dailyList || [];
