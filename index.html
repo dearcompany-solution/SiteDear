@@ -5655,25 +5655,21 @@ async function toggleFeedbackCheck(id, currentStatus){
     document.querySelectorAll('.has-feedback').forEach(el=>el.classList.remove('has-feedback'));
     if(!rows.length) return;
     // 페이지별 피드백 있는 카드에 글로우 적용
-    rows.forEach(r=>{
-      const page = r.page||'';
-      if(page.includes('요약') || page.includes('summary')){
-        document.getElementById('nt-tab-summary')?.querySelectorAll('.kpi,.card').forEach(el=>el.classList.add('has-feedback'));
-      }
-      if(page.includes('키워드')){
-        document.getElementById('nt-tab-keyword')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
-      }
-      if(page.includes('시간대')){
-        document.getElementById('nt-tab-hourly')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
-      }
-      if(page.includes('GFA')){
-        document.getElementById('nt-tab-gfa')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
-      }
-      if(page.includes('캠페인')){
-        document.getElementById('nt-tab-campaign')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
-      }
-      if(page.includes('디바이스')){
-        document.getElementById('nt-tab-device')?.querySelectorAll('.card').forEach(el=>el.classList.add('has-feedback'));
+    // 중복 페이지 제거 후 탭 컨테이너 하나에만 점 표시
+    const pages = [...new Set(rows.map(r=>r.page||''))];
+    pages.forEach(page=>{
+      let tabId = '';
+      if(page.includes('요약') || page.includes('summary')) tabId = 'nt-tab-summary';
+      else if(page.includes('검색광고')) tabId = 'nt-tab-search';
+      else if(page.includes('GFA')) tabId = 'nt-tab-gfa';
+      else if(page.includes('캠페인')) tabId = 'nt-tab-campaign';
+      else if(page.includes('디바이스')) tabId = 'nt-tab-device';
+      else if(page.includes('키워드')) tabId = 'nt-tab-keyword';
+      else if(page.includes('시간대')) tabId = 'nt-tab-hourly';
+      if(tabId){
+        // 탭 버튼에만 점 표시
+        const tabBtn = document.querySelector(`.nav-tab[onclick*="'${tabId.replace('nt-tab-','')}'")`);
+        if(tabBtn) tabBtn.classList.add('has-feedback');
       }
     });
   } catch(e){ console.warn('글로우 적용 실패:', e); }
