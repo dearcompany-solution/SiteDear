@@ -7095,20 +7095,34 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       });
     }
 
-    // 일별 광고비 추이 (실제 데이터)
-    const daily = d?.dailyList || [];
+    // 일별 광고비 추이 — rawDailyList 우선 사용
+    const dCurrent = REPORT_DATA[currentReportMonth];
+    const daily = (dCurrent?.rawDailyList || dCurrent?.dailyList || []);
     const dailyMap = {};
-    daily.forEach(r=>{ if(!dailyMap[r.date]) dailyMap[r.date]=0; dailyMap[r.date]+=+r.cost||0; });
+    daily.forEach(r=>{
+      const dt = r.date||'';
+      if(!dt) return;
+      if(!dailyMap[dt]) dailyMap[dt]=0;
+      dailyMap[dt] += +r.cost||0;
+    });
     const dailyDates = Object.keys(dailyMap).sort();
     const dailyCosts = dailyDates.map(d2=>dailyMap[d2]);
-    mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:2}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:10}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+    if(dailyDates.length){
+      mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+    }
 
-    // 캠페인유형 비중 파이차트
+    // 캠페인유형 비중 파이차트 — rawDailyList 기준
     const typeMap = {};
-    channels.forEach(c=>{ const t=c.name.includes('쇼핑')?'쇼핑검색':c.name.includes('파워링크')?'파워링크':'기타'; if(!typeMap[t])typeMap[t]=0; typeMap[t]+=c.cost; });
-    const typeLabels = Object.keys(typeMap);
+    daily.forEach(r=>{
+      const t = (r.campaign_type||'').includes('쇼핑')?'쇼핑검색':(r.campaign_type||'').includes('파워')?'파워링크':'기타';
+      if(!typeMap[t]) typeMap[t]=0;
+      typeMap[t] += +r.cost||0;
+    });
+    const typeLabels = Object.keys(typeMap).filter(k=>typeMap[k]>0);
     const typeData   = typeLabels.map(t=>typeMap[t]);
-    mk('naverTypePie',{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeData,backgroundColor:['rgba(3,199,90,.8)','rgba(79,70,229,.8)','rgba(245,158,11,.8)'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670'}}}}});
+    if(typeLabels.length){
+      mk('naverTypePie',{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeData,backgroundColor:['rgba(79,70,229,.85)','rgba(3,199,90,.85)','rgba(245,158,11,.85)'],borderWidth:0,borderRadius:4}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670',padding:16}}}}});
+    }
   },80);
 }
 async function loadHourlyTab(){
