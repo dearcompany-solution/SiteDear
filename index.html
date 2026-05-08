@@ -6948,33 +6948,18 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
         const costDiff = prev&&prev.cost>0 ? ((m.cost-prev.cost)/prev.cost*100) : null;
         const revDiff  = prev&&prev.purchase_rev>0 ? ((m.purchase_rev-prev.purchase_rev)/prev.purchase_rev*100) : null;
 
-        const bar = (val, max, color) => {
-          const pct = Math.min(val/max*100, 100).toFixed(1);
-          return `<div style="background:var(--border);border-radius:3px;height:6px;margin-top:4px;width:100%">
-            <div style="background:${color};width:${pct}%;height:6px;border-radius:3px;transition:width .4s"></div>
-          </div>`;
-        };
         const diffBadge = (diff) => diff===null ? '' :
-          `<span style="font-size:10px;font-weight:600;color:${diff>0?'var(--store)':'var(--naver)'};margin-left:6px">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}%</span>`;
+          `<span style="font-size:10px;font-weight:600;color:${diff>0?'var(--naver)':'var(--red)'};margin-left:6px">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}%</span>`;
 
         return `<tr>
           <td style="font-weight:800;font-size:13px">${m.month}</td>
-          <td>
-            <div style="font-family:monospace;font-size:12px">${fmt2(m.cost)}${diffBadge(costDiff)}</div>
-            ${bar(m.cost, maxCost, 'rgba(79,70,229,.7)')}
-          </td>
+          <td style="font-family:monospace;font-size:12px">${fmt2(m.cost)}${diffBadge(costDiff)}</td>
           <td style="font-family:monospace;font-size:12px">${fmtn2(m.imp)}</td>
           <td style="font-family:monospace;font-size:12px">${fmtn2(m.click)}</td>
           <td style="font-family:monospace;font-size:12px">${ctr}</td>
           <td style="font-family:monospace;font-size:12px">${fmtn2(m.purchase_conv)}건</td>
-          <td>
-            <div style="font-family:monospace;font-size:12px">${fmt2(m.purchase_rev)}${diffBadge(revDiff)}</div>
-            ${bar(m.purchase_rev, maxRev, 'rgba(3,199,90,.7)')}
-          </td>
-          <td>
-            <div style="font-family:monospace;font-size:13px;font-weight:700;color:${roasColor}">${roasStr}</div>
-            ${bar(roasVal, maxRoas, roasColor)}
-          </td>
+          <td style="font-family:monospace;font-size:12px">${fmt2(m.purchase_rev)}${diffBadge(revDiff)}</td>
+          <td style="font-family:monospace;font-size:13px;font-weight:700;color:${roasColor}">${roasStr}</td>
         </tr>`;
       }).join('');
 
@@ -6982,23 +6967,76 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       const mLabels = monthRows.map(m=>m.month);
       const mCosts  = monthRows.map(m=>m.cost||0);
       const mRoas   = monthRows.map(m=>m.cost>0?+(m.purchase_rev/m.cost*100).toFixed(2):0);
+      const dataLabelPlugin = {
+        id:'dataLabel',
+        afterDatasetsDraw(chart){
+          const {ctx,data,scales:{x,y}}=chart;
+          data.datasets[0].data.forEach((val,i)=>{
+            const bar=chart.getDatasetMeta(0).data[i];
+            ctx.save();
+            ctx.fillStyle='#3a3f55';
+            ctx.font='bold 11px IBM Plex Mono, monospace';
+            ctx.textAlign='center';
+            ctx.fillText(chart.config.options._labelFn?chart.config.options._labelFn(val):'',bar.x,bar.y-8);
+            ctx.restore();
+          });
+        }
+      };
       mk('monthlyBarCost',{
         type:'bar',
-        data:{labels:mLabels,datasets:[{label:'광고비',data:mCosts,
-          backgroundColor:['rgba(79,70,229,.5)','rgba(79,70,229,.75)','rgba(79,70,229,.95)'],
-          borderRadius:8,borderSkipped:false}]},
-        options:{responsive:true,
-          scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}
+        data:{
+          labels:mLabels,
+          datasets:[{
+            label:'광고비',
+            data:mCosts,
+            backgroundColor:mLabels.map((_,i)=>i===mLabels.length-1?'rgba(79,70,229,1)':'rgba(79,70,229,.35)'),
+            borderColor:mLabels.map((_,i)=>i===mLabels.length-1?'rgba(79,70,229,1)':'rgba(79,70,229,.6)'),
+            borderWidth:2,
+            borderRadius:10,
+            borderSkipped:false
+          }]
+        },
+        options:{
+          responsive:true,
+          _labelFn: v=>'₩'+Math.round(v/10000)+'만',
+          scales:{
+            x:{...ax},
+            y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'},grace:'20%'}
+          },
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:c=>'광고비: ₩'+Math.round(c.raw).toLocaleString()}}
+          }
+        },
+        plugins:[dataLabelPlugin]
       });
       mk('monthlyBarRoas',{
         type:'bar',
-        data:{labels:mLabels,datasets:[{label:'ROAS',data:mRoas,
-          backgroundColor:['rgba(3,199,90,.5)','rgba(3,199,90,.75)','rgba(3,199,90,.95)'],
-          borderRadius:8,borderSkipped:false}]},
-        options:{responsive:true,
-          scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(1)+'%'}}},
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+'%'}}}}
+        data:{
+          labels:mLabels,
+          datasets:[{
+            label:'ROAS',
+            data:mRoas,
+            backgroundColor:mLabels.map((_,i)=>i===mLabels.length-1?'rgba(3,199,90,1)':'rgba(3,199,90,.35)'),
+            borderColor:mLabels.map((_,i)=>i===mLabels.length-1?'rgba(3,199,90,1)':'rgba(3,199,90,.6)'),
+            borderWidth:2,
+            borderRadius:10,
+            borderSkipped:false
+          }]
+        },
+        options:{
+          responsive:true,
+          _labelFn: v=>v.toFixed(1)+'%',
+          scales:{
+            x:{...ax},
+            y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(0)+'%'},grace:'20%'}
+          },
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:c=>'ROAS: '+c.raw.toFixed(2)+'%'}}
+          }
+        },
+        plugins:[dataLabelPlugin]
       });
     } // monthlyTbody
 
