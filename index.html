@@ -1500,14 +1500,32 @@ function htmlNaver(){
     
     <div class="kpi6">
       ${ (() => {
-        const gfa = d?.gfa || {};
-        const combinedCost  = (kpi.totalCost  || 0) + (gfa.totalCost  || 0);
-        const combinedImp   = (kpi.totalImp   || 0) + (gfa.totalImp   || 0);
-        const combinedClick = (kpi.totalClick || 0) + (gfa.totalClick || 0);
-        const combinedConv  = (kpi.totalPurchaseConv || 0) + (gfa.totalConv || 0);
-        const combinedRev   = (kpi.totalPurchaseRev  || 0) + (gfa.totalRev  || 0);
-        const combinedCtr   = combinedImp > 0 ? combinedClick / combinedImp * 100 : 0;
-        const combinedRoas  = combinedCost > 0 ? combinedRev / combinedCost * 100 : 0;
+        // 기간 필터 적용한 검색광고 재계산
+        const from = currentDateRange?.from || '';
+        const to   = currentDateRange?.to   || '';
+        const raw  = d?.rawDailyList || [];
+        const filtered = from && to ? raw.filter(r => r.date >= from && r.date <= to) : raw;
+        const sum = (arr, key) => arr.reduce((s,r) => s + (+r[key]||0), 0);
+        const srchCost  = sum(filtered, 'cost');
+        const srchImp   = sum(filtered, 'imp');
+        const srchClick = sum(filtered, 'click');
+        const srchConv  = sum(filtered, 'purchase_conv');
+        const srchRev   = sum(filtered, 'purchase_rev');
+        // GFA 기간 필터 적용
+        const gfaRaw      = d?.gfa?.dailyList || [];
+        const gfaFiltered = from && to ? gfaRaw.filter(r => r.date >= from && r.date <= to) : gfaRaw;
+        const gfaCost  = sum(gfaFiltered, 'cost');
+        const gfaImp   = sum(gfaFiltered, 'imp');
+        const gfaClick = sum(gfaFiltered, 'click');
+        const gfaConv  = sum(gfaFiltered, 'conv');
+        const gfaRev   = sum(gfaFiltered, 'rev');
+        const combinedCost  = srchCost  + gfaCost;
+        const combinedImp   = srchImp   + gfaImp;
+        const combinedClick = srchClick + gfaClick;
+        const combinedConv  = srchConv  + gfaConv;
+        const combinedRev   = srchRev   + gfaRev;
+        const combinedCtr   = combinedImp  > 0 ? combinedClick / combinedImp  * 100 : 0;
+        const combinedRoas  = combinedCost > 0 ? combinedRev   / combinedCost * 100 : 0;
         const v1 = fmt(combinedCost);
         const v2 = fmtn(combinedImp);
         const v3 = fmtn(combinedClick);
