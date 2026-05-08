@@ -5614,7 +5614,7 @@ async function saveRequestToSupabase(req){
       return;
     }
     el.innerHTML = rows.map(r=>`
-      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='확인완료'?'var(--naver)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white);cursor:pointer" onclick="navigateToFeedbackPage('${r.page||''}',event)">
+      <div data-card-key="${r.card_key||''}" style="border:1px solid var(--border);border-left:4px solid ${r.status==='확인완료'?'var(--naver)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white);cursor:pointer" onclick="navigateToFeedbackPage('${r.page||''}',event)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font-size:12px;color:var(--text3)">📍 ${r.page||'대시보드'} · ${r.created_at?.slice(0,10)||''} · <b>${r.author||''}</b></div>
           <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${r.status==='확인완료'?'var(--naver)':'var(--blue)'};color:#fff">${r.status||'대기중'}</span>
@@ -5649,7 +5649,7 @@ async function toggleFeedbackCheck(id, currentStatus){
   if(!clientKey) return;
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?client_key=eq.${encodeURIComponent(clientKey)}&status=eq.대기중&select=page`,{headers:h});
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?client_key=eq.${encodeURIComponent(clientKey)}&status=eq.대기중&select=page,card_key`,{headers:h});
     const rows = res.ok ? await res.json() : [];
     // 기존 글로우 제거
     document.querySelectorAll('.has-feedback').forEach(el=>el.classList.remove('has-feedback'));
@@ -5697,8 +5697,28 @@ async function toggleFeedbackCheck(id, currentStatus){
     '보고서': ()=>{ go('report',null); setActive('report'); },
   };
   const nav = Object.entries(pageMap).find(([key])=>page.includes(key));
-  if(nav) nav[1]();
-  else { go('naver',null); setActive('naver'); }
+  const cardKey = e.currentTarget?.dataset?.cardKey || '';
+  if(nav){
+    nav[1]();
+    if(cardKey){
+      setTimeout(()=>{
+        let target = document.getElementById(cardKey)
+          || document.querySelector(`[data-feedback-key="${cardKey}"]`);
+        if(!target){
+          document.querySelectorAll('.card,.kpi').forEach(el=>{
+            const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
+            if(title && cardKey.includes(title)) target = el;
+          });
+        }
+        if(target){
+          target.scrollIntoView({behavior:'smooth', block:'center'});
+          target.style.transition='box-shadow 0.5s';
+          target.style.boxShadow='0 0 0 3px rgba(59,130,246,0.7)';
+          setTimeout(()=>{ target.style.boxShadow=''; }, 2000);
+        }
+      }, 700);
+    }
+  } else { go('naver',null); setActive('naver'); }
 }
   async function saveRptFeedbackReply(id){
   const reply = document.getElementById('reply_'+id)?.value||'';
