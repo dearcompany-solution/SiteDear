@@ -1600,11 +1600,39 @@ function htmlNaver(){
       <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">${fmt(kpi.totalPurchaseRev)}</div></div>
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? kpi.roas.toFixed(2)+'%' : '0%'}</div></div>
     </div>
-    <div style="margin:16px 0;padding:14px 18px;background:var(--blue-l);border-radius:var(--rsm);border:1px solid var(--border);font-size:12.5px;color:var(--text2);line-height:1.8">
-      <b>📌 데이터 출처</b><br>
-      · 광고비 / 노출수 / 클릭수 / CTR → <b>daily_reports</b> (매체별 CSV)<br>
-      · 전환수 / 구매완료 전환수·매출·ROAS → <b>daily_reports</b> (매체별 CSV)<br>
-      · GFA(네이버 디스플레이) 수치는 <b>포함되지 않음</b>
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📊 주차별 광고비</div><div class="card-sub">검색광고 기준</div></div></div><canvas id="srchWeekCost" height="120"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📈 주차별 ROAS</div><div class="card-sub">검색광고 기준</div></div></div><canvas id="srchWeekRoas" height="120"></canvas></div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">🛒 캠페인유형별 성과</div></div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>캠페인유형</th><th>광고비</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+          <tbody id="srchCampTypeTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📱 PC vs 모바일 성과</div></div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>디바이스</th><th>광고비</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+          <tbody id="srchDeviceTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📅 일별 성과</div></div>
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+        <table class="tbl">
+          <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr><th>날짜</th><th>요일</th><th>광고비</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
+          <tbody id="srchDailyTbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
   <div id="nt-tab-gfa" style="display:none">
@@ -6646,6 +6674,105 @@ function switchRptTab(id, el){
     },plugins:{legend:{labels:{color:'#4a5670',font:{size:11},padding:12}}}}});
   }
 }
+  function loadSearchTab(){
+    const d = REPORT_DATA[currentReportMonth];
+    if(!d) return;
+    const fmt  = v => '₩'+Math.round(v||0).toLocaleString();
+    const fmtn = v => Math.round(v||0).toLocaleString();
+    const fmtp = (a,b) => b>0 ? (a/b*100).toFixed(2)+'%' : '0%';
+    const fmtr = (cost,rev) => cost>0 ? (rev/cost*100).toFixed(2)+'%' : '—';
+    const WEEKDAYS = ['일','월','화','수','목','금','토'];
+
+    const daily = d.dailyList || [];
+    const raw   = d.rawDailyList || [];
+
+    // ── 주차별 집계 ──
+    const weekMap = {1:{w:'1주',cost:0,rev:0,conv:0},2:{w:'2주',cost:0,rev:0,conv:0},3:{w:'3주',cost:0,rev:0,conv:0},4:{w:'4주',cost:0,rev:0,conv:0}};
+    daily.forEach(r=>{
+      const day = new Date(r.date).getDate();
+      const wk  = day<=7?1:day<=14?2:day<=21?3:4;
+      weekMap[wk].cost += +r.cost||0;
+      weekMap[wk].rev  += +r.rev||0;
+      weekMap[wk].conv += +r.conv||0;
+    });
+    const weeks = Object.values(weekMap);
+    const wkLabels = weeks.map(w=>w.w);
+    const wkCosts  = weeks.map(w=>w.cost);
+    const wkRoas   = weeks.map(w=>w.cost>0?+(w.rev/w.cost*100).toFixed(2):0);
+
+    // 주차별 광고비 차트
+    const mk=(id2,cfg)=>{const el=document.getElementById(id2);if(!el)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el,cfg);}catch(e){}};
+    const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+    mk('srchWeekCost',{type:'bar',data:{labels:wkLabels,datasets:[{label:'광고비',data:wkCosts,backgroundColor:'rgba(59,130,246,.7)',borderRadius:6}]},options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+    mk('srchWeekRoas',{type:'bar',data:{labels:wkLabels,datasets:[{label:'ROAS',data:wkRoas,backgroundColor:'rgba(3,199,90,.7)',borderRadius:6}]},options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(1)+'%'}}},plugins:{legend:{display:false}}}});
+
+    // ── 캠페인유형별 집계 ──
+    const campMap = {};
+    raw.forEach(r=>{
+      const k = r.campaign_type||'기타';
+      if(!campMap[k]) campMap[k]={type:k,cost:0,imp:0,click:0,conv:0,rev:0};
+      campMap[k].cost+=+r.cost||0; campMap[k].imp+=+r.imp||0;
+      campMap[k].click+=+r.click||0; campMap[k].conv+=+r.conv||0; campMap[k].rev+=+r.rev||0;
+    });
+    const campTb = document.getElementById('srchCampTypeTbody');
+    if(campTb){
+      const rows = Object.values(campMap).sort((a,b)=>b.cost-a.cost);
+      campTb.innerHTML = rows.length ? rows.map(r=>`<tr>
+        <td style="font-weight:600">${r.type}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.click,r.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--naver)">${fmtr(r.cost,r.rev)}</td>
+      </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+    }
+
+    // ── PC vs 모바일 집계 ──
+    const devMap = {};
+    raw.forEach(r=>{
+      const k = (r.device||'').includes('PC') ? '💻 PC' : (r.device||'').includes('모바일')||(r.device||'').toLowerCase().includes('mobile') ? '📱 모바일' : r.device||'기타';
+      if(!devMap[k]) devMap[k]={dev:k,cost:0,imp:0,click:0,conv:0,rev:0};
+      devMap[k].cost+=+r.cost||0; devMap[k].imp+=+r.imp||0;
+      devMap[k].click+=+r.click||0; devMap[k].conv+=+r.conv||0; devMap[k].rev+=+r.rev||0;
+    });
+    const devTb = document.getElementById('srchDeviceTbody');
+    if(devTb){
+      const rows = Object.values(devMap).sort((a,b)=>b.cost-a.cost);
+      devTb.innerHTML = rows.length ? rows.map(r=>`<tr>
+        <td style="font-weight:600">${r.dev}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.click,r.imp)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--blue)">${fmtr(r.cost,r.rev)}</td>
+      </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+    }
+
+    // ── 일별 성과 ──
+    const dailyTb = document.getElementById('srchDailyTbody');
+    if(dailyTb){
+      dailyTb.innerHTML = daily.length ? daily.map(r=>{
+        const dow = WEEKDAYS[new Date(r.date).getDay()];
+        const roasColor = r.cost>0&&r.rev/r.cost>=3?'var(--naver)':r.cost>0&&r.rev/r.cost>=1?'var(--gold)':'var(--red)';
+        return `<tr>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap">${r.date}</td>
+          <td style="font-size:12px;color:var(--text2)">${dow}요일</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.cost)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.click)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtp(r.click,r.imp)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(r.conv)}건</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(r.rev)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor}">${fmtr(r.cost,r.rev)}</td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">데이터 없음</td></tr>`;
+    }
+  }
+
   function switchNaverTab(id,el){
   sessionStorage.setItem('currentNaverTab', id);
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
@@ -6654,6 +6781,7 @@ function switchRptTab(id, el){
     const p=document.getElementById('nt-tab-'+t);
     if(p)p.style.display=t===id?'block':'none';
   });
+  if(id==='search')  loadSearchTab();
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
   if(id==='hourly')  loadHourlyTab();
