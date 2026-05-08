@@ -1515,7 +1515,7 @@ function htmlNaver(){
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">\${combinedCtr ? combinedCtr.toFixed(2)+'%' : '0%'}</div></div>
       <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">\${fmtn(combinedConv)}건</div></div>
       <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">\${fmt(combinedRev)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">\${combinedRoas ? combinedRoas.toFixed(1)+'%' : '0%'}</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">\${combinedRoas ? combinedRoas.toFixed(2)+'%' : '0%'}</div></div>
         `;
       })() }
     </div>
@@ -1589,7 +1589,7 @@ function htmlNaver(){
       <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">총 전환수</div><div class="kpi-val">${fmtn(kpi.totalConv)}건</div></div>
       <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">🛍️</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">${fmtn(kpi.totalPurchaseConv)}건</div></div>
       <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">${fmt(kpi.totalPurchaseRev)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? kpi.roas.toFixed(1)+'%' : '0%'}</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">검색광고</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? kpi.roas.toFixed(2)+'%' : '0%'}</div></div>
     </div>
     <div style="margin:16px 0;padding:14px 18px;background:var(--blue-l);border-radius:var(--rsm);border:1px solid var(--border);font-size:12.5px;color:var(--text2);line-height:1.8">
       <b>📌 데이터 출처</b><br>
