@@ -7127,14 +7127,25 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     });
     const dailyDates = Object.keys(dailyMap2).sort();
     const dailyCosts = dailyDates.map(d2=>dailyMap2[d2]);
+    // 일별 차트 — 충분한 딜레이 후 렌더링
+    window._naverDailyDates = dailyDates;
+    window._naverDailyCosts = dailyCosts;
     setTimeout(()=>{
       const elDT = document.getElementById('naverDailyTrend');
-      if(elDT && dailyDates.length){
-        const ex = Chart.getChart(elDT); if(ex) ex.destroy();
-        if(charts['naverDailyTrend']){try{charts['naverDailyTrend'].destroy();}catch(e){}}
-        charts['naverDailyTrend'] = new Chart(elDT, {type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,label:'광고비',borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgba(59,130,246,1)',pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:true,scales:{x:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},maxTicksLimit:20}},y:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'광고비: ₩'+Math.round(c.raw).toLocaleString()}}}}});
+      const dts = window._naverDailyDates || [];
+      const cts = window._naverDailyCosts || [];
+      if(elDT && dts.length){
+        try{ const ex = Chart.getChart(elDT); if(ex) ex.destroy(); }catch(e){}
+        try{ if(charts['naverDailyTrend']) charts['naverDailyTrend'].destroy(); }catch(e){}
+        try{
+          charts['naverDailyTrend'] = new Chart(elDT, {
+            type:'line',
+            data:{labels:dts.map(d2=>d2.slice(5)),datasets:[{data:cts,label:'광고비',borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgba(59,130,246,1)',pointHoverRadius:6}]},
+            options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},maxTicksLimit:20}},y:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'광고비: ₩'+Math.round(c.raw).toLocaleString()}}}}
+          });
+        }catch(e){ console.error('일별차트 에러:',e); }
       }
-    }, 300);
+    }, 1000);
   },80);
 }
 async function loadHourlyTab(){
