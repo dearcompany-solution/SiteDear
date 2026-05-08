@@ -1508,15 +1508,20 @@ function htmlNaver(){
         const combinedRev   = (kpi.totalPurchaseRev  || 0) + (gfa.totalRev  || 0);
         const combinedCtr   = combinedImp > 0 ? combinedClick / combinedImp * 100 : 0;
         const combinedRoas  = combinedCost > 0 ? combinedRev / combinedCost * 100 : 0;
-        return `
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">\${fmt(combinedCost)}</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">\${fmtn(combinedImp)}</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">\${fmtn(combinedClick)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">\${combinedCtr ? combinedCtr.toFixed(2)+'%' : '0%'}</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">\${fmtn(combinedConv)}건</div></div>
-      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">\${fmt(combinedRev)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">\${combinedRoas ? combinedRoas.toFixed(2)+'%' : '0%'}</div></div>
-        `;
+        const v1 = fmt(combinedCost);
+        const v2 = fmtn(combinedImp);
+        const v3 = fmtn(combinedClick);
+        const v4 = combinedCtr ? combinedCtr.toFixed(2)+'%' : '0%';
+        const v5 = fmtn(combinedConv);
+        const v6 = fmt(combinedRev);
+        const v7 = combinedRoas ? combinedRoas.toFixed(2)+'%' : '0%';
+        return '<div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">'+v1+'</div></div>'
+             + '<div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">'+v2+'</div></div>'
+             + '<div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">'+v3+'</div></div>'
+             + '<div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">'+v4+'</div></div>'
+             + '<div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">'+v5+'건</div></div>'
+             + '<div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">'+v6+'</div></div>'
+             + '<div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">'+v7+'</div></div>';
       })() }
     </div>
 
