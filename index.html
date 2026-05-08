@@ -5656,21 +5656,20 @@ async function toggleFeedbackCheck(id, currentStatus){
     if(!rows.length) return;
     // 페이지별 피드백 있는 카드에 글로우 적용
     // 중복 페이지 제거 후 탭 컨테이너 하나에만 점 표시
-    const pages = [...new Set(rows.map(r=>r.page||''))];
-    pages.forEach(page=>{
-      let tabId = '';
-      if(page.includes('요약') || page.includes('summary')) tabId = 'nt-tab-summary';
-      else if(page.includes('검색광고')) tabId = 'nt-tab-search';
-      else if(page.includes('GFA')) tabId = 'nt-tab-gfa';
-      else if(page.includes('캠페인')) tabId = 'nt-tab-campaign';
-      else if(page.includes('디바이스')) tabId = 'nt-tab-device';
-      else if(page.includes('키워드')) tabId = 'nt-tab-keyword';
-      else if(page.includes('시간대')) tabId = 'nt-tab-hourly';
-      if(tabId){
-        // 탭 버튼에만 점 표시
-        const tabBtn = document.querySelector(`.nav-tab[onclick*="'${tabId.replace('nt-tab-','')}'")`);
-        if(tabBtn) tabBtn.classList.add('has-feedback');
-      }
+    rows.forEach(r=>{
+      const cardKey = r.card_key||r.page||'';
+      if(!cardKey) return;
+      // card_key가 id인 경우
+      const byId = document.getElementById(cardKey);
+      if(byId){ byId.classList.add('has-feedback'); return; }
+      // card_key가 제목 텍스트인 경우
+      document.querySelectorAll('.card,.kpi').forEach(el=>{
+        const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
+        if(title && title === cardKey) el.classList.add('has-feedback');
+      });
+      // data-feedback-key 속성으로도 탐색
+      const byAttr = document.querySelector(`[data-feedback-key="${cardKey}"]`);
+      if(byAttr) byAttr.classList.add('has-feedback');
     });
   } catch(e){ console.warn('글로우 적용 실패:', e); }
 }
@@ -5739,6 +5738,7 @@ async function submitFeedback(page){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
     client_key:clientKey, page, title, content,
+    card_key: _ctxCardKey||page,
     author: currentUser?.name||currentUser?.id||'',
     status:'대기중', created_at: new Date().toISOString()
   })});
@@ -8208,11 +8208,11 @@ document.addEventListener('click',e=>{
 </div>
 <script>
 let _ctxPage = '';
+let _ctxCardKey = '';
 document.addEventListener('contextmenu', e=>{
   const card = e.target.closest('.card,.kpi,.rpt-section,[id^="nt-tab"]');
   if(!card) return;
   e.preventDefault();
-  const naverTab = document.querySelector('#nt-tab-summary[style*="block"], #nt-tab-search[style*="block"], #nt-tab-gfa[style*="block"], #nt-tab-campaign[style*="block"], #nt-tab-device[style*="block"], #nt-tab-keyword[style*="block"], #nt-tab-hourly[style*="block"]');
   const naverTabName = document.querySelector('.nav-tab.active')?.textContent?.trim() || '';
   const rptTabName = document.querySelector('.rpt-tab.active')?.textContent?.trim() || '';
   const currentPage = sessionStorage.getItem('currentPage') || '';
@@ -8220,6 +8220,11 @@ document.addEventListener('contextmenu', e=>{
   else if(currentPage === 'report') _ctxPage = '보고서:' + rptTabName;
   else if(currentPage === 'combined') _ctxPage = '통합 대시보드';
   else _ctxPage = naverTabName || '대시보드';
+  // 카드 고유 ID 저장 (없으면 제목 텍스트)
+  const cardTitle = card.querySelector('.card-title,.kpi-lbl')?.textContent?.trim() || '';
+  const cardId = card.id || '';
+  _ctxCardKey = cardId || cardTitle || _ctxPage;
+  card.setAttribute('data-feedback-key', _ctxCardKey);
   const menu = document.getElementById('ctxMenu');
   menu.style.display='block';
   menu.style.left = Math.min(e.clientX, window.innerWidth-180)+'px';
