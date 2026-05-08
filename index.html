@@ -471,8 +471,15 @@ canvas{max-height:210px}
   50%  { opacity:0.4; transform:scale(1.4); box-shadow:0 0 6px rgba(59,130,246,1); }
   100% { opacity:1; transform:scale(1); box-shadow:0 0 0px rgba(59,130,246,0.8); }
 }
+@keyframes feedbackBorder {
+  0%   { box-shadow: 0 0 0px rgba(59,130,246,0); border-color: transparent; }
+  50%  { box-shadow: 0 0 8px rgba(59,130,246,0.5); border-color: rgba(59,130,246,0.6); }
+  100% { box-shadow: 0 0 0px rgba(59,130,246,0); border-color: transparent; }
+}
 .has-feedback {
   position: relative;
+  border: 2px solid transparent;
+  animation: feedbackBorder 2.5s ease-in-out infinite;
 }
 .has-feedback::after {
   content: '';
@@ -5712,9 +5719,7 @@ async function toggleFeedbackCheck(id, currentStatus){
         }
         if(target){
           target.scrollIntoView({behavior:'smooth', block:'center'});
-          target.style.transition='box-shadow 0.5s';
-          target.style.boxShadow='0 0 0 3px rgba(59,130,246,0.7)';
-          setTimeout(()=>{ target.style.boxShadow=''; }, 2000);
+          // has-feedback CSS가 영구 표시하므로 별도 스타일 불필요
         }
       }, 700);
     }
