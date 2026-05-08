@@ -1928,8 +1928,7 @@ function htmlReport(){
     <div class="rpt-section">
       <div class="rpt-section-title">💡 핵심 인사이트</div>
       <div id="rptInsights"></div>
-      <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
-        <div class="rpt-section-title" style="margin:0">💬 피드백</div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
         <button class="btn btn-bl btn-sm" onclick="openFeedbackModal('보고서')">+ 피드백 추가</button>
       </div>
       <div id="rptFeedbackList" style="margin-top:12px"></div>
@@ -2635,7 +2634,7 @@ const tb=document.querySelector('#rptChannelTable tbody');
   const ins=document.getElementById('rptInsights');
   if(ins){
     if(!data.insights||!data.insights.length){
-      ins.innerHTML=`<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">📭 인사이트 데이터가 없습니다</div>`;
+      ins.innerHTML='';
     } else {
       ins.innerHTML=data.insights.map(i=>{
     const cls=i.type==='good'?'ib-good':i.type==='warn'?'ib-warn':'ib-info';
