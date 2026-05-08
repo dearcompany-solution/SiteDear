@@ -1515,13 +1515,17 @@ function htmlNaver(){
         const v5 = fmtn(combinedConv);
         const v6 = fmt(combinedRev);
         const v7 = combinedRoas ? combinedRoas.toFixed(2)+'%' : '0%';
+        const combinedRoi = combinedCost > 0 ? (combinedRev - combinedCost) / combinedCost * 100 : 0;
+        const v8 = combinedRoi ? combinedRoi.toFixed(2)+'%' : '0%';
+        const roiColor = combinedRoi >= 0 ? 'var(--naver)' : 'var(--red)';
         return '<div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">'+v1+'</div></div>'
              + '<div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">'+v2+'</div></div>'
              + '<div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">'+v3+'</div></div>'
              + '<div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">'+v4+'</div></div>'
              + '<div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">'+v5+'건</div></div>'
              + '<div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">'+v6+'</div></div>'
-             + '<div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">'+v7+'</div></div>';
+             + '<div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">'+v7+'</div></div>'
+             + '<div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">💹</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROI</div><div class="kpi-val" style="color:'+roiColor+'">'+v8+'</div></div>';
       })() }
     </div>
 
