@@ -1499,14 +1499,26 @@ function htmlNaver(){
   <div id="nt-tab-summary">
     
     <div class="kpi6">
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(kpi.totalCost)}</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(kpi.totalImp)}</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(kpi.totalClick)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${kpi.ctr ? kpi.ctr.toFixed(2)+'%' : '0%'}</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 전환수</div><div class="kpi-val">${fmtn(kpi.totalConv)}건</div></div>
-      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">🛍️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">${fmtn(kpi.totalPurchaseConv)}건</div></div>
-      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">${fmt(kpi.totalPurchaseRev)}</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
+      <%-- 검색광고+GFA 합산 계산 --%>
+      ${ (() => {
+        const gfa = d?.gfa || {};
+        const combinedCost  = (kpi.totalCost  || 0) + (gfa.totalCost  || 0);
+        const combinedImp   = (kpi.totalImp   || 0) + (gfa.totalImp   || 0);
+        const combinedClick = (kpi.totalClick || 0) + (gfa.totalClick || 0);
+        const combinedConv  = (kpi.totalPurchaseConv || 0) + (gfa.totalConv || 0);
+        const combinedRev   = (kpi.totalPurchaseRev  || 0) + (gfa.totalRev  || 0);
+        const combinedCtr   = combinedImp > 0 ? combinedClick / combinedImp * 100 : 0;
+        const combinedRoas  = combinedCost > 0 ? combinedRev / combinedCost * 100 : 0;
+        return `
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-g">💰</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(combinedCost)}</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(combinedImp)}</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(combinedClick)}</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${combinedCtr ? combinedCtr.toFixed(2)+'%' : '0%'}</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🎯</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환수</div><div class="kpi-val">${fmtn(combinedConv)}건</div></div>
+      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">구매완료 전환매출</div><div class="kpi-val">${fmt(combinedRev)}</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-n">전체</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val">${combinedRoas ? Math.round(combinedRoas*100)+'%' : '0%'}</div></div>
+        `;
+      })() }
     </div>
 
     <!-- 월별 비교 카드 -->
