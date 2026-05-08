@@ -7055,10 +7055,8 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
         },
         plugins:[dataLabelPlugin]
       });
-    } catch(e){ console.warn('월별비교 에러:', e); } } // monthlyTbody
-
     // 월별 광고비 + ROAS 막대차트
-    if(monthRows && monthRows.length){
+      if(monthRows && monthRows.length){
       const mLabels = monthRows.map(m=>m.month);
       const mCosts  = monthRows.map(m=>m.cost||0);
       const mRoas   = monthRows.map(m=>m.cost>0?+(m.purchase_rev/m.cost*100).toFixed(2):0);
@@ -7111,6 +7109,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
         }
       });
     }
+    } catch(e){ console.warn('월별비교 에러:', e); } } // monthlyTbody
 
     // 일별 광고비 추이 — 기간 필터 적용
     const fromF = currentDateRange?.from || '';
