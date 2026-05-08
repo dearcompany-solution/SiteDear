@@ -5623,8 +5623,17 @@ async function toggleFeedbackCheck(id, currentStatus){
   loadRptFeedbacks();
 }
   function navigateToFeedbackPage(page, e){
-  // 버튼/입력창 클릭 시 이동 안 함
   if(e.target.closest('button,input,textarea')) return;
+  // 보고서 내부 탭인 경우
+  if(page.startsWith('보고서:')){
+    const rptTab = page.replace('보고서:','').trim();
+    go('report',null); setActive('report');
+    setTimeout(()=>{
+      const tabEl = document.querySelector(`.rpt-tab[onclick*="${rptTab}"]`);
+      if(tabEl) tabEl.click();
+    }, 300);
+    return;
+  }
   const pageMap = {
     '요약': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
     '검색광고': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('search', document.querySelector(".nav-tab[onclick*=\"'search'\"]")),200); },
@@ -8150,7 +8159,14 @@ document.addEventListener('contextmenu', e=>{
   const card = e.target.closest('.card,.kpi,.rpt-section,[id^="nt-tab"]');
   if(!card) return;
   e.preventDefault();
-  _ctxPage = document.querySelector('.nav-tab.active')?.textContent?.trim() || document.querySelector('.rpt-tab.active')?.textContent?.trim() || '대시보드';
+  const naverTab = document.querySelector('#nt-tab-summary[style*="block"], #nt-tab-search[style*="block"], #nt-tab-gfa[style*="block"], #nt-tab-campaign[style*="block"], #nt-tab-device[style*="block"], #nt-tab-keyword[style*="block"], #nt-tab-hourly[style*="block"]');
+  const naverTabName = document.querySelector('.nav-tab.active')?.textContent?.trim() || '';
+  const rptTabName = document.querySelector('.rpt-tab.active')?.textContent?.trim() || '';
+  const currentPage = sessionStorage.getItem('currentPage') || '';
+  if(currentPage === 'naver') _ctxPage = naverTabName;
+  else if(currentPage === 'report') _ctxPage = '보고서:' + rptTabName;
+  else if(currentPage === 'combined') _ctxPage = '통합 대시보드';
+  else _ctxPage = naverTabName || '대시보드';
   const menu = document.getElementById('ctxMenu');
   menu.style.display='block';
   menu.style.left = Math.min(e.clientX, window.innerWidth-180)+'px';
