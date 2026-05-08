@@ -7113,9 +7113,12 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       });
     }
 
-    // 일별 광고비 추이 — rawDailyList 우선 사용
+    // 일별 광고비 추이 — 기간 필터 적용
     const dCurrent = REPORT_DATA[currentReportMonth];
-    const daily = (dCurrent?.rawDailyList || dCurrent?.dailyList || []);
+    const fromF = currentDateRange?.from || '';
+    const toF   = currentDateRange?.to   || '';
+    const allDaily = (dCurrent?.rawDailyList || dCurrent?.dailyList || []);
+    const daily = fromF && toF ? allDaily.filter(r => r.date >= fromF && r.date <= toF) : allDaily;
     const dailyMap = {};
     daily.forEach(r=>{
       const dt = r.date||'';
@@ -7129,7 +7132,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
     }
 
-    // 캠페인유형 비중 파이차트 — rawDailyList 기준
+    // 캠페인유형 비중 파이차트 — 기간 필터 적용
     const typeMap = {};
     daily.forEach(r=>{
       const t = (r.campaign_type||'').includes('쇼핑')?'쇼핑검색':(r.campaign_type||'').includes('파워')?'파워링크':'기타';
