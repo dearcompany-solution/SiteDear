@@ -7130,12 +7130,11 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     window._naverDailyDates = dailyDates;
     window._naverDailyCosts  = dailyCosts;
   },80);
-  // 일별 차트 — 별도 타이머로 렌더링
   setTimeout(()=>{
     const elDT = document.getElementById('naverDailyTrend');
     const dts  = window._naverDailyDates || [];
     const cts  = window._naverDailyCosts  || [];
-    if(!elDT || !dts.length) return;
+    if(!elDT || !dts.length){ console.log('일별차트: 데이터없음'); return; }
     try{ Chart.getChart(elDT)?.destroy(); }catch(e){}
     try{ charts['naverDailyTrend']?.destroy(); }catch(e){}
     charts['naverDailyTrend'] = new Chart(elDT, {
@@ -7143,7 +7142,8 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       data:{labels:dts.map(d=>d.slice(5)),datasets:[{data:cts,label:'광고비',borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgba(59,130,246,1)',pointHoverRadius:6}]},
       options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},maxTicksLimit:20}},y:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'광고비: ₩'+Math.round(c.raw).toLocaleString()}}}}
     });
-  }, 1500);
+    console.log('일별차트 완료');
+  }, 2000);
 }
 async function loadHourlyTab(){
   const el = document.getElementById('hourlyContent');
