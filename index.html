@@ -7130,7 +7130,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     if(dailyDates.length){
       mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
     }
-
+ 
     // 캠페인유형 비중 파이차트 — 기간 필터 적용
     const typeMap = {};
     daily.forEach(r=>{
