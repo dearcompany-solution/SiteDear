@@ -1102,6 +1102,8 @@ function go(id,el){
   }
   renderContent(id);
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
+  // 모든 페이지 전환 시 피드백 글로우 적용
+  setTimeout(applyFeedbackGlow, 1000);
 }
 
 /* ════════════════════════════════════════
@@ -7007,9 +7009,7 @@ function switchRptTab(id, el){
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
   if(id==='hourly')  loadHourlyTab();
-  // 탭 콘텐츠 로드 완료 후 피드백 표시 (GFA/keyword/hourly는 async라 1500ms 대기)
-  const asyncTabs = ['gfa','keyword','hourly','search'];
-  setTimeout(applyFeedbackGlow, asyncTabs.includes(id) ? 1500 : 500);
+  // 피드백 글로우는 go() 함수에서 통합 처리
   if(id==='device') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
     const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
