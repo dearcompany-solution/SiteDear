@@ -5593,7 +5593,7 @@ async function saveRequestToSupabase(req){
       return;
     }
     el.innerHTML = rows.map(r=>`
-      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='확인완료'?'var(--naver)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white)">
+      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='확인완료'?'var(--naver)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white);cursor:pointer" onclick="navigateToFeedbackPage('${r.page||''}',event)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font-size:12px;color:var(--text3)">📍 ${r.page||'대시보드'} · ${r.created_at?.slice(0,10)||''} · <b>${r.author||''}</b></div>
           <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${r.status==='확인완료'?'var(--naver)':'var(--blue)'};color:#fff">${r.status||'대기중'}</span>
@@ -5621,6 +5621,24 @@ async function toggleFeedbackCheck(id, currentStatus){
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:newStatus})});
   toast(newStatus==='확인완료' ? '✅ 확인완료로 변경됐습니다' : '↩️ 대기중으로 변경됐습니다');
   loadRptFeedbacks();
+}
+  function navigateToFeedbackPage(page, e){
+  // 버튼/입력창 클릭 시 이동 안 함
+  if(e.target.closest('button,input,textarea')) return;
+  const pageMap = {
+    '요약': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
+    '검색광고': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('search', document.querySelector(".nav-tab[onclick*=\"'search'\"]")),200); },
+    'GFA': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('gfa', document.querySelector(".nav-tab[onclick*=\"'gfa'\"]")),200); },
+    '캠페인별': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('campaign', document.querySelector(".nav-tab[onclick*=\"'campaign'\"]")),200); },
+    '디바이스': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('device', document.querySelector(".nav-tab[onclick*=\"'device'\"]")),200); },
+    '키워드': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('keyword', document.querySelector(".nav-tab[onclick*=\"'keyword'\"]")),200); },
+    '시간대별': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('hourly', document.querySelector(".nav-tab[onclick*=\"'hourly'\"]")),200); },
+    '통합 대시보드': ()=>{ go('combined',null); setActive('combined'); },
+    '보고서': ()=>{ go('report',null); setActive('report'); },
+  };
+  const nav = Object.entries(pageMap).find(([key])=>page.includes(key));
+  if(nav) nav[1]();
+  else { go('naver',null); setActive('naver'); }
 }
   async function saveRptFeedbackReply(id){
   const reply = document.getElementById('reply_'+id)?.value||'';
