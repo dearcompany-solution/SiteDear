@@ -7115,8 +7115,8 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     // 일별 광고비 추이 — 기간 필터 적용
     const fromF = currentDateRange?.from || '';
     const toF   = currentDateRange?.to   || '';
-    const dNow  = REPORT_DATA[currentReportMonth];
-    const allDaily = (dNow?.rawDailyList || dNow?.dailyList || []);
+    const dNow  = REPORT_DATA[currentReportMonth] || d;
+    const allDaily = (dNow?.rawDailyList || dNow?.dailyList || d?.rawDailyList || d?.dailyList || []);
     const daily = fromF && toF ? allDaily.filter(r => r.date >= fromF && r.date <= toF) : allDaily;
     const dailyMap2 = {};
     daily.forEach(r=>{
