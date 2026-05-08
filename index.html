@@ -6977,6 +6977,29 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
           </td>
         </tr>`;
       }).join('');
+
+      // 월별 광고비 + ROAS 막대차트 (블록 안에서 monthRows 접근)
+      const mLabels = monthRows.map(m=>m.month);
+      const mCosts  = monthRows.map(m=>m.cost||0);
+      const mRoas   = monthRows.map(m=>m.cost>0?+(m.purchase_rev/m.cost*100).toFixed(2):0);
+      mk('monthlyBarCost',{
+        type:'bar',
+        data:{labels:mLabels,datasets:[{label:'광고비',data:mCosts,
+          backgroundColor:['rgba(79,70,229,.5)','rgba(79,70,229,.75)','rgba(79,70,229,.95)'],
+          borderRadius:8,borderSkipped:false}]},
+        options:{responsive:true,
+          scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}
+      });
+      mk('monthlyBarRoas',{
+        type:'bar',
+        data:{labels:mLabels,datasets:[{label:'ROAS',data:mRoas,
+          backgroundColor:['rgba(3,199,90,.5)','rgba(3,199,90,.75)','rgba(3,199,90,.95)'],
+          borderRadius:8,borderSkipped:false}]},
+        options:{responsive:true,
+          scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(1)+'%'}}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+'%'}}}}
+      });
     } // monthlyTbody
 
     // 월별 광고비 + ROAS 막대차트
