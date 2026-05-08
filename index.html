@@ -1928,6 +1928,11 @@ function htmlReport(){
     <div class="rpt-section">
       <div class="rpt-section-title">💡 핵심 인사이트</div>
       <div id="rptInsights"></div>
+      <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
+        <div class="rpt-section-title" style="margin:0">💬 피드백</div>
+        <button class="btn btn-bl btn-sm" onclick="openFeedbackModal('보고서')">+ 피드백 추가</button>
+      </div>
+      <div id="rptFeedbackList" style="margin-top:12px"></div>
     </div>
   </div>
   </div><!-- /rpt-tab-summary -->
@@ -2625,6 +2630,8 @@ const tb=document.querySelector('#rptChannelTable tbody');
     </tr>`;
   }).join('');
 
+  // 피드백 로드
+  loadRptFeedbacks();
   const ins=document.getElementById('rptInsights');
   if(ins){
     if(!data.insights||!data.insights.length){
@@ -5571,6 +5578,85 @@ async function saveRequestToSupabase(req){
     });
   }catch(e){ console.warn('요청 저장 실패:',e); }
 }
+  async function loadRptFeedbacks(){
+  const isAdmin = currentUser?.role==='admin';
+  const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!clientKey) return;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const el = document.getElementById('rptFeedbackList');
+  if(!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">불러오는 중...</div>`;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?client_key=eq.${encodeURIComponent(clientKey)}&order=created_at.desc&select=*`,{headers:h});
+    const rows = res.ok ? await res.json() : [];
+    if(!rows.length){
+      el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">📭 등록된 피드백이 없습니다<br><span style="font-size:12px">차트나 데이터에 우클릭하거나 위 버튼으로 추가하세요</span></div>`;
+      return;
+    }
+    el.innerHTML = rows.map(r=>`
+      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='답변완료'?'var(--naver)':r.status==='확인중'?'var(--gold)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:12px;color:var(--text3)">📍 ${r.page||'대시보드'} · ${r.created_at?.slice(0,10)||''} · <b>${r.author||''}</b></div>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${r.status==='답변완료'?'var(--naver)':r.status==='확인중'?'var(--gold)':'var(--blue)'};color:#fff">${r.status||'대기중'}</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${r.title||''}</div>
+        <div style="font-size:13px;color:var(--text2)">${r.content||''}</div>
+        ${r.reply?`<div style="margin-top:10px;background:var(--blue-l);border-radius:var(--rsm);padding:10px 14px;font-size:13px;border-left:3px solid var(--naver)"><b>📌 답변:</b> ${r.reply}</div>`:''}
+        ${isAdmin?`
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <input id="reply_${r.id}" placeholder="답변 입력..." value="${r.reply||''}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px">
+          <button class="btn btn-bl btn-sm" onclick="saveRptFeedbackReply('${r.id}')">저장</button>
+          <button class="btn btn-ol btn-sm" onclick="deleteRptFeedback('${r.id}')">삭제</button>
+        </div>`:''}
+      </div>`).join('');
+  } catch(e){ el.innerHTML=`<div style="color:var(--red);padding:12px">오류가 발생했습니다</div>`; }
+}
+
+async function saveRptFeedbackReply(id){
+  const reply = document.getElementById('reply_'+id)?.value||'';
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({reply,status:'답변완료'})});
+  toast('✅ 답변이 저장됐습니다'); loadRptFeedbacks();
+}
+
+async function deleteRptFeedback(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'DELETE',headers:h});
+  toast('🗑️ 삭제됐습니다'); loadRptFeedbacks();
+}
+
+function openFeedbackModal(page){
+  document.getElementById('modalTitle').textContent='💬 피드백 추가';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:12px;color:var(--text3)">📍 위치: ${page}</div>
+      <input id="fb_title" placeholder="제목 (예: 광고비 수치 질문)" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--rsm);font-size:14px;width:100%;box-sizing:border-box">
+      <textarea id="fb_content" placeholder="내용을 입력해주세요..." rows="4" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--rsm);font-size:14px;width:100%;box-sizing:border-box;resize:vertical"></textarea>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="submitFeedback('${page}')">등록</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function submitFeedback(page){
+  const title = document.getElementById('fb_title')?.value?.trim();
+  const content = document.getElementById('fb_content')?.value?.trim();
+  if(!title||!content){ toast('⚠️ 제목과 내용을 모두 입력해주세요'); return; }
+  const isAdmin = currentUser?.role==='admin';
+  const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!clientKey){ toast('⚠️ 업체를 선택해주세요'); return; }
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  await fetch(`${SUPABASE_URL}/rest/v1/feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
+    client_key:clientKey, page, title, content,
+    author: currentUser?.name||currentUser?.id||'',
+    status:'대기중', created_at: new Date().toISOString()
+  })});
+  toast('✅ 피드백이 등록됐습니다');
+  closeModal();
+  loadRptFeedbacks();
+}
   function htmlReq(){
   return `<div style="max-width:1000px" id="reqWrap">
     <div style="text-align:center;padding:30px;color:var(--text3)">
@@ -8024,6 +8110,30 @@ document.addEventListener('click',e=>{
     initApp(page);
   }
 })();
+</script>
+<div id="ctxMenu" style="display:none;position:fixed;z-index:9999;background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0;min-width:160px">
+  <div id="ctxFeedbackBtn" style="padding:10px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='var(--blue-l)'" onmouseleave="this.style.background=''">
+    💬 피드백 추가
+  </div>
+</div>
+<script>
+let _ctxPage = '';
+document.addEventListener('contextmenu', e=>{
+  const card = e.target.closest('.card,.kpi,.rpt-section,[id^="nt-tab"]');
+  if(!card) return;
+  e.preventDefault();
+  _ctxPage = document.querySelector('.nav-tab.active')?.textContent?.trim() || document.querySelector('.rpt-tab.active')?.textContent?.trim() || '대시보드';
+  const menu = document.getElementById('ctxMenu');
+  menu.style.display='block';
+  menu.style.left = Math.min(e.clientX, window.innerWidth-180)+'px';
+  menu.style.top  = Math.min(e.clientY, window.innerHeight-80)+'px';
+});
+document.getElementById('ctxFeedbackBtn').addEventListener('click', ()=>{
+  document.getElementById('ctxMenu').style.display='none';
+  openFeedbackModal(_ctxPage);
+});
+document.addEventListener('click', ()=>{ document.getElementById('ctxMenu').style.display='none'; });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('ctxMenu').style.display='none'; });
 </script>
 </body>
 </html>
