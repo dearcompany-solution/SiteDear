@@ -1581,9 +1581,8 @@ function htmlNaver(){
       <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 채널별 ROAS</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverRoasBar"></canvas></div>
     </div>
-    <div class="row2b">
-      <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div><div class="card-sub">전체 채널 합산</div></div></div><canvas id="naverDailyTrend"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">🔄 캠페인유형 비중</div><div class="card-sub">광고비 기준</div></div></div><canvas id="naverTypePie"></canvas></div>
+    <div style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div><div class="card-sub">전체 채널 합산</div></div></div><canvas id="naverDailyTrend" height="80"></canvas></div>
     </div>
   </div>
   <div id="nt-tab-campaign" style="display:none">
@@ -7128,20 +7127,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     const dailyDates = Object.keys(dailyMap2).sort();
     const dailyCosts = dailyDates.map(d2=>dailyMap2[d2]);
     if(dailyDates.length){
-      mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
-    }
- 
-    // 캠페인유형 비중 파이차트 — 기간 필터 적용
-    const typeMap = {};
-    daily.forEach(r=>{
-      const t = (r.campaign_type||'').includes('쇼핑')?'쇼핑검색':(r.campaign_type||'').includes('파워')?'파워링크':'기타';
-      if(!typeMap[t]) typeMap[t]=0;
-      typeMap[t] += +r.cost||0;
-    });
-    const typeLabels = Object.keys(typeMap).filter(k=>typeMap[k]>0);
-    const typeData   = typeLabels.map(t=>typeMap[t]);
-    if(typeLabels.length){
-      mk('naverTypePie',{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeData,backgroundColor:['rgba(79,70,229,.85)','rgba(3,199,90,.85)','rgba(245,158,11,.85)'],borderWidth:0,borderRadius:4}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670',padding:16}}}}});
+      mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,label:'광고비',borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:20}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
     }
   },80);
 }
