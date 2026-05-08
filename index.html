@@ -1104,6 +1104,8 @@ function go(id,el){
   if(['naver','store','combined'].includes(id))setTimeout(renderCharts,100);
   // 모든 페이지 전환 시 피드백 글로우 적용
   setTimeout(applyFeedbackGlow, 1000);
+  setTimeout(applyFeedbackGlow, 2500);
+  setTimeout(applyFeedbackGlow, 4000);
 }
 
 /* ════════════════════════════════════════
@@ -5681,6 +5683,8 @@ async function toggleFeedbackCheck(id, currentStatus){
       if(byAttr) byAttr.classList.add('has-feedback');
     });
   } catch(e){ console.warn('글로우 적용 실패:', e); }
+  // 3초 후 다시 실행 (카드가 DOM에 없을 때 대비)
+  setTimeout(applyFeedbackGlow, 3000);
 }
   function navigateToFeedbackPage(page, e){
   if(e.target.closest('button,input,textarea')) return;
