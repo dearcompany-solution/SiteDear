@@ -7113,20 +7113,20 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
       });
     }
 
-    // 일별 광고비 추이 — 기간 필터 적용 (d 재사용)
+    // 일별 광고비 추이 — 기간 필터 적용
     const fromF = currentDateRange?.from || '';
     const toF   = currentDateRange?.to   || '';
     const allDaily = (d?.rawDailyList || d?.dailyList || []);
     const daily = fromF && toF ? allDaily.filter(r => r.date >= fromF && r.date <= toF) : allDaily;
-    const dailyMap = {};
+    const dailyMap2 = {};
     daily.forEach(r=>{
       const dt = r.date||'';
       if(!dt) return;
-      if(!dailyMap[dt]) dailyMap[dt]=0;
-      dailyMap[dt] += +r.cost||0;
+      if(!dailyMap2[dt]) dailyMap2[dt]=0;
+      dailyMap2[dt] += +r.cost||0;
     });
-    const dailyDates = Object.keys(dailyMap).sort();
-    const dailyCosts = dailyDates.map(d2=>dailyMap[d2]);
+    const dailyDates = Object.keys(dailyMap2).sort();
+    const dailyCosts = dailyDates.map(d2=>dailyMap2[d2]);
     if(dailyDates.length){
       mk('naverDailyTrend',{type:'line',data:{labels:dailyDates.map(d2=>d2.slice(5)),datasets:[{data:dailyCosts,borderColor:'rgba(59,130,246,1)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(59,130,246,1)'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
     }
