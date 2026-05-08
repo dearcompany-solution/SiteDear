@@ -3907,17 +3907,30 @@ function saveOneFile(fileObj, client) {
             });
           }
           if(!campRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 캠페인 데이터 없음`); return; }
-          fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
-            body:JSON.stringify(campRows)
-          }).then(res=>{
-            if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=campRows.length;
-            renderUploadTab();
-            toast(`✅ ${fileObj.name} 캠페인별 — ${campRows.length}개 저장 완료!`);
-            saveUploadLog(client, fileObj.name, 'campaign', month, campRows.length);
-          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 캠페인 저장 실패: '+err.message); });
+          (async () => {
+            try {
+              const campMonths = [...new Set(campRows.map(r=>r.month))];
+              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              for(const m of campMonths){
+                const delRes = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{method:'DELETE',headers:dh});
+                if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+                console.log(`[DELETE OK] daily_reports 캠페인 / ${m}`);
+              }
+              await new Promise(r=>setTimeout(r,300));
+              const BATCH=100; let saved=0;
+              for(let i=0;i<campRows.length;i+=BATCH){
+                const batch=campRows.slice(i,i+BATCH);
+                const postRes=await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{method:'POST',headers:{...dh,'Prefer':'return=minimal'},body:JSON.stringify(batch)});
+                if(!postRes.ok) throw new Error(await postRes.text());
+                saved+=batch.length; fileObj.status=`저장중 ${saved}/${campRows.length}`; renderUploadTab();
+                await new Promise(r=>setTimeout(r,50));
+              }
+              fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=campRows.length;
+              renderUploadTab();
+              toast(`✅ ${fileObj.name} 캠페인별 — ${campRows.length}개 저장 완료!`);
+              saveUploadLog(client, fileObj.name, 'campaign', month, campRows.length);
+            } catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 캠페인 저장 실패: '+err.message); }
+          })();
           return;
         }
 
@@ -3954,17 +3967,30 @@ function saveOneFile(fileObj, client) {
             });
           }
           if(!deviceRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 매체 데이터 없음`); return; }
-          fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
-            body:JSON.stringify(deviceRows)
-          }).then(res=>{
-            if(!res.ok) return res.text().then(t=>{throw new Error(t);});
-            fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=deviceRows.length;
-            renderUploadTab();
-            toast(`✅ ${fileObj.name} 매체별 — ${deviceRows.length}개 저장 완료!`);
-            saveUploadLog(client, fileObj.name, 'device', month, deviceRows.length);
-          }).catch(err=>{ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 매체 저장 실패: '+err.message); });
+          (async () => {
+            try {
+              const devMonths = [...new Set(deviceRows.map(r=>r.month))];
+              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              for(const m of devMonths){
+                const delRes = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{method:'DELETE',headers:dh});
+                if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+                console.log(`[DELETE OK] daily_reports 매체 / ${m}`);
+              }
+              await new Promise(r=>setTimeout(r,300));
+              const BATCH=100; let saved=0;
+              for(let i=0;i<deviceRows.length;i+=BATCH){
+                const batch=deviceRows.slice(i,i+BATCH);
+                const postRes=await fetch(`${SUPABASE_URL}/rest/v1/daily_reports`,{method:'POST',headers:{...dh,'Prefer':'return=minimal'},body:JSON.stringify(batch)});
+                if(!postRes.ok) throw new Error(await postRes.text());
+                saved+=batch.length; fileObj.status=`저장중 ${saved}/${deviceRows.length}`; renderUploadTab();
+                await new Promise(r=>setTimeout(r,50));
+              }
+              fileObj.status='저장완료'; fileObj.savedMonth=month; fileObj.savedCount=deviceRows.length;
+              renderUploadTab();
+              toast(`✅ ${fileObj.name} 매체별 — ${deviceRows.length}개 저장 완료!`);
+              saveUploadLog(client, fileObj.name, 'device', month, deviceRows.length);
+            } catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 매체 저장 실패: '+err.message); }
+          })();
           return;
         } 
 
