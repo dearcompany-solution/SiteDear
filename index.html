@@ -6926,7 +6926,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
 
     // 월별 비교 테이블 렌더링 (최근 3개월)
     const monthlyTbody = document.getElementById('monthlyCompareTbody');
-    if(monthlyTbody){
+    if(monthlyTbody){ try{
       monthlyTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text3)">불러오는 중...</td></tr>';
       // 최근 3개월 계산
       const [cy, cm] = currentReportMonth.split('-').map(Number);
@@ -7055,7 +7055,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
         },
         plugins:[dataLabelPlugin]
       });
-    } // monthlyTbody
+    } catch(e){ console.warn('월별비교 에러:', e); } } // monthlyTbody
 
     // 월별 광고비 + ROAS 막대차트
     if(monthRows && monthRows.length){
@@ -7128,6 +7128,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     const dailyDates = Object.keys(dailyMap2).sort();
     const dailyCosts = dailyDates.map(d2=>dailyMap2[d2]);
     // 일별 차트 직접 렌더링 (await 완료 후)
+    try{
     const elDT = document.getElementById('naverDailyTrend');
     if(elDT && dailyDates.length){
       try{ Chart.getChart(elDT)?.destroy(); }catch(e){}
@@ -7138,6 +7139,7 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
         options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},maxTicksLimit:20}},y:{grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10},callback:v=>'₩'+Math.round(v/1000)+'천'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'광고비: ₩'+Math.round(c.raw).toLocaleString()}}}}
       });
     }
+    }catch(e){ console.warn('일별차트 에러:', e); }
   },80);
 }
 async function loadHourlyTab(){
