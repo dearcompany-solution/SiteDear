@@ -5594,17 +5594,21 @@ async function saveRequestToSupabase(req){
       return;
     }
     el.innerHTML = rows.map(r=>`
-      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='답변완료'?'var(--naver)':r.status==='확인중'?'var(--gold)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white)">
+      <div style="border:1px solid var(--border);border-left:4px solid ${r.status==='확인완료'?'var(--naver)':'var(--blue)'};border-radius:var(--rsm);padding:14px;margin-bottom:10px;background:var(--white)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font-size:12px;color:var(--text3)">📍 ${r.page||'대시보드'} · ${r.created_at?.slice(0,10)||''} · <b>${r.author||''}</b></div>
-          <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${r.status==='답변완료'?'var(--naver)':r.status==='확인중'?'var(--gold)':'var(--blue)'};color:#fff">${r.status||'대기중'}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${r.status==='확인완료'?'var(--naver)':'var(--blue)'};color:#fff">${r.status||'대기중'}</span>
         </div>
         <div style="font-size:14px;font-weight:600;margin-bottom:4px">${r.title||''}</div>
         <div style="font-size:13px;color:var(--text2)">${r.content||''}</div>
         ${r.reply?`<div style="margin-top:10px;background:var(--blue-l);border-radius:var(--rsm);padding:10px 14px;font-size:13px;border-left:3px solid var(--naver)"><b>📌 답변:</b> ${r.reply}</div>`:''}
         ${isAdmin?`
-        <div style="margin-top:10px;display:flex;gap:8px">
-          <input id="reply_${r.id}" placeholder="답변 입력..." value="${r.reply||''}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px">
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm" onclick="toggleFeedbackCheck('${r.id}','${r.status}')"
+            style="background:${r.status==='확인완료'?'var(--naver)':'var(--border)'};color:${r.status==='확인완료'?'#fff':'var(--text2)'};border:none;padding:6px 14px;border-radius:var(--rsm);font-size:13px;cursor:pointer">
+            ${r.status==='확인완료'?'✅ 확인완료':'☐ 확인'}
+          </button>
+          <input id="reply_${r.id}" placeholder="답변 입력... (선택사항)" value="${r.reply||''}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px">
           <button class="btn btn-bl btn-sm" onclick="saveRptFeedbackReply('${r.id}')">저장</button>
           <button class="btn btn-ol btn-sm" onclick="deleteRptFeedback('${r.id}')">삭제</button>
         </div>`:''}
@@ -5612,7 +5616,14 @@ async function saveRequestToSupabase(req){
   } catch(e){ el.innerHTML=`<div style="color:var(--red);padding:12px">오류가 발생했습니다</div>`; }
 }
 
-async function saveRptFeedbackReply(id){
+async function toggleFeedbackCheck(id, currentStatus){
+  const newStatus = currentStatus==='확인완료' ? '대기중' : '확인완료';
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:newStatus})});
+  toast(newStatus==='확인완료' ? '✅ 확인완료로 변경됐습니다' : '↩️ 대기중으로 변경됐습니다');
+  loadRptFeedbacks();
+}
+  async function saveRptFeedbackReply(id){
   const reply = document.getElementById('reply_'+id)?.value||'';
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({reply,status:'답변완료'})});
