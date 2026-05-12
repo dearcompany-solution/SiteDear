@@ -1147,6 +1147,11 @@ function renderContent(id){
       setTimeout(async()=>{
         const d=await fetchReportData(currentReportMonth);
         if(d) REPORT_DATA[currentReportMonth]=d;
+        // 스토어 캐시 없으면 fetch
+        const isAdm = currentUser?.role==='admin';
+        const ck = isAdm?(activeClientId||''):(currentUser?.id||'');
+        const cacheKey = `_store_store_sales_${ck}_${currentReportMonth}`;
+        if(!window[cacheKey]) window[cacheKey] = await fetchStoreData('store_sales');
         c.innerHTML=htmlCombined();
         setTimeout(renderCharts,50);
       },50);
