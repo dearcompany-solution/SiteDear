@@ -3958,7 +3958,8 @@ function saveOneFile(fileObj, client) {
         // ① 헤더 행 자동 탐색
         let headerIdx = -1, cols = [];
         const TARGET_COLS = ['일별','시간대별','검색어','키워드명','키워드',
-          '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수','클릭수'];
+          '게재 위치','광고 계정 이름','기간','캠페인유형','PC/모바일 매체','노출수','클릭수',
+          '날짜','결제자수','결제수','결제금액','시간대','상품카테고리(대)','상품명','상품ID'];
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
           const raw = lines[i].replace(/^\uFEFF/, ''); // 행별 BOM 잔존 제거
           if (!raw || !raw.trim()) continue;
