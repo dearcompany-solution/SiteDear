@@ -1133,7 +1133,15 @@ function renderContent(id){
     },100);
   })();
   break;
-    case 'store':    c.innerHTML=htmlStore();break;
+    case 'store':
+      c.innerHTML=htmlStore();
+      // 백그라운드 미리 로드
+      setTimeout(async()=>{
+        if(!window._storeSalesCache) window._storeSalesCache = await fetchStoreData('store_sales');
+        if(!window._storeProductCache) window._storeProductCache = await fetchStoreData('store_products');
+        switchStoreTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]"));
+      }, 50);
+      break;
     case 'combined':
       c.innerHTML=htmlCombined();
       setTimeout(async()=>{
@@ -1876,9 +1884,14 @@ async function fetchStoreData(table){
   const isAdmin = currentUser?.role==='admin';
   const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
   if(!clientKey) return [];
+  // 캐시 확인
+  const cacheKey = `_store_${table}_${clientKey}_${currentReportMonth}`;
+  if(window[cacheKey]) return window[cacheKey];
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?client_key=eq.${encodeURIComponent(clientKey)}&month=eq.${currentReportMonth}&select=*`,{headers:h});
-  return res.ok ? await res.json() : [];
+  const data = res.ok ? await res.json() : [];
+  window[cacheKey] = data; // 캐시 저장
+  return data;
 }
 
 async function loadStoreSummary(){
