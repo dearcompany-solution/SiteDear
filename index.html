@@ -1792,59 +1792,64 @@ function htmlStore(){
   return `
   <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
     <button class="nav-tab active" onclick="switchStoreTab('summary',this)">🚀 요약</button>
-    <button class="nav-tab" onclick="switchStoreTab('sales',this)">📦 판매성과</button>
-    <button class="nav-tab" onclick="switchStoreTab('product',this)">🛍️ 상품성과</button>
+    <button class="nav-tab" onclick="switchStoreTab('hourly',this)">⏰ 시간대별</button>
+    <button class="nav-tab" onclick="switchStoreTab('product',this)">🛍️ 상품별</button>
   </div>
 
   <!-- 요약 탭 -->
   <div id="st-tab-summary">
-    <div class="kpi6" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 주문수</div><div class="kpi-val" id="st-orders">0건</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 매출액</div><div class="kpi-val" id="st-rev">₩0</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-avg">₩0</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">📊</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 전환율</div><div class="kpi-val" id="st-cvr">0%</div></div>
-      <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">반품·취소율</div><div class="kpi-val" id="st-ret">0%</div></div>
-      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-i">🏷️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">수수료</div><div class="kpi-val" id="st-fee">₩0</div></div>
+    <div class="kpi6">
+      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💰</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제금액</div><div class="kpi-val" id="st-kpi-rev">—</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제수</div><div class="kpi-val" id="st-kpi-orders">—</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👤</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">결제자수</div><div class="kpi-val" id="st-kpi-buyers">—</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-kpi-avg">—</div></div>
+      <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불금액</div><div class="kpi-val" id="st-kpi-refund">—</div></div>
+      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">📱</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">모바일 비율</div><div class="kpi-val" id="st-kpi-mobile">—</div></div>
     </div>
-    <div class="row2">
-      <div class="card"><div class="card-hd"><div><div class="card-title">일별 매출 · 주문수 추이</div></div></div><canvas id="storeTrend"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">카테고리별 매출 비중</div></div></div><canvas id="storePie"></canvas></div>
+    <div class="row2b" style="margin-top:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📱 모바일 vs PC</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stMobilePie" height="120"></canvas></div>
     </div>
-    <div class="empty" style="margin-top:16px"><div class="ei">🟠</div><p>스마트스토어 데이터를 파일로 업로드해주세요</p></div>
+    <div class="row2b" style="margin-top:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📅 요일별 결제금액</div><div class="card-sub">요일별 합산</div></div></div><canvas id="stDowBar" height="120"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">↩️ 일별 환불 추이</div><div class="card-sub">환불금액 기준</div></div></div><canvas id="stRefundLine" height="120"></canvas></div>
+    </div>
   </div>
 
-  <!-- 판매성과 탭 -->
-  <div id="st-tab-sales" style="display:none">
-    <div class="rpt-kpi-row">
-      <div class="rpt-kpi rk1"><div class="rpt-kpi-lbl">총 주문수</div><div class="rpt-kpi-val" id="st-s-orders">—</div></div>
-      <div class="rpt-kpi rk2"><div class="rpt-kpi-lbl">총 매출액</div><div class="rpt-kpi-val" id="st-s-rev">—</div></div>
-      <div class="rpt-kpi rk3"><div class="rpt-kpi-lbl">평균 주문금액</div><div class="rpt-kpi-val" id="st-s-avg">—</div></div>
-      <div class="rpt-kpi rk4"><div class="rpt-kpi-lbl">전환율</div><div class="rpt-kpi-val" id="st-s-cvr">—</div></div>
-      <div class="rpt-kpi rk5"><div class="rpt-kpi-lbl">반품·취소율</div><div class="rpt-kpi-val" id="st-s-ret">—</div></div>
+  <!-- 시간대별 탭 -->
+  <div id="st-tab-hourly" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hd"><div><div class="card-title">⏰ 시간대별 결제금액</div><div class="card-sub">시간대별 합산</div></div></div>
+      <canvas id="stHourlyBar" height="100"></canvas>
     </div>
-    <div class="card" style="padding:0;overflow:hidden;margin-top:16px">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">📦 일별 판매 성과</div>
-      </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">⏰ 시간대별 상세</div></div>
       <div style="overflow-x:auto">
         <table class="tbl">
-          <thead><tr><th>날짜</th><th>주문수</th><th>매출액</th><th>평균단가</th><th>전환율</th><th>반품수</th></tr></thead>
-          <tbody id="stSalesTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">스마트스토어 판매 데이터를 업로드해주세요</td></tr></tbody>
+          <thead><tr><th>시간대</th><th>결제수</th><th>결제금액</th><th>결제자수</th><th>평균주문금액</th><th>환불수</th></tr></thead>
+          <tbody id="stHourlyTbody"></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- 상품성과 탭 -->
+  <!-- 상품별 탭 -->
   <div id="st-tab-product" style="display:none">
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">🏆 TOP 10 상품</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stTopBar" height="160"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">⚠️ 환불금액 높은 상품</div><div class="card-sub">환불금액 기준</div></div></div><div id="stRefundList" style="padding:8px 0"></div></div>
+    </div>
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600">🛍️ 상품별 판매 순위</div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:14px;font-weight:600">🛍️ 전체 상품 성과</div>
+        <input id="stProductSearch" placeholder="상품명 검색..." oninput="filterStoreProducts()" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-size:13px;width:200px">
       </div>
-      <div style="overflow-x:auto">
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
         <table class="tbl">
-          <thead><tr><th>순위</th><th>상품명</th><th>판매수량</th><th>매출액</th><th>평균단가</th><th>비중</th></tr></thead>
-          <tbody id="stProductTbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">스마트스토어 상품 데이터를 업로드해주세요</td></tr></tbody>
+          <thead style="position:sticky;top:0;background:var(--white);z-index:1">
+            <tr><th>순위</th><th>상품명</th><th>결제수</th><th>수량</th><th>결제금액</th><th>모바일비율</th><th>환불수</th><th>환불율</th></tr>
+          </thead>
+          <tbody id="stProductTbody"></tbody>
         </table>
       </div>
     </div>
@@ -1855,12 +1860,128 @@ function htmlStore(){
     if(b.getAttribute('onclick')?.includes('switchStoreTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','sales','product'].forEach(t=>{
+  ['summary','hourly','product'].forEach(t=>{
     const p = document.getElementById('st-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
+  if(id==='summary') setTimeout(loadStoreSummary, 100);
+  if(id==='hourly')  setTimeout(loadStoreHourly, 100);
+  if(id==='product') setTimeout(loadStoreProduct, 100);
 }
-/* ════ COMBINED ════ */
+let _storeProductRows = [];
+
+async function fetchStoreData(table){
+  const isAdmin = currentUser?.role==='admin';
+  const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
+  if(!clientKey) return [];
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?client_key=eq.${encodeURIComponent(clientKey)}&month=eq.${currentReportMonth}&select=*`,{headers:h});
+  return res.ok ? await res.json() : [];
+}
+
+async function loadStoreSummary(){
+  const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+  const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10}}};
+  const fmt=v=>'₩'+Math.round(v||0).toLocaleString();
+  const rows=await fetchStoreData('store_sales');
+  if(!rows.length){
+    ['st-kpi-rev','st-kpi-orders','st-kpi-buyers','st-kpi-avg','st-kpi-refund','st-kpi-mobile'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='데이터 없음';});
+    return;
+  }
+  const from=currentDateRange?.from||''; const to=currentDateRange?.to||'';
+  const filtered=from&&to?rows.filter(r=>r.date>=from&&r.date<=to):rows;
+  const totalRev=filtered.reduce((s,r)=>s+(+r.revenue||0),0);
+  const totalOrders=filtered.reduce((s,r)=>s+(+r.orders||0),0);
+  const totalBuyers=filtered.reduce((s,r)=>s+(+r.buyers||0),0);
+  const totalRefund=filtered.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const avgOrder=totalOrders>0?totalRev/totalOrders:0;
+  const mobileRev=filtered.reduce((s,r)=>s+(+r.revenue||0)*(+r.mobile_ratio_revenue||0),0);
+  const mobileRatio=totalRev>0?mobileRev/totalRev*100:0;
+  document.getElementById('st-kpi-rev').textContent=fmt(totalRev);
+  document.getElementById('st-kpi-orders').textContent=totalOrders.toLocaleString()+'건';
+  document.getElementById('st-kpi-buyers').textContent=totalBuyers.toLocaleString()+'명';
+  document.getElementById('st-kpi-avg').textContent=fmt(avgOrder);
+  document.getElementById('st-kpi-refund').textContent=fmt(totalRefund);
+  document.getElementById('st-kpi-mobile').textContent=mobileRatio.toFixed(1)+'%';
+  const dayMap={};
+  filtered.forEach(r=>{if(!dayMap[r.date])dayMap[r.date]={rev:0,refund:0};dayMap[r.date].rev+=+r.revenue||0;dayMap[r.date].refund+=+r.refund_amount||0;});
+  const days=Object.keys(dayMap).sort();
+  mk('stDailyRev',{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{data:days.map(d=>dayMap[d].rev),label:'결제금액',borderColor:'rgba(3,199,90,1)',backgroundColor:'rgba(3,199,90,.08)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+  mk('stMobilePie',{type:'doughnut',data:{labels:['모바일','PC'],datasets:[{data:[mobileRev,totalRev-mobileRev],backgroundColor:['rgba(3,199,90,.85)','rgba(79,70,229,.85)'],borderWidth:0,borderRadius:4}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#4a5670',padding:12}}}}});
+  const DAYS=['일','월','화','수','목','금','토'];
+  const dowMap={};DAYS.forEach(d=>dowMap[d]=0);
+  filtered.forEach(r=>{if(r.weekday)dowMap[r.weekday]=(dowMap[r.weekday]||0)+(+r.revenue||0);});
+  mk('stDowBar',{type:'bar',data:{labels:DAYS,datasets:[{data:DAYS.map(d=>dowMap[d]),backgroundColor:DAYS.map(d=>d==='토'||d==='일'?'rgba(245,158,11,.8)':'rgba(79,70,229,.7)'),borderRadius:6,borderSkipped:false}]},options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+  mk('stRefundLine',{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:[{data:days.map(d=>dayMap[d].refund),label:'환불금액',borderColor:'rgba(239,68,68,1)',backgroundColor:'rgba(239,68,68,.08)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+}
+
+async function loadStoreHourly(){
+  const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+  const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10}}};
+  const fmt=v=>'₩'+Math.round(v||0).toLocaleString();
+  const rows=await fetchStoreData('store_sales');
+  const from=currentDateRange?.from||''; const to=currentDateRange?.to||'';
+  const filtered=from&&to?rows.filter(r=>r.date>=from&&r.date<=to):rows;
+  const hourMap={};
+  for(let i=0;i<24;i++)hourMap[String(i).padStart(2,'0')+'시']={orders:0,rev:0,buyers:0,refund:0};
+  filtered.forEach(r=>{
+    const slot=r.time_slot||'';if(!slot)return;
+    const h=slot.replace(/시.*/,'').trim();
+    const key=String(+h).padStart(2,'0')+'시';
+    if(hourMap[key]){hourMap[key].orders+=(+r.orders||0);hourMap[key].rev+=(+r.revenue||0);hourMap[key].buyers+=(+r.buyers||0);hourMap[key].refund+=(+r.refund_count||0);}
+  });
+  const hours=Object.keys(hourMap).sort();
+  mk('stHourlyBar',{type:'bar',data:{labels:hours,datasets:[{data:hours.map(h=>hourMap[h].rev),backgroundColor:'rgba(79,70,229,.7)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+  const tbody=document.getElementById('stHourlyTbody');
+  if(tbody)tbody.innerHTML=hours.map(h=>`<tr>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${h}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${hourMap[h].orders.toLocaleString()}건</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(hourMap[h].rev)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${hourMap[h].buyers.toLocaleString()}명</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${hourMap[h].orders>0?fmt(hourMap[h].rev/hourMap[h].orders):'—'}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${hourMap[h].refund.toLocaleString()}건</td>
+  </tr>`).join('');
+}
+
+async function loadStoreProduct(){
+  const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+  const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10}}};
+  const fmt=v=>'₩'+Math.round(v||0).toLocaleString();
+  const rows=await fetchStoreData('store_products');
+  _storeProductRows=rows.sort((a,b)=>(+b.revenue||0)-(+a.revenue||0));
+  const top10=_storeProductRows.slice(0,10);
+  const shortName=n=>n.length>15?n.slice(0,15)+'…':n;
+  mk('stTopBar',{type:'bar',data:{labels:top10.map(r=>shortName(r.product_name||'')),datasets:[{data:top10.map(r=>+r.revenue||0),backgroundColor:'rgba(3,199,90,.75)',borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}},y:{...ax}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₩'+Math.round(c.raw).toLocaleString()}}}}});
+  const refundList=document.getElementById('stRefundList');
+  if(refundList){
+    const highRefund=[..._storeProductRows].filter(r=>(+r.refund_count||0)>0).sort((a,b)=>(+b.refund_amount||0)-(+a.refund_amount||0)).slice(0,5);
+    refundList.innerHTML=highRefund.length?highRefund.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.product_name||''}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--red);margin-left:12px;white-space:nowrap">${fmt(+r.refund_amount||0)}</div></div>`).join(''):`<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">환불 데이터 없음</div>`;
+  }
+  renderStoreProductTable(_storeProductRows);
+}
+
+function filterStoreProducts(){
+  const q=(document.getElementById('stProductSearch')?.value||'').trim().toLowerCase();
+  renderStoreProductTable(q?_storeProductRows.filter(r=>(r.product_name||'').toLowerCase().includes(q)):_storeProductRows);
+}
+
+function renderStoreProductTable(rows){
+  const fmt=v=>'₩'+Math.round(v||0).toLocaleString();
+  const tbody=document.getElementById('stProductTbody');
+  if(!tbody)return;
+  tbody.innerHTML=rows.length?rows.map((r,i)=>`<tr>
+    <td style="font-size:12px;color:var(--text3)">${i+1}</td>
+    <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.product_name||''}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.orders||0).toLocaleString()}건</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.qty||0).toLocaleString()}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--naver)">${fmt(+r.revenue||0)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${((+r.mobile_ratio||0)*100).toFixed(1)}%</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--red)">${(+r.refund_count||0).toLocaleString()}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:${(+r.refund_ratio||0)>0.1?'var(--red)':'var(--text2)'}">${((+r.refund_ratio||0)*100).toFixed(1)}%</td>
+  </tr>`).join(''):`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">데이터 없음</td></tr>`;
+}
+
+  /* ════ COMBINED ════ */
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
@@ -3869,6 +3990,8 @@ function saveOneFile(fileObj, client) {
         }
 
         // ── 파일 타입 판별 (컬럼명 기반, 순서 무관) ──
+        const isStoreSales    = cols.includes('결제자수') && cols.includes('시간대');
+        const isStoreProduct  = cols.includes('상품카테고리(대)') && cols.includes('상품명');
         const hasGFA      = cols.includes('게재 위치') || (cols.includes('기간') && cols.includes('광고 계정 이름'));
         const hasHourly   = cols.includes('시간대별');
         const hasKeyword  = cols.some(c => ['검색어','키워드명','키워드'].includes(c));
@@ -4091,7 +4214,88 @@ function saveOneFile(fileObj, client) {
         } 
 
         
-                // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
+                // 스토어 판매성과 처리
+        if(isStoreSales){
+          const stRows=[];
+          const monthVal = month||currentReportMonth;
+          for(let ri=headerIdx+1;ri<lines.length;ri++){
+            const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+            if(!c[0]||!c[0].match(/^\d{4}/)) continue;
+            stRows.push({
+              client_key:client, month:monthVal,
+              date:c[0], weekday:c[1]||'', time_slot:c[2]||'',
+              buyers:Math.round(+c[3]||0), orders:Math.round(+c[4]||0),
+              mobile_ratio_orders:+(+c[5]||0).toFixed(4),
+              revenue:Math.round(+c[6]||0),
+              mobile_ratio_revenue:+(+c[7]||0).toFixed(4),
+              avg_order_value:Math.round(+c[8]||0),
+              order_qty:Math.round(+c[9]||0),
+              shipping_fee:Math.round(+c[11]||0),
+              refund_count:Math.round(+c[15]||0),
+              refund_amount:Math.round(+c[16]||0),
+              refund_ratio:+(+c[17]||0).toFixed(4)
+            });
+          }
+          if(!stRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
+          (async()=>{
+            try{
+              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales?client_key=eq.${encodeURIComponent(client)}&month=eq.${monthVal}`,{method:'DELETE',headers:h2});
+              if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+              await new Promise(r=>setTimeout(r,300));
+              for(let i=0;i<stRows.length;i+=100){
+                const postRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales`,{method:'POST',headers:{...h2,'Prefer':'return=minimal'},body:JSON.stringify(stRows.slice(i,i+100))});
+                if(!postRes.ok) throw new Error(await postRes.text());
+                fileObj.status=`저장중 ${Math.min(i+100,stRows.length)}/${stRows.length}`; renderUploadTab();
+                await new Promise(r=>setTimeout(r,50));
+              }
+              fileObj.status='저장완료'; fileObj.savedCount=stRows.length;
+              renderUploadTab(); toast(`✅ ${fileObj.name} — ${stRows.length}개 저장 완료!`);
+            }catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 스토어 판매 저장 실패: '+err.message); }
+          })();
+          return;
+        }
+
+        // 스토어 상품성과 처리
+        if(isStoreProduct){
+          const spRows=[];
+          const monthVal = month||currentReportMonth;
+          for(let ri=headerIdx+1;ri<lines.length;ri++){
+            const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+            if(!c[4]) continue;
+            spRows.push({
+              client_key:client, month:monthVal,
+              category_l:c[0]||'', category_m:c[1]||'', category_s:c[2]||'', category_d:c[3]||'',
+              product_name:c[4]||'', product_id:c[5]||'',
+              orders:Math.round(+c[6]||0), qty:Math.round(+c[7]||0),
+              mobile_ratio:+(+c[8]||0).toFixed(4),
+              revenue:Math.round(+c[9]||0),
+              refund_count:Math.round(+c[15]||0),
+              refund_amount:Math.round(+c[16]||0),
+              refund_ratio:+(+c[17]||0).toFixed(4)
+            });
+          }
+          if(!spRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
+          (async()=>{
+            try{
+              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_products?client_key=eq.${encodeURIComponent(client)}&month=eq.${monthVal}`,{method:'DELETE',headers:h2});
+              if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+              await new Promise(r=>setTimeout(r,300));
+              for(let i=0;i<spRows.length;i+=100){
+                const postRes=await fetch(`${SUPABASE_URL}/rest/v1/store_products`,{method:'POST',headers:{...h2,'Prefer':'return=minimal'},body:JSON.stringify(spRows.slice(i,i+100))});
+                if(!postRes.ok) throw new Error(await postRes.text());
+                fileObj.status=`저장중 ${Math.min(i+100,spRows.length)}/${spRows.length}`; renderUploadTab();
+                await new Promise(r=>setTimeout(r,50));
+              }
+              fileObj.status='저장완료'; fileObj.savedCount=spRows.length;
+              renderUploadTab(); toast(`✅ ${fileObj.name} — ${spRows.length}개 저장 완료!`);
+            }catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 스토어 상품 저장 실패: '+err.message); }
+          })();
+          return;
+        }
+
+        // GFA 파일 처리 (수정본 - 일별 성과 대시보드 연동)
         if(hasGFA){
           const isDaily     = cols.includes('기간') && !cols.includes('게재 위치');
           const isPlacement = cols.includes('게재 위치');
