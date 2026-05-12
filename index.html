@@ -2011,36 +2011,32 @@ function htmlCombined(){
   const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
   return `
 ${ (()=>{
-  // 검색광고 KPI
-  const naverCost = kpi.totalCost||0;
-  const naverRev  = kpi.totalPurchaseRev||0;
-  const naverConv = kpi.totalPurchaseConv||0;
-  const naverClick= kpi.totalClick||0;
-  // GFA KPI
-  const gfa = d?.gfa||{};
-  const gfaCost = gfa.totalCost||0;
-  const gfaRev  = gfa.totalRev||0;
-  const gfaConv = gfa.totalConv||0;
-  // 스마트스토어 KPI (캐시에서)
+  // 네이버 검색광고
+  const naverCost  = kpi.totalCost||0;
+  const naverImp   = kpi.totalImp||0;
+  const naverClick = kpi.totalClick||0;
+  const naverRev   = kpi.totalPurchaseRev||0;
+  const roasVal    = naverCost>0?(naverRev/naverCost*100):0;
+  // 스마트스토어 캐시
   const isAdmin = currentUser?.role==='admin';
   const ck = isAdmin?(activeClientId||''):(currentUser?.id||'');
   const stCache = window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
-  const stRev   = stCache.reduce((s,r)=>s+(+r.revenue||0),0);
-  const stRefund= stCache.reduce((s,r)=>s+(+r.refund_amount||0),0);
-  const stOrders= stCache.reduce((s,r)=>s+(+r.orders||0),0);
-  const stNetRev= stRev-stRefund;
-  // 합산
-  const totalAdCost = naverCost+gfaCost;
-  const totalRev    = naverRev+gfaRev+stNetRev;
-  const totalConv   = naverConv+gfaConv+stOrders;
-  const roas = totalAdCost>0?(totalRev/totalAdCost*100):0;
+  const from = currentDateRange?.from||'';
+  const to   = currentDateRange?.to||'';
+  const stF  = from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+  const stRev    = stF.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund = stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const stOrders = stF.reduce((s,r)=>s+(+r.orders||0),0);
+  const stNetRev = stRev-stRefund;
   return `<div class="sum-bar">
-  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(totalAdCost)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">💵 전환매출</div><div class="sum-val" style="color:var(--store)">${fmt(totalRev)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${roas?roas.toFixed(2)+'%':'0%'}</div></div>
-  <div class="sum-item"><div class="sum-lbl">🎯 총 전환·결제</div><div class="sum-val" style="color:var(--blue)">${fmtn(totalConv)}건</div></div>
-  <div class="sum-item"><div class="sum-lbl">👆 검색광고 클릭</div><div class="sum-val">${fmtn(naverClick)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">🛒 스토어 실매출</div><div class="sum-val" style="color:var(--store)">${fmt(stNetRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(naverCost)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">👁️ 노출수</div><div class="sum-val">${fmtn(naverImp)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">👆 클릭수</div><div class="sum-val">${fmtn(naverClick)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${roasVal?roasVal.toFixed(2)+'%':'0%'}</div></div>
+  <div class="sum-item"><div class="sum-lbl">🛒 결제금액</div><div class="sum-val" style="color:var(--store)">${fmt(stRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">↩️ 환불금액</div><div class="sum-val" style="color:var(--red)">${fmt(stRefund)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">💵 실매출</div><div class="sum-val" style="color:var(--naver)">${fmt(stNetRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">📦 결제수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
 </div>`;
 })() }
 <div class="row2b">
