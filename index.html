@@ -1849,7 +1849,7 @@ function htmlStore(){
       <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
         <table class="tbl">
           <thead style="position:sticky;top:0;background:var(--white);z-index:1">
-            <tr><th>순위</th><th>상품명</th><th>결제수</th><th>수량</th><th>결제금액</th><th>모바일비율</th><th>환불수</th><th>환불율</th></tr>
+            <tr><th>순위</th><th>상품명</th><th>상품ID</th><th>결제수</th><th>수량</th><th>결제금액</th><th>모바일비율</th><th>환불수</th><th>환불율</th></tr>
           </thead>
           <tbody id="stProductTbody"></tbody>
         </table>
@@ -1978,13 +1978,14 @@ function renderStoreProductTable(rows){
   tbody.innerHTML=rows.length?rows.map((r,i)=>`<tr>
     <td style="font-size:12px;color:var(--text3)">${i+1}</td>
     <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.product_name||''}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3)">${r.product_id||''}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.orders||0).toLocaleString()}건</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.qty||0).toLocaleString()}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--naver)">${fmt(+r.revenue||0)}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${((+r.mobile_ratio||0)*100).toFixed(1)}%</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--red)">${(+r.refund_count||0).toLocaleString()}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:${(+r.refund_ratio||0)>0.1?'var(--red)':'var(--text2)'}">${((+r.refund_ratio||0)*100).toFixed(1)}%</td>
-  </tr>`).join(''):`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">데이터 없음</td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">데이터 없음</td></tr>`;
 }
 
   /* ════ COMBINED ════ */
