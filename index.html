@@ -2548,7 +2548,7 @@ async function loadReportData(month){
     $s('rk-click', fmtN(data.kpi.totalClick));
     $s('rk-cost',  fmt(data.kpi.totalCost));
     $s('rk-rev',   fmt(data.kpi.totalRev));
-    $s('rk-roas',  (data.kpi.roas*100).toFixed(0)+'%');
+    $s('rk-roas',  data.kpi.roas ? data.kpi.roas.toFixed(2)+'%' : '0%');
     $s('rk-click-sub', momStr(data.mom.click)+' <span style="color:var(--text3);font-size:10px">전월비</span>');
     $s('rk-cost-sub',  momStr(data.mom.cost) +' <span style="color:var(--text3);font-size:10px">전월비</span>');
     $s('rk-rev-sub',   momStr(data.mom.rev)  +' <span style="color:var(--text3);font-size:10px">전월비</span>');
@@ -3210,12 +3210,12 @@ async function downloadExcelReport(){
     const s1=[['항목','수치'],['기간',data.period],['업체',data.client],['담당 매니저',data.manager],
       ['총 노출수',kpi.totalImp||0],['총 클릭수',kpi.totalClick||0],['총 광고비',kpi.totalCost||0],
       ['총 전환수',kpi.totalConv||0],['전환매출',kpi.totalRev||0],
-      ['ROAS',kpi.roas?Math.round(kpi.roas*100)+'%':'0%'],
+      ['ROAS',kpi.roas?kpi.roas.toFixed(2)+'%':'0%'],
       ['CTR',kpi.ctr?kpi.ctr.toFixed(2)+'%':'0%'],['CPC',Math.round(kpi.cpc||0)]];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s1),'KPI 요약');
     // 시트2: 채널별
     const s2=[['채널','노출수','클릭수','광고비','전환수','전환매출','ROAS']];
-    (data.channels||[]).forEach(c=>s2.push([c.name,c.imp,c.click,c.cost,c.conv,c.rev,c.roas?Math.round(c.roas*100)+'%':'0%']));
+    (data.channels||[]).forEach(c=>s2.push([c.name,c.imp,c.click,c.cost,c.conv,c.rev,c.roas?c.roas.toFixed(2)+'%':'0%']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s2),'채널별');
     // 시트3: 주별
     const s3=[['주차','노출수','클릭수','광고비','전환수','전환매출']];
@@ -6754,7 +6754,7 @@ function switchRptTab(id, el){
     $s('rk-click', fmtn(kpi.totalClick));
     $s('rk-cost',  fmt(kpi.totalCost));
     $s('rk-rev',   fmt(kpi.totalRev));
-    $s('rk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+    $s('rk-roas',  kpi.roas ? kpi.roas.toFixed(2)+'%' : '0%');
     const ct = document.querySelector('#wkChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptWeeklyTbody');
@@ -6823,7 +6823,7 @@ function switchRptTab(id, el){
     $s('rk-click', fmtn(kpi.totalClick));
     $s('rk-cost',  fmt(kpi.totalCost));
     $s('rk-rev',   fmt(kpi.totalRev));
-    $s('rk-roas',  kpi.roas?Math.round(kpi.roas*100)+'%':'0%');
+    $s('rk-roas',  kpi.roas ? kpi.roas.toFixed(2)+'%' : '0%');
     const ct = document.querySelector('#moChannelTable tbody');
     if(ct) ct.innerHTML = channelRowsHtml;
     const tb = document.getElementById('rptMonthlyTbody');
