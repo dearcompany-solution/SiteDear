@@ -1800,13 +1800,13 @@ function htmlStore(){
   <div id="st-tab-summary">
     <div class="kpi6">
       <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💰</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제금액</div><div class="kpi-val" id="st-kpi-rev">—</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제수</div><div class="kpi-val" id="st-kpi-orders">—</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👤</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">결제자수</div><div class="kpi-val" id="st-kpi-buyers">—</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-kpi-avg">—</div></div>
       <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불금액</div><div class="kpi-val" id="st-kpi-refund">—</div></div>
-      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">📱</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">모바일 비율</div><div class="kpi-val" id="st-kpi-mobile">—</div></div>
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">실매출</div><div class="kpi-val" id="st-kpi-netrev">—</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-kpi-avg">—</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제수</div><div class="kpi-val" id="st-kpi-orders">—</div></div>
       <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🔄</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불건수</div><div class="kpi-val" id="st-kpi-refundcnt">—</div></div>
+      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👤</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">결제자수</div><div class="kpi-val" id="st-kpi-buyers">—</div></div>
+      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">📱</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">모바일/PC</div><div class="kpi-val" id="st-kpi-mobile">—</div></div>
     </div>
     <div class="row2b" style="margin-top:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
@@ -1849,7 +1849,7 @@ function htmlStore(){
       <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
         <table class="tbl">
           <thead style="position:sticky;top:0;background:var(--white);z-index:1">
-            <tr><th>순위</th><th>상품명</th><th>상품ID</th><th>결제수</th><th>수량</th><th>결제금액</th><th>모바일비율</th><th>환불수</th><th>환불율</th></tr>
+            <tr><th>순위</th><th>상품ID</th><th>상품명</th><th>결제수</th><th>수량</th><th>결제금액</th><th>모바일비율</th><th>환불수</th><th>환불율</th></tr>
           </thead>
           <tbody id="stProductTbody"></tbody>
         </table>
@@ -1906,7 +1906,8 @@ async function loadStoreSummary(){
   const totalRefundCnt=filtered.reduce((s,r)=>s+(+r.refund_count||0),0);
   const netRev=totalRev-totalRefund;
   document.getElementById('st-kpi-refund').textContent=fmt(totalRefund);
-  document.getElementById('st-kpi-mobile').textContent=mobileRatio.toFixed(1)+'%';
+  const pcRatio = 100 - mobileRatio;
+  document.getElementById('st-kpi-mobile').textContent='📱'+mobileRatio.toFixed(1)+'% / 💻'+pcRatio.toFixed(1)+'%';
   document.getElementById('st-kpi-netrev').textContent=fmt(netRev);
   document.getElementById('st-kpi-refundcnt').textContent=totalRefundCnt.toLocaleString()+'건';
   const dayMap={};
@@ -1977,8 +1978,8 @@ function renderStoreProductTable(rows){
   if(!tbody)return;
   tbody.innerHTML=rows.length?rows.map((r,i)=>`<tr>
     <td style="font-size:12px;color:var(--text3)">${i+1}</td>
-    <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.product_name||''}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3)">${r.product_id||''}</td>
+    <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.product_name||''}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.orders||0).toLocaleString()}건</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${(+r.qty||0).toLocaleString()}</td>
     <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--naver)">${fmt(+r.revenue||0)}</td>
