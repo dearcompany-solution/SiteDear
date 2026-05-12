@@ -4218,22 +4218,25 @@ function saveOneFile(fileObj, client) {
         if(isStoreSales){
           const stRows=[];
           const monthVal = month||currentReportMonth;
+          // 숫자 파싱 헬퍼 (쉼표/공백/% 제거)
+          const pNum = v => parseFloat((v||'').replace(/,/g,'').replace(/%/g,'').trim()) || 0;
+          const pPct = v => { const n=parseFloat((v||'').replace(/%/g,'').trim()); return isNaN(n)?0:n/100; };
           for(let ri=headerIdx+1;ri<lines.length;ri++){
             const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
             if(!c[0]||!c[0].match(/^\d{4}/)) continue;
             stRows.push({
               client_key:client, month:monthVal,
               date:c[0], weekday:c[1]||'', time_slot:c[2]||'',
-              buyers:Math.round(+c[3]||0), orders:Math.round(+c[4]||0),
-              mobile_ratio_orders:+(+c[5]||0).toFixed(4),
-              revenue:Math.round(+c[6]||0),
-              mobile_ratio_revenue:+(+c[7]||0).toFixed(4),
-              avg_order_value:Math.round(+c[8]||0),
-              order_qty:Math.round(+c[9]||0),
-              shipping_fee:Math.round(+c[11]||0),
-              refund_count:Math.round(+c[15]||0),
-              refund_amount:Math.round(+c[16]||0),
-              refund_ratio:+(+c[17]||0).toFixed(4)
+              buyers:Math.round(pNum(c[3])), orders:Math.round(pNum(c[4])),
+              mobile_ratio_orders:+pPct(c[5]).toFixed(4),
+              revenue:Math.round(pNum(c[6])),
+              mobile_ratio_revenue:+pPct(c[7]).toFixed(4),
+              avg_order_value:Math.round(pNum(c[8])),
+              order_qty:Math.round(pNum(c[9])),
+              shipping_fee:Math.round(pNum(c[11])),
+              refund_count:Math.round(pNum(c[15])),
+              refund_amount:Math.round(pNum(c[16])),
+              refund_ratio:+pPct(c[17]).toFixed(4)
             });
           }
           if(!stRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
@@ -4260,6 +4263,8 @@ function saveOneFile(fileObj, client) {
         if(isStoreProduct){
           const spRows=[];
           const monthVal = month||currentReportMonth;
+          const pNum = v => parseFloat((v||'').replace(/,/g,'').replace(/%/g,'').trim()) || 0;
+          const pPct = v => { const n=parseFloat((v||'').replace(/%/g,'').trim()); return isNaN(n)?0:n/100; };
           for(let ri=headerIdx+1;ri<lines.length;ri++){
             const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
             if(!c[4]) continue;
@@ -4267,12 +4272,12 @@ function saveOneFile(fileObj, client) {
               client_key:client, month:monthVal,
               category_l:c[0]||'', category_m:c[1]||'', category_s:c[2]||'', category_d:c[3]||'',
               product_name:c[4]||'', product_id:c[5]||'',
-              orders:Math.round(+c[6]||0), qty:Math.round(+c[7]||0),
-              mobile_ratio:+(+c[8]||0).toFixed(4),
-              revenue:Math.round(+c[9]||0),
-              refund_count:Math.round(+c[15]||0),
-              refund_amount:Math.round(+c[16]||0),
-              refund_ratio:+(+c[17]||0).toFixed(4)
+              orders:Math.round(pNum(c[6])), qty:Math.round(pNum(c[7])),
+              mobile_ratio:+pPct(c[8]).toFixed(4),
+              revenue:Math.round(pNum(c[9])),
+              refund_count:Math.round(pNum(c[15])),
+              refund_amount:Math.round(pNum(c[16])),
+              refund_ratio:+pPct(c[17]).toFixed(4)
             });
           }
           if(!spRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
