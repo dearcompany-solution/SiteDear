@@ -1805,6 +1805,8 @@ function htmlStore(){
       <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-kpi-avg">—</div></div>
       <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불금액</div><div class="kpi-val" id="st-kpi-refund">—</div></div>
       <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">📱</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">모바일 비율</div><div class="kpi-val" id="st-kpi-mobile">—</div></div>
+      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">실매출</div><div class="kpi-val" id="st-kpi-netrev">—</div></div>
+      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🔄</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불건수</div><div class="kpi-val" id="st-kpi-refundcnt">—</div></div>
     </div>
     <div class="row2b" style="margin-top:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
@@ -1901,8 +1903,12 @@ async function loadStoreSummary(){
   document.getElementById('st-kpi-orders').textContent=totalOrders.toLocaleString()+'건';
   document.getElementById('st-kpi-buyers').textContent=totalBuyers.toLocaleString()+'명';
   document.getElementById('st-kpi-avg').textContent=fmt(avgOrder);
+  const totalRefundCnt=filtered.reduce((s,r)=>s+(+r.refund_count||0),0);
+  const netRev=totalRev-totalRefund;
   document.getElementById('st-kpi-refund').textContent=fmt(totalRefund);
   document.getElementById('st-kpi-mobile').textContent=mobileRatio.toFixed(1)+'%';
+  document.getElementById('st-kpi-netrev').textContent=fmt(netRev);
+  document.getElementById('st-kpi-refundcnt').textContent=totalRefundCnt.toLocaleString()+'건';
   const dayMap={};
   filtered.forEach(r=>{if(!dayMap[r.date])dayMap[r.date]={rev:0,refund:0};dayMap[r.date].rev+=+r.revenue||0;dayMap[r.date].refund+=+r.refund_amount||0;});
   const days=Object.keys(dayMap).sort();
