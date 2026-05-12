@@ -4224,8 +4224,17 @@ function saveOneFile(fileObj, client) {
           // 숫자 파싱 헬퍼 (쉼표/공백/% 제거)
           const pNum = v => parseFloat((v||'').replace(/,/g,'').replace(/%/g,'').trim()) || 0;
           const pPct = v => { const n=parseFloat((v||'').replace(/%/g,'').trim()); return isNaN(n)?0:n/100; };
+          const csvSplit = line => {
+            const r=[]; let cur='', inQ=false;
+            for(let i=0;i<line.length;i++){
+              if(line[i]==='"'){inQ=!inQ;}
+              else if(line[i]===','&&!inQ){r.push(cur.trim());cur='';}
+              else cur+=line[i];
+            }
+            r.push(cur.trim()); return r;
+          };
           for(let ri=headerIdx+1;ri<lines.length;ri++){
-            const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+            const c=csvSplit(lines[ri]);
             if(!c[0]||!c[0].match(/^\d{4}/)) continue;
             stRows.push({
               client_key:client, month:monthVal,
@@ -4269,8 +4278,17 @@ function saveOneFile(fileObj, client) {
           const monthVal = fnMatch ? fnMatch[1] : (month||currentReportMonth);
           const pNum = v => parseFloat((v||'').replace(/,/g,'').replace(/%/g,'').trim()) || 0;
           const pPct = v => { const n=parseFloat((v||'').replace(/%/g,'').trim()); return isNaN(n)?0:n/100; };
+          const csvSplit = line => {
+            const r=[]; let cur='', inQ=false;
+            for(let i=0;i<line.length;i++){
+              if(line[i]==='"'){inQ=!inQ;}
+              else if(line[i]===','&&!inQ){r.push(cur.trim());cur='';}
+              else cur+=line[i];
+            }
+            r.push(cur.trim()); return r;
+          };
           for(let ri=headerIdx+1;ri<lines.length;ri++){
-            const c=lines[ri].split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+            const c=csvSplit(lines[ri]);
             if(!c[4]) continue;
             spRows.push({
               client_key:client, month:monthVal,
