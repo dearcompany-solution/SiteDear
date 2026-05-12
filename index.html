@@ -2010,13 +2010,39 @@ function htmlCombined(){
   const fmt  = v => '₩'+Math.round(+v||0).toLocaleString('ko-KR');
   const fmtn = v => Math.round(+v||0).toLocaleString('ko-KR');
   return `
-<div class="sum-bar">
-  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(kpi.totalCost)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">💵 전환매출</div><div class="sum-val" style="color:var(--store)">${fmt(kpi.totalRev)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${kpi.roas ? Math.round(kpi.roas*100)+'%' : '0%'}</div></div>
-  <div class="sum-item"><div class="sum-lbl">🎯 총 전환수</div><div class="sum-val" style="color:var(--blue)">${fmtn(kpi.totalConv)}건</div></div>
-  <div class="sum-item"><div class="sum-lbl">👆 총 클릭수</div><div class="sum-val">${fmtn(kpi.totalClick)}</div></div>
-</div>
+${ (()=>{
+  // 검색광고 KPI
+  const naverCost = kpi.totalCost||0;
+  const naverRev  = kpi.totalPurchaseRev||0;
+  const naverConv = kpi.totalPurchaseConv||0;
+  const naverClick= kpi.totalClick||0;
+  // GFA KPI
+  const gfa = d?.gfa||{};
+  const gfaCost = gfa.totalCost||0;
+  const gfaRev  = gfa.totalRev||0;
+  const gfaConv = gfa.totalConv||0;
+  // 스마트스토어 KPI (캐시에서)
+  const isAdmin = currentUser?.role==='admin';
+  const ck = isAdmin?(activeClientId||''):(currentUser?.id||'');
+  const stCache = window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+  const stRev   = stCache.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund= stCache.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const stOrders= stCache.reduce((s,r)=>s+(+r.orders||0),0);
+  const stNetRev= stRev-stRefund;
+  // 합산
+  const totalAdCost = naverCost+gfaCost;
+  const totalRev    = naverRev+gfaRev+stNetRev;
+  const totalConv   = naverConv+gfaConv+stOrders;
+  const roas = totalAdCost>0?(totalRev/totalAdCost*100):0;
+  return `<div class="sum-bar">
+  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(totalAdCost)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">💵 전환매출</div><div class="sum-val" style="color:var(--store)">${fmt(totalRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${roas?roas.toFixed(2)+'%':'0%'}</div></div>
+  <div class="sum-item"><div class="sum-lbl">🎯 총 전환·결제</div><div class="sum-val" style="color:var(--blue)">${fmtn(totalConv)}건</div></div>
+  <div class="sum-item"><div class="sum-lbl">👆 검색광고 클릭</div><div class="sum-val">${fmtn(naverClick)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">🛒 스토어 실매출</div><div class="sum-val" style="color:var(--store)">${fmt(stNetRev)}</div></div>
+</div>`;
+})() }
 <div class="row2b">
   <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
@@ -6944,9 +6970,36 @@ function renderCharts(){
 
   mk('storePie',{type:'doughnut',data:{labels:['아이소파','유아체육교구','층간소음매트','기타'],datasets:[{data:[45,22,18,15],backgroundColor:['#03C75A','#3B82F6','#F59E0B','#c5c9d6'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
 
-  mk('combinedBar',{type:'bar',data:{labels:['1월 광고비','2월 광고비','1월 전환매출','2월 전환매출'],datasets:[{data:[3943720,3593700,12470340,14081410],backgroundColor:['rgba(3,199,90,.5)','rgba(3,199,90,.85)','rgba(255,107,53,.5)','rgba(255,107,53,.85)'],borderRadius:6}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{display:false}}}});
+  // 실제 데이터 기반 채널별 광고비 vs 전환매출
+  const d2 = REPORT_DATA[currentReportMonth];
+  const kpi2 = d2?.kpi||{};
+  const gfa2 = d2?.gfa||{};
+  const isAdmin2 = currentUser?.role==='admin';
+  const ck2 = isAdmin2?(activeClientId||''):(currentUser?.id||'');
+  const stCache2 = window[`_store_store_sales_${ck2}_${currentReportMonth}`]||[];
+  const stRev2 = stCache2.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund2 = stCache2.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const stNetRev2 = stRev2-stRefund2;
+  const naverCost2 = kpi2.totalCost||0;
+  const gfaCost2   = gfa2.totalCost||0;
+  const naverRev2  = kpi2.totalPurchaseRev||0;
+  const gfaRev2    = gfa2.totalRev||0;
 
-  mk('roasLine',{type:'line',data:{labels:['8월','9월','10월','11월','12월','1월','2월'],datasets:[{label:'ROAS(배)',data:[3.37,4.79,1.82,3.32,10.97,3.16,3.92],borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,borderWidth:2.5,pointBackgroundColor:'#F59E0B',pointRadius:5}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v+'x'}}},plugins:{legend:lg}}});
+  mk('combinedBar',{type:'bar',data:{
+    labels:['네이버 검색광고','GFA','스마트스토어'],
+    datasets:[
+      {label:'광고비',data:[naverCost2,gfaCost2,0],backgroundColor:'rgba(79,70,229,.75)',borderRadius:6},
+      {label:'전환매출',data:[naverRev2,gfaRev2,stNetRev2],backgroundColor:'rgba(3,199,90,.75)',borderRadius:6}
+    ]
+  },options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{position:'bottom',labels:lg}}}});
+
+  // 월별 ROAS 추이 (최근 보유 데이터 기반)
+  const months = Object.keys(REPORT_DATA).sort().slice(-6);
+  const roasData = months.map(m=>{
+    const mk2=REPORT_DATA[m]?.kpi||{};
+    return mk2.totalCost>0?+(mk2.totalPurchaseRev/mk2.totalCost*100).toFixed(2):0;
+  });
+  mk('roasLine',{type:'line',data:{labels:months.map(m=>m.slice(5)+'월'),datasets:[{label:'ROAS(%)',data:roasData,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.07)',borderWidth:2,tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#F59E0B'}]},options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(0)+'%'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+'%'}}}}});
 }
 
 /* ════ NAVER TAB ════ */
