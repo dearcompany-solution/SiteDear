@@ -6994,8 +6994,22 @@ function renderCharts(){
     ]
   },options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{position:'bottom',labels:lg}}}});
 
-  // 월별 ROAS 추이 (최근 보유 데이터 기반)
-  const months = Object.keys(REPORT_DATA).sort().slice(-6);
+  // 월별 ROAS 추이 — 최대 12개월 fetch (있는 것만 표시)
+  const [cy2,cm2] = currentReportMonth.split('-').map(Number);
+  const recentM = [];
+  for(let i=11;i>=0;i--){
+    let mm=cm2-i; let yy=cy2;
+    if(mm<=0){mm+=12;yy--;}
+    recentM.push(`${yy}-${String(mm).padStart(2,'0')}`);
+  }
+  await Promise.all(recentM.map(async mo=>{
+    if(!REPORT_DATA[mo]){
+      const rd=await fetchReportData(mo);
+      if(rd) REPORT_DATA[mo]=rd;
+    }
+  }));
+  // 데이터 있는 달만 필터 (kpi.totalCost > 0)
+  const months = recentM.filter(m=>REPORT_DATA[m]?.kpi?.totalCost>0);
   const roasData = months.map(m=>{
     const mk2=REPORT_DATA[m]?.kpi||{};
     return mk2.totalCost>0?+(mk2.totalPurchaseRev/mk2.totalCost*100).toFixed(2):0;
