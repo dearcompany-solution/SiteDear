@@ -2305,6 +2305,15 @@ async function refreshAllPages(){
   } else if(activePage==='store'){
     c.innerHTML=htmlStore();
     setTimeout(renderCharts,50);
+  } else if(activePage==='meta'){
+    // META 캐시 클리어 (기간 변경 시 새 데이터 fetch)
+    Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
+    c.innerHTML=htmlMeta();
+    const savedMetaTab = sessionStorage.getItem('currentMetaTab') || 'summary';
+    setTimeout(()=>{
+      const tabEl = document.querySelector(`.nav-tab[onclick*="switchMetaTab('${savedMetaTab}'"]`);
+      switchMetaTab(savedMetaTab, tabEl);
+    },50);
   }
 }
 async function fetchReportData(month){
