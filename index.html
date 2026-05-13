@@ -2070,12 +2070,31 @@ ${!d ? `<div class="empty" style="margin-top:16px;cursor:pointer" onclick="showD
 function htmlReport(){
   loadMonthlyTrend();
 
+  // 데이터 유무에 따라 탭 동적 생성
+  const d = REPORT_DATA[currentReportMonth];
+  const hasNaver = d?.kpi?.totalCost>0 || d?.kpi?.totalImp>0;
+  const hasGFA   = d?.gfa?.totalCost>0 || d?.gfa?.totalImp>0;
+  const isAdmin  = currentUser?.role==='admin';
+  const ck       = isAdmin?(activeClientId||''):(currentUser?.id||'');
+  const fromMonth= currentDateRange?.from?.slice(0,7)||currentReportMonth;
+  const toMonth  = currentDateRange?.to?.slice(0,7)||currentReportMonth;
+  const metaCache= window[`_meta_${ck}_${fromMonth}_${toMonth}`];
+  const hasMeta  = metaCache && metaCache.length>0;
+
+  const rptTabs=[];
+  if(hasNaver||hasGFA||hasMeta) rptTabs.push({id:'summary',icon:'📊',label:'통합 요약'});
+  if(hasNaver) rptTabs.push({id:'weekly',icon:'📅',label:'주간 데이터'});
+  if(hasNaver) rptTabs.push({id:'monthly',icon:'📆',label:'월간 데이터'});
+  if(hasGFA) rptTabs.push({id:'gfa',icon:'📡',label:'GFA'});
+  if(hasMeta) rptTabs.push({id:'meta',icon:'🔵',label:'META'});
+  if(!rptTabs.length) rptTabs.push({id:'summary',icon:'📊',label:'통합 요약'});
+
+  const firstTab = rptTabs[0].id;
+  const tabBtns = rptTabs.map((t,i)=>`<button class="nav-tab${i===0?' active':''}" onclick="switchRptTab('${t.id}',this)">${t.icon} ${t.label}</button>`).join('\n    ');
+
  return `
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-    <button class="nav-tab active" onclick="switchRptTab('summary',this)">📊 통합 요약</button>
-    <button class="nav-tab" onclick="switchRptTab('weekly',this)">📅 주간 데이터</button>
-    <button class="nav-tab" onclick="switchRptTab('monthly',this)">📆 월간 데이터</button>
-    <button class="nav-tab" onclick="switchRptTab('gfa',this)">📡 GFA</button>
+    ${tabBtns}
   </div>
 
     <div class="rpt-kpi-row" id="rptMainKpiRow">
@@ -6079,20 +6098,27 @@ async function toggleFeedbackCheck(id, currentStatus){
   if(nav){
     nav[1]();
     if(cardKey){
-      setTimeout(()=>{
+      let _fbRetry=0;
+      const _fbFind=()=>{
         let target = document.getElementById(cardKey)
           || document.querySelector(`[data-feedback-key="${cardKey}"]`);
         if(!target){
-          document.querySelectorAll('.card,.kpi').forEach(el=>{
-            const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
-            if(title && cardKey.includes(title)) target = el;
+          document.querySelectorAll('.card,.kpi,.rpt-section,.kpi-card').forEach(el=>{
+            const title = el.querySelector('.card-title,.kpi-lbl,.rpt-section-title,.card-hd')?.textContent?.trim()||'';
+            if(title && (cardKey.includes(title) || title.includes(cardKey))) target = el;
           });
         }
         if(target){
           target.scrollIntoView({behavior:'smooth', block:'center'});
-          // has-feedback CSS가 영구 표시하므로 별도 스타일 불필요
+          target.style.outline='2px solid var(--blue)';
+          target.style.outlineOffset='4px';
+          setTimeout(()=>{target.style.outline='';target.style.outlineOffset='';},3000);
+        } else if(_fbRetry<10){
+          _fbRetry++;
+          setTimeout(_fbFind, 500);
         }
-      }, 700);
+      };
+      setTimeout(_fbFind, 500);
     }
   } else { go('naver',null); setActive('naver'); }
 }
