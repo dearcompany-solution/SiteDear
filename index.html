@@ -2276,10 +2276,17 @@ function htmlReport(){
     </div>
   </div>
 
-  <!-- GFA 탭 -->
+ <!-- GFA 탭 -->
   <div id="rpt-tab-gfa" style="display:none">
     <div id="rptGfaContent">
       <div class="empty"><div class="ei">📡</div><p>GFA 탭을 클릭하면 데이터를 불러옵니다</p></div>
+    </div>
+  </div>
+
+  <!-- META 탭 -->
+  <div id="rpt-tab-meta" style="display:none">
+    <div id="rptMetaContent">
+      <div class="empty"><div class="ei">🔵</div><p>META 탭을 클릭하면 데이터를 불러옵니다</p></div>
     </div>
   </div>
   `;
@@ -7331,13 +7338,14 @@ function switchRptTab(id, el){
     if(b.getAttribute('onclick')?.includes('switchRptTab')) b.classList.remove('active');
   });
   if(el) el.classList.add('active');
-  ['summary','weekly','monthly','gfa'].forEach(t=>{
+  ['summary','weekly','monthly','gfa','meta'].forEach(t=>{
     const p = document.getElementById('rpt-tab-'+t);
     if(p) p.style.display = t===id ? 'block' : 'none';
   });
   const kpiRow = document.getElementById('rptMainKpiRow');
-  if(kpiRow) kpiRow.style.display = id==='gfa' ? 'none' : 'grid';
+  if(kpiRow) kpiRow.style.display = (id==='gfa'||id==='meta') ? 'none' : 'grid';
   if(id==='gfa'){ setTimeout(loadRptGFATab, 50); return; }
+  if(id==='meta'){ setTimeout(loadRptMetaTab, 50); return; }
 
   const fmt  = v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
   const fmtn = v=>Math.round(+v||0).toLocaleString('ko-KR');
@@ -8459,7 +8467,101 @@ async function loadKeywordTab(){
 async function loadRptGFATab(){
   await loadGFATab('rptGfaContent');
 }
-  async function loadGFATab(targetElId='gfaContent'){
+  async function loadRptMetaTab(){
+  const el=document.getElementById('rptMetaContent');
+  if(!el)return;
+  el.innerHTML=`<div class="empty"><div class="ei">🔵</div><p>불러오는 중...</p></div>`;
+  const isAdmin=currentUser?.role==='admin';
+  const targetClient=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!targetClient){el.innerHTML=`<div class="empty"><div class="ei">🔵</div><p>업체를 선택해주세요</p></div>`;return;}
+  const fromMonth=currentDateRange?.from?.slice(0,7)||currentReportMonth;
+  const toMonth=currentDateRange?.to?.slice(0,7)||currentReportMonth;
+  const fromDate=currentDateRange?.from||`${fromMonth}-01`;
+  const toDate=currentDateRange?.to||`${toMonth}-31`;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const cacheKey=`_meta_${targetClient}_${fromMonth}_${toMonth}`;
+  if(!window[cacheKey]){
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+    const data=await res.json();
+    window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+  }
+  const rows=window[cacheKey];
+  if(!rows.length){el.innerHTML=`<div class="empty"><div class="ei">🔵</div><p>META 데이터가 없습니다</p></div>`;return;}
+
+  const fmt=v=>'₩'+Math.round(v||0).toLocaleString('ko-KR');
+  const fmtn=v=>(v||0).toLocaleString('ko-KR');
+  const calcR=(cost,rev)=>cost>0?(rev/cost*100).toFixed(2)+'%':'—';
+  const rc=(cost,rev)=>cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
+
+  const total={cost:0,imp:0,click:0,reach:0,purchase:0,purchase_rev:0};
+  rows.forEach(r=>{total.cost+=+r.cost||0;total.imp+=+r.imp||0;total.click+=+r.click||0;total.reach+=+r.reach||0;total.purchase+=+r.purchase||0;total.purchase_rev+=+r.purchase_rev||0;});
+  const totalCtr=total.imp>0?(total.click/total.imp*100):0;
+  const totalCpc=total.click>0?total.cost/total.click:0;
+  const totalCpm=total.imp>0?(total.cost/total.imp*1000):0;
+  const totalFreq=total.reach>0?(total.imp/total.reach):0;
+
+  // 캠페인별 집계
+  const campMap={};
+  rows.forEach(r=>{const c=r.campaign_name||'기타';if(!campMap[c])campMap[c]={cost:0,imp:0,click:0,reach:0};campMap[c].cost+=+r.cost||0;campMap[c].imp+=+r.imp||0;campMap[c].click+=+r.click||0;campMap[c].reach+=+r.reach||0;});
+  const camps=Object.entries(campMap).sort((a,b)=>b[1].cost-a[1].cost);
+  const campRows=camps.map(([name,c],i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+    <td style="font-size:12.5px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</td>
+    <td style="font-family:monospace;font-size:12px">${fmt(c.cost)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(c.imp)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(c.click)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(c.reach)}</td>
+    <td style="font-family:monospace;font-size:12px">${c.imp>0?(c.click/c.imp*100).toFixed(2)+'%':'—'}</td>
+    <td style="font-family:monospace;font-size:12px">${c.click>0?fmt(Math.round(c.cost/c.click)):'—'}</td>
+  </tr>`).join('');
+
+  // 일별 집계
+  const dailyMap={};
+  rows.forEach(r=>{const d=r.date||'';if(!d)return;if(!dailyMap[d])dailyMap[d]={date:d,cost:0,imp:0,click:0,reach:0};dailyMap[d].cost+=+r.cost||0;dailyMap[d].imp+=+r.imp||0;dailyMap[d].click+=+r.click||0;dailyMap[d].reach+=+r.reach||0;});
+  const dailyList=Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+  const WEEKDAYS=['일','월','화','수','목','금','토'];
+  const dailyRows=dailyList.map((d,i)=>{const wd=WEEKDAYS[new Date(d.date).getDay()];const isWk=wd==='일'||wd==='토';return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+    <td style="font-family:monospace;font-size:12px">${d.date}</td>
+    <td style="font-size:12px;font-weight:600;color:${isWk?'var(--red)':'var(--text1)'}">${wd}</td>
+    <td style="font-family:monospace;font-size:12px">${fmt(d.cost)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(d.imp)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(d.click)}</td>
+    <td style="font-family:monospace;font-size:12px">${fmtn(d.reach)}</td>
+    <td style="font-family:monospace;font-size:12px">${d.imp>0?(d.click/d.imp*100).toFixed(2)+'%':'—'}</td>
+    <td style="font-family:monospace;font-size:12px">${d.click>0?fmt(Math.round(d.cost/d.click)):'—'}</td>
+  </tr>`;}).join('');
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+      <div class="kpi kn"><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(total.cost)}</div></div>
+      <div class="kpi kb"><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(total.imp)}</div></div>
+      <div class="kpi kb"><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(total.click)}</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">도달수</div><div class="kpi-val">${fmtn(total.reach)}</div></div>
+      <div class="kpi ks"><div class="kpi-lbl">CTR</div><div class="kpi-val">${totalCtr.toFixed(2)}%</div></div>
+      <div class="kpi kn"><div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(totalCpc)}</div></div>
+      <div class="kpi ki"><div class="kpi-lbl">CPM</div><div class="kpi-val">${fmt(totalCpm)}</div></div>
+      <div class="kpi ks"><div class="kpi-lbl">빈도</div><div class="kpi-val">${totalFreq.toFixed(2)}</div></div>
+    </div>
+    <div class="rpt-compare" style="margin-bottom:16px">
+      <div class="rpt-section"><div class="rpt-section-title">📅 일별 광고비 추이</div><div class="rpt-chart-wrap"><canvas id="rptMetaDailyCost"></canvas></div></div>
+      <div class="rpt-section"><div class="rpt-section-title">👥 일별 도달 · 노출</div><div class="rpt-chart-wrap"><canvas id="rptMetaDailyReach"></canvas></div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📊 캠페인별 성과</div></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>캠페인</th><th>광고비</th><th>노출</th><th>클릭</th><th>도달</th><th>CTR</th><th>CPC</th></tr></thead><tbody>${campRows}</tbody></table></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📅 일별 성과 <span style="font-size:12px;color:var(--text3)">${dailyList.length}일</span></div></div>
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="tbl"><thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr><th>날짜</th><th>요일</th><th>광고비</th><th>노출</th><th>클릭</th><th>도달</th><th>CTR</th><th>CPC</th></tr></thead><tbody>${dailyRows}</tbody></table></div>
+    </div>`;
+
+  const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+  const mk2=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+  const lbls=dailyList.map(d=>d.date.slice(5));
+  setTimeout(()=>{
+    mk2('rptMetaDailyCost',{type:'bar',data:{labels:lbls,datasets:[{label:'광고비',data:dailyList.map(d=>d.cost),backgroundColor:'rgba(24,119,242,.7)',borderRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false}}}});
+    mk2('rptMetaDailyReach',{type:'line',data:{labels:lbls,datasets:[{label:'노출',data:dailyList.map(d=>d.imp),borderColor:'#1877F2',tension:.4,pointRadius:2,yAxisID:'y'},{label:'도달',data:dailyList.map(d=>d.reach),borderColor:'#03C75A',tension:.4,pointRadius:2,yAxisID:'y1'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,position:'left',ticks:{...ax.ticks,color:'#1877F2'}},y1:{grid:{display:false},position:'right',ticks:{color:'#03C75A',font:{size:10,family:'IBM Plex Mono'}}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
+  },100);
+}
   const el = document.getElementById(targetElId);
   if(!el) return;
   const pfx = targetElId==='gfaContent' ? '' : 'rpt_';
