@@ -4026,7 +4026,8 @@ function saveOneFile(fileObj, client) {
           // 네이버 제목행 스킵
           if (/^"/.test(raw) && (/보고서/.test(raw) || /\d{7,}/.test(raw))) continue;
           // 쉼표로 단순 split 후 따옴표 제거
-          const c = raw.split(',').map(x => x.trim().replace(/^"+|"+$/g, ''));
+          const _hs=l=>{const r=[];let c='',q=false;for(let j=0;j<l.length;j++){const ch=l[j];if(ch==='"'){q=!q;}else if(ch===','&&!q){r.push(c);c='';}else{c+=ch;}}r.push(c);return r.map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));};
+          const c = _hs(raw);
           const matched = c.filter(x => TARGET_COLS.includes(x));
           if (matched.length >= 2) {
             headerIdx = i;
@@ -4558,7 +4559,8 @@ function saveOneFile(fileObj, client) {
           const metaRows = [];
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = line.split(',').map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));
+            const _ms=l=>{const r=[];let c='',q=false;for(let j=0;j<l.length;j++){const ch=l[j];if(ch==='"'){q=!q;}else if(ch===','&&!q){r.push(c);c='';}else{c+=ch;}}r.push(c);return r.map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));};
+            const vals = _ms(line);
             if(vals.every(v=>!v)) continue;
             const row = {}; cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
             const dateStr = (row['일']||'').replace(/\./g,'-').slice(0,10);
