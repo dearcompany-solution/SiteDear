@@ -2082,12 +2082,11 @@ function htmlReport(){
   const hasMeta  = metaCache && metaCache.length>0;
 
   const rptTabs=[];
-  if(hasNaver||hasGFA||hasMeta) rptTabs.push({id:'summary',icon:'📊',label:'통합 요약'});
-  if(hasNaver) rptTabs.push({id:'weekly',icon:'📅',label:'주간 데이터'});
-  if(hasNaver) rptTabs.push({id:'monthly',icon:'📆',label:'월간 데이터'});
+  rptTabs.push({id:'summary',icon:'📊',label:'통합 요약'});
+  rptTabs.push({id:'weekly',icon:'📅',label:'주간 데이터'});
+  rptTabs.push({id:'monthly',icon:'📆',label:'월간 데이터'});
   if(hasGFA) rptTabs.push({id:'gfa',icon:'📡',label:'GFA'});
   if(hasMeta) rptTabs.push({id:'meta',icon:'🔵',label:'META'});
-  if(!rptTabs.length) rptTabs.push({id:'summary',icon:'📊',label:'통합 요약'});
 
   const firstTab = rptTabs[0].id;
   const tabBtns = rptTabs.map((t,i)=>`<button class="nav-tab${i===0?' active':''}" onclick="switchRptTab('${t.id}',this)">${t.icon} ${t.label}</button>`).join('\n    ');
