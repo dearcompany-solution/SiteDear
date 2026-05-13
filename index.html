@@ -2155,8 +2155,15 @@ function htmlReport(){
       </div>
     </div>
     <div class="rpt-section">
-      <div class="rpt-section-title">💡 핵심 인사이트</div>
-      <div id="rptInsights"></div>
+      <div class="rpt-section-title">💡 핵심 인사이트 · 피드백</div>
+      <div id="rptInsights" style="min-height:20px"></div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600;color:var(--text2)">💬 피드백</div>
+          <button class="btn btn-bl btn-sm" onclick="openFeedbackModal('보고서')">+ 피드백 추가</button>
+        </div>
+        <div id="rptFeedbackList"></div>
+      </div>
     </div>
   </div>
   </div><!-- /rpt-tab-summary -->
@@ -2286,14 +2293,6 @@ function htmlReport(){
     </div>
   </div>
 
-  <!-- 피드백 (전체 탭 공통 고정) -->
-  <div class="card" style="margin-top:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600">💬 피드백</div>
-      <button class="btn btn-bl btn-sm" onclick="openFeedbackModal('보고서')">+ 피드백 추가</button>
-    </div>
-    <div id="rptFeedbackList"></div>
-  </div>
   `;
 }
 
