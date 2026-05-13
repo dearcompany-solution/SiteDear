@@ -4558,7 +4558,7 @@ function saveOneFile(fileObj, client) {
           const metaRows = [];
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
-            const vals = csvSplit ? csvSplit(line) : line.split(',').map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));
+            const vals = line.split(',').map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));
             if(vals.every(v=>!v)) continue;
             const row = {}; cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
             const dateStr = (row['일']||'').replace(/\./g,'-').slice(0,10);
