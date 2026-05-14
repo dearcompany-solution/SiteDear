@@ -6065,11 +6065,19 @@ async function toggleFeedbackCheck(id, currentStatus){
       // card_key가 id인 경우
       const byId = document.getElementById(cardKey);
       if(byId){ byId.classList.add('has-feedback'); return; }
-      // card_key가 제목 텍스트인 경우 — 현재 보이는 영역만 매칭
+      // card_key가 탭접두어::제목 형식인 경우 — 해당 탭의 해당 카드만 매칭
+      const hasPfx = cardKey.includes('::');
+      const pfxTab = hasPfx ? cardKey.split('::')[0] : '';
+      const pfxTitle = hasPfx ? cardKey.split('::')[1] : cardKey;
       document.querySelectorAll('.card,.kpi').forEach(el=>{
         const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
-        if(!title || title !== cardKey) return;
-        // 숨겨진 탭 안의 카드는 제외
+        if(!title || title !== pfxTitle) return;
+        if(hasPfx){
+          // 탭 접두어가 있으면 해당 탭 컨테이너 안에서만 매칭
+          const tabContainer = el.closest('[id^="mt-tab-"],[id^="nt-tab-"],[id^="st-tab-"],[id^="rpt-tab-"],[id="appContent"]');
+          const tabId = tabContainer?.id||'';
+          if(!tabId.includes(pfxTab.split('_')[1]||'')) return;
+        }
         const hiddenParent = el.closest('[style*="display: none"],[style*="display:none"]');
         if(hiddenParent) return;
         el.classList.add('has-feedback');
@@ -6104,6 +6112,11 @@ async function toggleFeedbackCheck(id, currentStatus){
     '시간대별': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('hourly', document.querySelector(".nav-tab[onclick*=\"'hourly'\"]")),200); },
     'META 요약': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
     'META 캠페인별': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('campaign', document.querySelector(".nav-tab[onclick*=\"'campaign'\"]")),200); },
+    'meta_summary': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
+    'meta_campaign': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('campaign', document.querySelector(".nav-tab[onclick*=\"'campaign'\"]")),200); },
+    'meta_adset': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('adset', document.querySelector(".nav-tab[onclick*=\"'adset'\"]")),200); },
+    'meta_ad': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('ad', document.querySelector(".nav-tab[onclick*=\"'ad'\"]")),200); },
+    'meta_reach': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('reach', document.querySelector(".nav-tab[onclick*=\"'reach'\"]")),200); },
     '통합 대시보드': ()=>{ go('combined',null); setActive('combined'); },
     '보고서': ()=>{ go('report',null); setActive('report'); },
   };
@@ -8989,10 +9002,15 @@ document.addEventListener('contextmenu', e=>{
   else if(currentPage === 'report') _ctxPage = '보고서:' + rptTabName;
   else if(currentPage === 'combined') _ctxPage = '통합 대시보드';
   else _ctxPage = naverTabName || '대시보드';
-  // 카드 고유 ID 저장 (없으면 제목 텍스트)
+ // 카드 고유 ID 저장 — 탭 정보 포함하여 같은 이름 카드 구분
   const cardTitle = card.querySelector('.card-title,.kpi-lbl')?.textContent?.trim() || '';
   const cardId = card.id || '';
-  _ctxCardKey = cardId || cardTitle || _ctxPage;
+  const metaTab = sessionStorage.getItem('currentMetaTab') || '';
+  const naverTab = sessionStorage.getItem('currentNaverTab') || '';
+  const storeTab = sessionStorage.getItem('currentStoreTab') || '';
+  const activeTab = currentPage==='meta'?metaTab : currentPage==='naver'?naverTab : currentPage==='store'?storeTab : '';
+  const tabPrefix = activeTab ? currentPage+'_'+activeTab+'::' : currentPage+'::';
+  _ctxCardKey = cardId ? cardId : (tabPrefix + cardTitle) || _ctxPage;
   card.setAttribute('data-feedback-key', _ctxCardKey);
   const menu = document.getElementById('ctxMenu');
   menu.style.display='block';
