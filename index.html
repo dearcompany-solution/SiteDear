@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ════ 기본 변수 ════ */
 :root {
@@ -593,6 +595,7 @@ canvas{max-height:210px}
   </div>
 </div>
           </div>
+          <button id="screenPdfBtn" class="btn-pdf" style="display:none" onclick="downloadScreenPDF()">📥 PDF 다운로드</button>
           <div id="reportPdfBtn" style="display:none">
                       <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
 
@@ -1102,6 +1105,8 @@ function go(id,el){
     }
     const rpb=document.getElementById('reportPdfBtn');
     if(rpb) rpb.style.display=(id==='report')?'block':'none';
+    const sp=document.getElementById('screenPdfBtn');
+    if(sp) sp.style.display=['combined','naver','store','meta'].includes(id)?'inline-flex':'none';
   }
   renderContent(id);
   if(['naver','store','combined','meta'].includes(id))setTimeout(renderCharts,100);
@@ -3417,6 +3422,69 @@ function downloadPDF(){
   
   closePdfOverlay();
   toast('📥 인쇄 창에서 PDF로 저장을 선택하세요');
+}
+
+async function downloadScreenPDF(){
+  const content = document.getElementById('appContent');
+  if(!content){ toast('⚠️ 내용이 없습니다'); return; }
+  toast('📥 PDF 생성 중... 잠시 기다려주세요');
+  try {
+    // 차트 애니메이션 완료 대기
+    await new Promise(r=>setTimeout(r,500));
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#f4f6fa',
+      logging: false,
+      windowWidth: content.scrollWidth,
+      windowHeight: content.scrollHeight,
+      scrollX: 0,
+      scrollY: -window.scrollY
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const {jsPDF} = window.jspdf;
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    // A4 가로 or 세로 자동 판단
+    const isLandscape = imgW > imgH * 1.2;
+    const pdf = new jsPDF({orientation: isLandscape?'landscape':'portrait', unit:'mm', format:'a4'});
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const contentW = pageW - margin*2;
+    const contentH = (imgH * contentW) / imgW;
+    // 여러 페이지 처리
+    let yOffset = 0;
+    const availH = pageH - margin*2;
+    let pageNum = 0;
+    while(yOffset < contentH){
+      if(pageNum > 0) pdf.addPage();
+      // 소스 이미지에서 잘라낼 영역 계산
+      const srcY = (yOffset / contentH) * imgH;
+      const srcH = Math.min((availH / contentH) * imgH, imgH - srcY);
+      const drawH = (srcH / imgH) * contentH;
+      // 잘린 영역을 캔버스로 추출
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = imgW;
+      sliceCanvas.height = srcH;
+      const ctx = sliceCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
+      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(sliceData, 'JPEG', margin, margin, contentW, drawH);
+      yOffset += availH;
+      pageNum++;
+      if(pageNum > 20) break; // 안전장치
+    }
+    // 파일명 생성
+    const page = sessionStorage.getItem('currentPage')||'dashboard';
+    const range = document.getElementById('drangeLabel')?.textContent?.replace(/\s/g,'')||'';
+    const company = document.querySelector('.sb-name')?.textContent?.trim()||'report';
+    pdf.save(`${company}_${page}_${range}.pdf`);
+    toast('✅ PDF 다운로드 완료!');
+  } catch(err){
+    console.error('PDF 생성 실패:', err);
+    toast('❌ PDF 생성 실패: ' + err.message);
+  }
 }
 async function downloadExcelReport(){
   const data = await fetchReportData(currentReportMonth);
@@ -7550,7 +7618,7 @@ function switchRptTab(id, el){
           : '';
         const colors = ['#03C75A','#3B82F6','#F59E0B','#FF6B35','#4F46E5'];
         const ci = momItems.indexOf(item);
-        return `<div class="rpt-kpi" style="text-align:center;position:relative;overflow:hidden">
+        return `<div class="rpt-kpi" style="position:relative;overflow:hidden">
           <div class="rpt-kpi-lbl">${item.lbl}</div>
           <div class="rpt-kpi-val">${item.val}</div>
           ${diffHtml}
