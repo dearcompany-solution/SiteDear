@@ -6103,6 +6103,24 @@ async function toggleFeedbackCheck(id, currentStatus){
 }
   function navigateToFeedbackPage(page, e){
   if(e.target.closest('button,input,textarea')) return;
+  // card_key 추출 — 클릭한 요소에서 가장 가까운 data-card-key
+  const cardKey = e.target.closest('[data-card-key]')?.dataset?.cardKey || '';
+  // META: 접두어 처리
+  if(page.startsWith('META:')){
+    const metaTab = page.replace('META:','').trim();
+    go('meta',null); setActive('meta');
+    setTimeout(()=>switchMetaTab(metaTab, document.querySelector(`.nav-tab[onclick*="'${metaTab}'"]`)),200);
+    if(cardKey) _scrollToCard(cardKey);
+    return;
+  }
+  // STORE: 접두어 처리
+  if(page.startsWith('STORE:')){
+    const storeTab = page.replace('STORE:','').trim();
+    go('store',null); setActive('store');
+    setTimeout(()=>switchStoreTab(storeTab, document.querySelector(`.nav-tab[onclick*="'${storeTab}'"]`)),200);
+    if(cardKey) _scrollToCard(cardKey);
+    return;
+  }
   // 보고서 내부 탭인 경우
   if(page.startsWith('보고서:')){
     const rptTab = page.replace('보고서:','').trim();
@@ -6111,6 +6129,7 @@ async function toggleFeedbackCheck(id, currentStatus){
       const tabEl = document.querySelector(`.rpt-tab[onclick*="${rptTab}"]`);
       if(tabEl) tabEl.click();
     }, 300);
+    if(cardKey) _scrollToCard(cardKey);
     return;
   }
   const pageMap = {
@@ -6121,44 +6140,41 @@ async function toggleFeedbackCheck(id, currentStatus){
     '디바이스': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('device', document.querySelector(".nav-tab[onclick*=\"'device'\"]")),200); },
     '키워드': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('keyword', document.querySelector(".nav-tab[onclick*=\"'keyword'\"]")),200); },
     '시간대별': ()=>{ go('naver',null); setActive('naver'); setTimeout(()=>switchNaverTab('hourly', document.querySelector(".nav-tab[onclick*=\"'hourly'\"]")),200); },
-    'META 요약': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
-    'META 캠페인별': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('campaign', document.querySelector(".nav-tab[onclick*=\"'campaign'\"]")),200); },
-    'meta_summary': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]")),200); },
-    'meta_campaign': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('campaign', document.querySelector(".nav-tab[onclick*=\"'campaign'\"]")),200); },
-    'meta_adset': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('adset', document.querySelector(".nav-tab[onclick*=\"'adset'\"]")),200); },
-    'meta_ad': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('ad', document.querySelector(".nav-tab[onclick*=\"'ad'\"]")),200); },
-    'meta_reach': ()=>{ go('meta',null); setActive('meta'); setTimeout(()=>switchMetaTab('reach', document.querySelector(".nav-tab[onclick*=\"'reach'\"]")),200); },
     '통합 대시보드': ()=>{ go('combined',null); setActive('combined'); },
     '보고서': ()=>{ go('report',null); setActive('report'); },
   };
   const nav = Object.entries(pageMap).find(([key])=>page.includes(key));
-  const cardKey = e.currentTarget?.dataset?.cardKey || '';
   if(nav){
     nav[1]();
-    if(cardKey){
-      let _fbRetry=0;
-      const _fbFind=()=>{
-        let target = document.getElementById(cardKey)
-          || document.querySelector(`[data-feedback-key="${cardKey}"]`);
-        if(!target){
-          document.querySelectorAll('.card,.kpi,.rpt-section,.kpi-card').forEach(el=>{
-            const title = el.querySelector('.card-title,.kpi-lbl,.rpt-section-title,.card-hd')?.textContent?.trim()||'';
-            if(title && (cardKey.includes(title) || title.includes(cardKey))) target = el;
-          });
-        }
-        if(target){
-          target.scrollIntoView({behavior:'smooth', block:'center'});
-          target.style.outline='2px solid var(--blue)';
-          target.style.outlineOffset='4px';
-          setTimeout(()=>{target.style.outline='';target.style.outlineOffset='';},3000);
-        } else if(_fbRetry<10){
-          _fbRetry++;
-          setTimeout(_fbFind, 500);
-        }
-      };
-      setTimeout(_fbFind, 500);
-    }
+    if(cardKey) _scrollToCard(cardKey);
   } else { go('naver',null); setActive('naver'); }
+}
+function _scrollToCard(cardKey){
+  let _retry=0;
+  const _find=()=>{
+    let target = document.getElementById(cardKey)
+      || document.querySelector(`[data-feedback-key="${cardKey}"]`);
+    if(!target){
+      // 접두어::제목 형식인 경우 제목만 추출
+      const title = cardKey.includes('::') ? cardKey.split('::')[1] : cardKey;
+      document.querySelectorAll('.card,.kpi,.rpt-section,.kpi-card').forEach(el=>{
+        if(target) return;
+        const t = el.querySelector('.card-title,.kpi-lbl,.rpt-section-title,.card-hd')?.textContent?.trim()||'';
+        if(t && t === title && el.offsetParent !== null) target = el;
+      });
+    }
+    if(target){
+      target.scrollIntoView({behavior:'smooth', block:'center'});
+      target.style.outline='3px solid var(--blue)';
+      target.style.outlineOffset='4px';
+      target.style.transition='outline 0.3s';
+      setTimeout(()=>{target.style.outline='';target.style.outlineOffset='';},3500);
+    } else if(_retry<15){
+      _retry++;
+      setTimeout(_find, 400);
+    }
+  };
+  setTimeout(_find, 600);
 }
   async function saveRptFeedbackReply(id){
   const reply = document.getElementById('reply_'+id)?.value||'';
@@ -9012,6 +9028,8 @@ document.addEventListener('contextmenu', e=>{
   if(currentPage === 'naver') _ctxPage = naverTabName;
   else if(currentPage === 'report') _ctxPage = '보고서:' + rptTabName;
   else if(currentPage === 'combined') _ctxPage = '통합 대시보드';
+  else if(currentPage === 'meta') _ctxPage = 'META:' + (sessionStorage.getItem('currentMetaTab')||'summary');
+  else if(currentPage === 'store') _ctxPage = 'STORE:' + (sessionStorage.getItem('currentStoreTab')||'summary');
   else _ctxPage = naverTabName || '대시보드';
  // 카드 고유 ID 저장 — 탭 정보 포함하여 같은 이름 카드 구분
   const cardTitle = card.querySelector('.card-title,.kpi-lbl')?.textContent?.trim() || '';
