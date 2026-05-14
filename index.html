@@ -7548,10 +7548,13 @@ function switchRptTab(id, el){
               ${isUp?'▲':isDown?'▼':'—'} ${Math.abs(diffVal).toFixed(1)}% 전월비
              </div>`
           : '';
-        return `<div class="rpt-kpi" style="text-align:center">
+        const colors = ['#03C75A','#3B82F6','#F59E0B','#FF6B35','#4F46E5'];
+        const ci = momItems.indexOf(item);
+        return `<div class="rpt-kpi" style="text-align:center;position:relative;overflow:hidden">
           <div class="rpt-kpi-lbl">${item.lbl}</div>
-          <div class="rpt-kpi-val" style="font-size:16px">${item.val}</div>
+          <div class="rpt-kpi-val">${item.val}</div>
           ${diffHtml}
+          <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:${colors[ci]||'#03C75A'}"></div>
         </div>`;
       }).join('');
     }
