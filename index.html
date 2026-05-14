@@ -7250,15 +7250,15 @@ async function loadMetaTab(tabId){
   const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
 
   // KPI HTML 공통
-  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" data-meta-tab="${tabId}">
-    <div class="kpi kn" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-n">💰</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(total.cost)}</div></div>
-    <div class="kpi kb" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(total.imp)}</div></div>
-    <div class="kpi kb" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(total.click)}</div></div>
-    <div class="kpi kg" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-g">👥</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">도달수</div><div class="kpi-val">${fmtn(total.reach)}</div></div>
-    <div class="kpi ks" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-s">📊</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${total.ctr.toFixed(2)}%</div></div>
-    <div class="kpi kn" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(total.cpc)}</div></div>
-    <div class="kpi ki" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-i">📡</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CPM</div><div class="kpi-val">${fmt(total.cpm)}</div></div>
-    <div class="kpi ks" data-meta-tab="${tabId}"><div class="kpi-top"><div class="kpi-ic kic-s">🔄</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">빈도</div><div class="kpi-val">${total.frequency.toFixed(2)}</div></div>
+  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+    <div class="kpi kn" id="meta_${tabId}_cost"><div class="kpi-top"><div class="kpi-ic kic-n">💰</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(total.cost)}</div></div>
+    <div class="kpi kb" id="meta_${tabId}_imp"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(total.imp)}</div></div>
+    <div class="kpi kb" id="meta_${tabId}_click"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(total.click)}</div></div>
+    <div class="kpi kg" id="meta_${tabId}_reach"><div class="kpi-top"><div class="kpi-ic kic-g">👥</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">도달수</div><div class="kpi-val">${fmtn(total.reach)}</div></div>
+    <div class="kpi ks" id="meta_${tabId}_ctr"><div class="kpi-top"><div class="kpi-ic kic-s">📊</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${total.ctr.toFixed(2)}%</div></div>
+    <div class="kpi kn" id="meta_${tabId}_cpc"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(total.cpc)}</div></div>
+    <div class="kpi ki" id="meta_${tabId}_cpm"><div class="kpi-top"><div class="kpi-ic kic-i">📡</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CPM</div><div class="kpi-val">${fmt(total.cpm)}</div></div>
+    <div class="kpi ks" id="meta_${tabId}_freq"><div class="kpi-top"><div class="kpi-ic kic-s">🔄</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">빈도</div><div class="kpi-val">${total.frequency.toFixed(2)}</div></div>
   </div>`;
 
   if(tabId==='summary'){
