@@ -6065,26 +6065,31 @@ async function toggleFeedbackCheck(id, currentStatus){
       // card_key가 id인 경우
       const byId = document.getElementById(cardKey);
       if(byId){ byId.classList.add('has-feedback'); return; }
-      // card_key가 탭접두어::제목 형식인 경우 — 해당 탭의 해당 카드만 매칭
-      const hasPfx = cardKey.includes('::');
-      const pfxTab = hasPfx ? cardKey.split('::')[0] : '';
-      const pfxTitle = hasPfx ? cardKey.split('::')[1] : cardKey;
-      document.querySelectorAll('.card,.kpi').forEach(el=>{
-        const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
-        if(!title || title !== pfxTitle) return;
-        if(hasPfx){
-          // 탭 접두어가 있으면 해당 탭 컨테이너 안에서만 매칭
-          const tabContainer = el.closest('[id^="mt-tab-"],[id^="nt-tab-"],[id^="st-tab-"],[id^="rpt-tab-"],[id="appContent"]');
-          const tabId = tabContainer?.id||'';
-          if(!tabId.includes(pfxTab.split('_')[1]||'')) return;
-        }
-        const hiddenParent = el.closest('[style*="display: none"],[style*="display:none"]');
-        if(hiddenParent) return;
-        el.classList.add('has-feedback');
-      });
-      // data-feedback-key 속성으로도 탐색
+      // data-feedback-key 속성으로 정확히 매칭 (최우선)
       const byAttr = document.querySelector(`[data-feedback-key="${cardKey}"]`);
-      if(byAttr) byAttr.classList.add('has-feedback');
+      if(byAttr && byAttr.offsetParent!==null){ byAttr.classList.add('has-feedback'); return; }
+      // 접두어::제목 형식 분리
+      const hasPfx = cardKey.includes('::');
+      const matchTitle = hasPfx ? cardKey.split('::')[1] : cardKey;
+      const matchTab = hasPfx ? cardKey.split('::')[0] : '';
+      // 제목 매칭 — 보이는 카드 중 첫 번째만
+      let found = false;
+      document.querySelectorAll('.card,.kpi').forEach(el=>{
+        if(found) return;
+        const title = el.querySelector('.card-title,.kpi-lbl')?.textContent?.trim()||'';
+        if(!title || title !== matchTitle) return;
+        // 보이지 않는 요소 제외 (offsetParent 체크)
+        if(el.offsetParent === null) return;
+        // 접두어가 있으면 탭 컨테이너 ID로 검증
+        if(hasPfx){
+          const container = el.closest('[id^="mt-tab-"],[id^="nt-tab-"],[id^="st-tab-"],[id^="rpt-tab-"]');
+          const cid = container?.id||'';
+          const needTab = matchTab.split('_')[1]||'';
+          if(needTab && !cid.includes(needTab)) return;
+        }
+        el.classList.add('has-feedback');
+        found = true;
+      });
     });
   } catch(e){ console.warn('글로우 적용 실패:', e); }
   // 3초 후 다시 실행 (카드가 DOM에 없을 때 대비)
