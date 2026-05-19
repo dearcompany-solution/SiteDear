@@ -286,6 +286,22 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .msg-inp{padding:11px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end}
 .msg-inp textarea{flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)}
 .msg-inp textarea:focus{border-color:var(--blue);background:var(--white)}
+.msg-inp-wrap{flex:1;position:relative}
+.msg-inp-wrap textarea{width:100%;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)}
+.msg-inp-wrap textarea:focus{border-color:var(--blue);background:var(--white)}
+.msg-drop-zone{position:absolute;inset:0;background:rgba(59,130,246,.08);border:2px dashed var(--blue);border-radius:var(--rsm);display:none;align-items:center;justify-content:center;font-size:12px;color:var(--blue);font-weight:600;z-index:5;pointer-events:none}
+.msg-drop-zone.active{display:flex}
+.msg-file-preview{display:flex;gap:6px;flex-wrap:wrap;padding:6px 0 0}
+.msg-fp-item{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text2);max-width:200px}
+.msg-fp-item img{width:28px;height:28px;border-radius:4px;object-fit:cover}
+.msg-fp-item .fp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.msg-fp-item .fp-remove{cursor:pointer;color:var(--red);font-size:13px;font-weight:700;padding:0 2px}
+.bubble-file{margin-top:6px}
+.bubble-file a{color:inherit;text-decoration:underline;font-size:12px;display:flex;align-items:center;gap:4px}
+.bubble-file img{max-width:240px;max-height:180px;border-radius:8px;margin-top:4px;cursor:pointer}
+.bubble.cli .bubble-file a{color:#fff}
+.btn-attach{background:none;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 10px;cursor:pointer;font-size:16px;color:var(--text3);transition:all .15s;display:flex;align-items:center}
+.btn-attach:hover{border-color:var(--blue);color:var(--blue)}
 
 /* ════ CALENDAR ════ */
 .notice-pinned{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:var(--rsm);padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:opacity .15s}
@@ -5561,6 +5577,7 @@ async function loadMessages(clientKey){
     const rows = await res.json();
     if(!Array.isArray(rows)) return;
     renderMessages(rows);
+    setTimeout(initMsgDropZone,100);
 
     // 읽음 처리 (상대방 메시지)
     const unreadIds = rows
@@ -5598,7 +5615,7 @@ function renderMessages(rows){
       <div class="bav ${isMine?'bav-c':'bav-m'}">${initials}</div>
       <div>
         ${!isMine?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px">${r.sender||r.sender_name||''}</div>`:''}
-        <div class="bubble ${isMine?'cli':'mgr'}">${(r.content||'').replace(/\n/g,'<br>')}</div>
+        <div class="bubble ${isMine?'cli':'mgr'}">${renderBubbleContent(r.content)}</div>
         <div class="bmeta">${time}</div>
       </div>
     </div>`;
@@ -5686,7 +5703,7 @@ function subscribeMessages(clientKey){
                   <div class="bav bav-m">${initials}</div>
                   <div>
                     <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${newRow.sender||newRow.sender_name||''}</div>
-                    <div class="bubble mgr">${(newRow.content||'').replace(/\n/g,'<br>')}</div>
+                    <div class="bubble mgr">${renderBubbleContent(newRow.content)}</div>
                     <div class="bmeta">${time}</div>
                   </div>
                 </div>`);
@@ -5797,8 +5814,14 @@ function htmlMsg(){
         </div>
       </div>
       <div class="msg-inp">
-        <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn-attach" onclick="document.getElementById('msgFileInput').click()" title="파일 첨부">📎</button>
+        <input type="file" id="msgFileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.hwp,.pptx" style="display:none" onchange="handleMsgFiles(this.files)">
+        <div class="msg-inp-wrap" id="msgDropZone">
+          <div class="msg-drop-zone" id="msgDropOverlay">📎 파일을 놓으세요</div>
+          <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+          <div class="msg-file-preview" id="msgFilePreview"></div>
+        </div>
         <button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button>
       </div>
     </div>
@@ -5839,10 +5862,104 @@ async function openChat(clientKey, clientName){
   updateMsgBadge();
 }
 
+/* ── 파일 첨부 ── */
+let _msgPendingFiles=[];
+
+function initMsgDropZone(){
+  const zone=document.getElementById('msgDropZone');
+  if(!zone||zone._dropInit)return;
+  zone._dropInit=true;
+  const overlay=document.getElementById('msgDropOverlay');
+  zone.addEventListener('dragenter',e=>{e.preventDefault();overlay.classList.add('active');});
+  zone.addEventListener('dragover',e=>{e.preventDefault();});
+  zone.addEventListener('dragleave',e=>{if(!zone.contains(e.relatedTarget))overlay.classList.remove('active');});
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();overlay.classList.remove('active');
+    if(e.dataTransfer.files.length)handleMsgFiles(e.dataTransfer.files);
+  });
+}
+
+function handleMsgFiles(files){
+  const maxSize=10*1024*1024; // 10MB
+  Array.from(files).forEach(f=>{
+    if(f.size>maxSize){toast(`⚠️ ${f.name}: 10MB 초과`);return;}
+    if(_msgPendingFiles.length>=5){toast('⚠️ 최대 5개까지 첨부 가능');return;}
+    _msgPendingFiles.push(f);
+  });
+  renderMsgFilePreview();
+}
+
+function renderMsgFilePreview(){
+  const el=document.getElementById('msgFilePreview');
+  if(!el)return;
+  if(!_msgPendingFiles.length){el.innerHTML='';return;}
+  const isImg=f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name);
+  el.innerHTML=_msgPendingFiles.map((f,i)=>{
+    const thumb=isImg(f)?URL.createObjectURL(f):'';
+    const icon=isImg(f)?'':'📄';
+    return `<div class="msg-fp-item">
+      ${thumb?`<img src="${thumb}">`:`<span>${icon}</span>`}
+      <span class="fp-name">${f.name}</span>
+      <span class="fp-remove" onclick="removeMsgFile(${i})">✕</span>
+    </div>`;
+  }).join('');
+}
+
+function removeMsgFile(idx){
+  _msgPendingFiles.splice(idx,1);
+  renderMsgFilePreview();
+}
+
+async function uploadMsgFile(file,clientKey){
+  const ts=Date.now();
+  const safeName=file.name.replace(/[^a-zA-Z0-9가-힣._-]/g,'_');
+  const path=`${clientKey}/${ts}_${safeName}`;
+  const res=await fetch(`${SUPABASE_URL}/storage/v1/object/chat-files/${path}`,{
+    method:'POST',
+    headers:{
+      'apikey':SUPABASE_ANON_KEY,
+      'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+      'Content-Type':file.type||'application/octet-stream',
+      'x-upsert':'true'
+    },
+    body:file
+  });
+  if(!res.ok){
+    const err=await res.text();
+    console.error('파일 업로드 실패:',err);
+    return null;
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/chat-files/${path}`;
+}
+
+function formatMsgContent(text, fileUrls){
+  let content=text||'';
+  if(fileUrls&&fileUrls.length){
+    const fileParts=fileUrls.map(u=>{
+      const name=decodeURIComponent(u.split('/').pop().replace(/^\d+_/,''));
+      const isImg=/\.(jpg|jpeg|png|gif|webp)$/i.test(name);
+      return isImg?`[IMG]${u}[/IMG]`:`[FILE:${name}]${u}[/FILE]`;
+    });
+    content=(content?content+'\n':'')+fileParts.join('\n');
+  }
+  return content;
+}
+
+function renderBubbleContent(raw){
+  if(!raw)return '';
+  let html=raw.replace(/\n/g,'<br>');
+  // 이미지 태그 변환
+  html=html.replace(/\[IMG\](.*?)\[\/IMG\]/g,(m,url)=>`<div class="bubble-file"><img src="${url}" onclick="window.open('${url}','_blank')" alt="이미지"></div>`);
+  // 파일 태그 변환
+  html=html.replace(/\[FILE:(.*?)\](.*?)\[\/FILE\]/g,(m,name,url)=>`<div class="bubble-file"><a href="${url}" target="_blank">📎 ${name}</a></div>`);
+  return html;
+}
+
 async function sendMsg(){
   const inp = document.getElementById('msgInput');
   const txt = inp.value.trim();
-  if(!txt) return;
+  const hasFiles = _msgPendingFiles.length > 0;
+  if(!txt && !hasFiles) return;
 
   // 채팅 대상 결정
   const clientKey = currentUser.role==='admin'
@@ -5853,13 +5970,25 @@ async function sendMsg(){
 
   inp.value = '';
 
+  // 파일 업로드
+  let fileUrls=[];
+  if(hasFiles){
+    toast('📎 파일 업로드 중...');
+    const uploads=await Promise.all(_msgPendingFiles.map(f=>uploadMsgFile(f,clientKey)));
+    fileUrls=uploads.filter(u=>u);
+    _msgPendingFiles=[];
+    renderMsgFilePreview();
+    if(!fileUrls.length && !txt){toast('❌ 파일 업로드 실패');return;}
+  }
+
+  const content=formatMsgContent(txt,fileUrls);
+
   // 낙관적 UI 업데이트 (즉시 표시)
   const chat = document.getElementById('chatArea');
   const now = new Date();
   const time = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
   const initials = (currentUser.name||currentUser.id).charAt(0);
   if(chat){
-    // 빈 화면 메시지 제거
     const emptyEl = chat.querySelector('div[style*="text-align:center"]');
     if(emptyEl) emptyEl.remove();
 
@@ -5867,7 +5996,7 @@ async function sendMsg(){
       <div class="brow mine">
         <div class="bav bav-c">${initials}</div>
         <div>
-          <div class="bubble cli">${txt.replace(/\n/g,'<br>')}</div>
+          <div class="bubble cli">${renderBubbleContent(content)}</div>
           <div class="bmeta">${time}</div>
         </div>
       </div>`);
@@ -5875,7 +6004,7 @@ async function sendMsg(){
   }
 
   // Supabase 저장
-  await saveMessage(clientKey, txt);
+  await saveMessage(clientKey, content);
 }
 
 async function refreshChat(){
