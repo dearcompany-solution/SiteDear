@@ -7205,6 +7205,7 @@ function clearReg(){
 ════════════════════════════════════════ */
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
 /* ════ AI 운영 브리핑 ════ */
+/* ════ AI 운영 브리핑 ════ */
 async function generateAIBriefing(forceNew=false){
   const el=document.getElementById('aiBriefingContent');
   const dateEl=document.getElementById('aiBriefingDate');
@@ -7216,8 +7217,9 @@ async function generateAIBriefing(forceNew=false){
   const to=currentDateRange?.to||'';
   if(!from||!to){el.innerHTML='<span style="color:var(--text3)">기간을 선택해주세요</span>';return;}
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const company=isAdmin?(ACCOUNTS.find(a=>a.id===ck)?.company||ck):(currentUser?.company||ck);
 
-  // 캐시 확인 (같은 기간이면 DB에서 가져옴)
+  // 캐시 확인
   if(!forceNew){
     try{
       const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&order=created_at.desc&limit=1`,{headers:h});
@@ -7231,25 +7233,22 @@ async function generateAIBriefing(forceNew=false){
     }catch(e){}
   }
 
-  // 데이터 수집
-  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="spinner" style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>AI가 데이터를 분석하고 있습니다...</div>';
+  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>AI가 데이터를 분석하고 있습니다...</div>';
 
+  // 데이터 수집
   const d=REPORT_DATA[currentReportMonth];
   const kpi=d?.kpi||{};
-  const company=isAdmin?(ACCOUNTS.find(a=>a.id===ck)?.company||ck):(currentUser?.company||ck);
-
-  // 네이버 데이터
-  const naverInfo=kpi.totalCost>0?`네이버 검색광고: 광고비 ${Math.round(kpi.totalCost).toLocaleString()}원, 노출 ${Math.round(kpi.totalImp).toLocaleString()}, 클릭 ${Math.round(kpi.totalClick).toLocaleString()}, 전환매출 ${Math.round(kpi.totalPurchaseRev||0).toLocaleString()}원, ROAS ${kpi.totalCost>0?((kpi.totalPurchaseRev||0)/kpi.totalCost*100).toFixed(1)+'%':'0%'}`:'네이버 검색광고: 데이터 없음';
-
-  // 스토어 데이터
+  const gfaData=d?.gfa||{};
+  const naverCost=kpi.totalCost||0;
+  const naverRev=kpi.totalPurchaseRev||0;
+  const gfaCost=gfaData.totalCost||0;
+  const gfaRev=gfaData.totalRev||0;
   const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
   const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
   const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
   const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
   const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
-  const storeInfo=stRev>0?`스마트스토어: 매출 ${Math.round(stRev).toLocaleString()}원, 환불 ${Math.round(stRefund).toLocaleString()}원, 실매출 ${Math.round(stRev-stRefund).toLocaleString()}원, 주문수 ${stOrders}건`:'스마트스토어: 데이터 없음';
-
-  // META 데이터
+  const stNetRev=stRev-stRefund;
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
   const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
@@ -7258,75 +7257,50 @@ async function generateAIBriefing(forceNew=false){
   const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
   const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
   const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
-  const metaInfo=metaCost>0?`META 광고: 광고비 ${Math.round(metaCost).toLocaleString()}원, 노출 ${metaImp.toLocaleString()}, 클릭 ${metaClick.toLocaleString()}, 도달 ${metaReach.toLocaleString()}, CTR ${metaImp>0?(metaClick/metaImp*100).toFixed(2)+'%':'0%'}, CPC ${metaClick>0?Math.round(metaCost/metaClick).toLocaleString()+'원':'—'}`:'META 광고: 데이터 없음';
-
-  const prompt=`당신은 디지털 광고 운영 전문가입니다. 아래 데이터를 분석하여 광고주에게 보여줄 운영 브리핑을 작성하세요.
-
-업체: ${company}
-기간: ${from} ~ ${to}
-
-${naverInfo}
-${storeInfo}
-${metaInfo}
-
-다음 형식으로 작성하세요 (HTML 태그 사용):
-1. <b>📊 이번 기간 성과 요약</b> — 핵심 수치 2-3줄 요약
-2. <b>⚠️ 주의 포인트</b> — 개선이 필요한 부분 1-2가지
-3. <b>✅ 다음 액션 제안</b> — 구체적인 실행 방안 1-2가지
-
-규칙:
-- 데이터가 없는 채널은 언급하지 마세요
-- 전문 용어 대신 쉬운 표현 사용
-- 총 200자 이내로 간결하게
-- 각 항목은 <br>로 줄바꿈
-- <p> 태그로 각 섹션 감싸기`;
 
   try{
-    // 데이터 기반 자동 브리핑 생성 (CORS 이슈 없음)
+    // 데이터 기반 자동 브리핑 생성
     const lines=[];
-    // 1. 성과 요약
-    const totalCostAll=naverCost+(metaCost||0)+(gfaCost||0);
-    const gfaCache2=d?.gfa||{};
-    const gfaCost=gfaCache2.totalCost||0;
-    const gfaRev=gfaCache2.totalRev||0;
+    const totalCostAll=naverCost+metaCost+gfaCost;
     const totalRev=naverRev+gfaRev+stNetRev;
     const overallRoas=totalCostAll>0?((totalRev/totalCostAll)*100).toFixed(1):'0';
+
+    // 1. 성과 요약
     lines.push(`<p><b>📊 이번 기간 성과 요약</b><br>`);
     if(totalCostAll>0) lines.push(`총 광고비 ${Math.round(totalCostAll).toLocaleString()}원 집행, `);
-    if(totalRev>0) lines.push(`전체 매출 ${Math.round(totalRev).toLocaleString()}원, 통합 ROAS ${overallRoas}%입니다. `);
+    if(totalRev>0) lines.push(`전체 매출 ${Math.round(totalRev).toLocaleString()}원, 통합 ROAS ${overallRoas}%. `);
     if(naverCost>0){
-      const nRoas=naverCost>0?((naverRev/naverCost)*100).toFixed(1):'0';
+      const nRoas=(naverRev/naverCost*100).toFixed(1);
       lines.push(`네이버 검색광고 ROAS ${nRoas}%`);
-      if(+nRoas>=300) lines.push('로 양호한 수준입니다. ');
-      else if(+nRoas>=100) lines.push('로 보통 수준입니다. ');
-      else lines.push('로 개선이 필요합니다. ');
+      lines.push(+nRoas>=300?'로 양호합니다. ':+nRoas>=100?'로 보통 수준입니다. ':'로 개선이 필요합니다. ');
     }
     if(metaCost>0){
       const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
-      const mCpc=metaClick>0?Math.round(metaCost/metaClick):0;
-      lines.push(`META 광고 CTR ${mCtr}%, CPC ${mCpc.toLocaleString()}원. `);
+      lines.push(`META CTR ${mCtr}%, CPC ${metaClick>0?Math.round(metaCost/metaClick).toLocaleString():'0'}원. `);
     }
-    if(stRev>0) lines.push(`스마트스토어 실매출 ${Math.round(stNetRev).toLocaleString()}원 (환불률 ${stRev>0?(stRefund/stRev*100).toFixed(1):'0'}%). `);
+    if(stRev>0) lines.push(`스마트스토어 실매출 ${Math.round(stNetRev).toLocaleString()}원. `);
     lines.push(`</p>`);
+
     // 2. 주의 포인트
     lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-    let hasWarning=false;
-    if(naverCost>0&&naverRev/naverCost<1){lines.push(`네이버 검색광고 ROAS가 100% 미만으로 광고비 대비 매출이 부족합니다. 저효율 키워드 점검이 필요합니다. `);hasWarning=true;}
-    if(metaCost>0&&metaImp>0&&(metaClick/metaImp*100)<1){lines.push(`META 광고 CTR이 1% 미만으로 소재 반응이 낮습니다. 소재 교체를 검토해주세요. `);hasWarning=true;}
-    if(metaCost>0&&metaReach>0&&(metaImp/metaReach)>3){lines.push(`META 광고 빈도가 ${(metaImp/metaReach).toFixed(1)}회로 높아 광고 피로도가 우려됩니다. `);hasWarning=true;}
-    if(stRev>0&&stRefund/stRev>0.1){lines.push(`스마트스토어 환불률이 ${(stRefund/stRev*100).toFixed(1)}%로 높습니다. 상품/배송 점검이 필요합니다. `);hasWarning=true;}
-    if(!hasWarning) lines.push(`현재 특별한 이상 징후 없이 안정적으로 운영되고 있습니다.`);
+    let hasW=false;
+    if(naverCost>0&&naverRev/naverCost<1){lines.push(`네이버 ROAS 100% 미만, 저효율 키워드 점검 필요. `);hasW=true;}
+    if(metaCost>0&&metaImp>0&&metaClick/metaImp<0.01){lines.push(`META CTR 1% 미만, 소재 교체 검토. `);hasW=true;}
+    if(metaCost>0&&metaReach>0&&metaImp/metaReach>3){lines.push(`META 빈도 ${(metaImp/metaReach).toFixed(1)}회, 피로도 우려. `);hasW=true;}
+    if(stRev>0&&stRefund/stRev>0.1){lines.push(`환불률 ${(stRefund/stRev*100).toFixed(1)}%, 상품/배송 점검 필요. `);hasW=true;}
+    if(!hasW) lines.push(`특별한 이상 징후 없이 안정적으로 운영 중입니다.`);
     lines.push(`</p>`);
+
     // 3. 액션 제안
     lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-    if(naverCost>0&&naverRev/naverCost>=3) lines.push(`네이버 검색광고 성과가 좋으므로 예산 증액을 검토해보세요. `);
-    else if(naverCost>0) lines.push(`네이버 검색광고 저효율 캠페인을 정리하고 고효율 키워드에 예산을 집중해보세요. `);
-    if(metaCost>0) lines.push(`META 광고는 상위 성과 소재를 파악하여 유사 소재를 확장하는 것을 추천합니다. `);
-    if(stRev>0&&stOrders>0) lines.push(`스마트스토어 객단가 ${Math.round(stRev/stOrders).toLocaleString()}원 기준, 번들 상품이나 사은품 전략으로 객단가 상승을 시도해보세요.`);
-    if(!naverCost&&!metaCost&&!stRev) lines.push(`데이터가 부족합니다. 광고 데이터를 업로드하면 더 정확한 분석이 가능합니다.`);
+    if(naverCost>0&&naverRev/naverCost>=3) lines.push(`네이버 성과 양호, 예산 증액 검토. `);
+    else if(naverCost>0) lines.push(`네이버 저효율 캠페인 정리, 고효율 키워드 집중. `);
+    if(metaCost>0) lines.push(`META 상위 소재 파악 후 유사 소재 확장 추천. `);
+    if(stRev>0&&stOrders>0) lines.push(`객단가 ${Math.round(stRev/stOrders).toLocaleString()}원, 번들/사은품 전략 검토. `);
+    if(!naverCost&&!metaCost&&!stRev) lines.push(`데이터 업로드 후 더 정확한 분석이 가능합니다.`);
     lines.push(`</p>`);
-    const text=lines.join('');
 
+    const text=lines.join('');
     el.innerHTML=text;
     const now=new Date();
     dateEl.textContent=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 분석`;
@@ -7338,7 +7312,7 @@ ${metaInfo}
     }catch(e){}
   }catch(err){
     console.error('AI 브리핑 오류:',err);
-    el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</span>';
+    el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다.</span>';
   }
 }
 
