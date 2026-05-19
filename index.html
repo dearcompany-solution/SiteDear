@@ -5619,7 +5619,6 @@ async function saveMessage(clientKey, content){
       sender_role:  isAdmin ? 'admin' : 'client',
       sender:       senderName,
       sender_id:    currentUser?.id || '',
-      topic:        'chat',
       is_read:      false
     };
     console.log('📨 메시지 저장 시도:', JSON.stringify(payload));
