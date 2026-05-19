@@ -7752,7 +7752,7 @@ ${isAdmin?`
 <div class="card" style="margin-bottom:18px">
   <div style="font-size:14px;font-weight:600;margin-bottom:14px">➕ 새 작업 기록</div>
   <div class="wl-form">
-    <div class="wl-fg"><label>날짜</label><div class="cdp-wrap"><input type="text" class="cdp-input" id="wl-date" value="${new Date().toISOString().slice(0,10)}" readonly onclick="toggleDatePicker('wl-date')"><span class="cdp-icon">📅</span><div id="cdp-wl-date" style="display:none"></div></div></div>
+    <div class="wl-fg"><label>날짜</label><div class="cdp-wrap" style="width:160px"><input type="text" class="cdp-input" id="wl-date" value="${new Date().toISOString().slice(0,10)}" readonly onclick="toggleDatePicker('wl-date')" style="width:100%"><span class="cdp-icon" onclick="toggleDatePicker('wl-date')" style="cursor:pointer">📅</span><div id="cdp-wl-date" style="display:none"></div></div></div>
     <div class="wl-fg"><label>카테고리</label><select id="wl-cat">${WL_CATEGORIES.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</select></div>
     <div class="wl-fg full"><label>제목</label><input type="text" id="wl-title" placeholder="예: 메인 키워드 입찰가 500원 → 700원 조정"></div>
     <div class="wl-fg full"><label>상세 내용</label><textarea id="wl-content" rows="3" style="resize:vertical" placeholder="변경 사유, 기대 효과 등"></textarea></div>
