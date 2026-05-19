@@ -356,6 +356,14 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .ai-typing span:nth-child(2){animation-delay:.2s}
 .ai-typing span:nth-child(3){animation-delay:.4s}
 @keyframes aiDot{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.2)}}
+.ai-period-bar{display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.ai-period-bar span{font-size:11px;color:var(--text3);font-weight:600}
+.ai-p-btn{padding:4px 11px;border-radius:16px;font-size:11.5px;font-weight:600;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .15s}
+.ai-p-btn:hover{border-color:#6366F1;color:#6366F1}
+.ai-p-btn.active{background:#6366F1;border-color:#6366F1;color:#fff}
+.ai-p-custom{display:flex;align-items:center;gap:4px}
+.ai-p-custom input{border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;outline:none;width:110px;cursor:pointer}
+.ai-p-custom input:focus{border-color:#6366F1}
 .mt-name{font-size:13px;font-weight:600}
 .mt-time{font-size:10.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
 .mt-prev{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
@@ -5922,6 +5930,19 @@ function htmlMsg(){
         </div>
         <button class="btn btn-ol btn-sm" onclick="refreshChat()" title="새로고침">🔄</button>
       </div>
+      <div class="ai-period-bar" id="aiPeriodBar" style="display:none">
+        <span>📅 분석 기간</span>
+        <button class="ai-p-btn" onclick="setAIPeriod('1m',this)">최근 1개월</button>
+        <button class="ai-p-btn" onclick="setAIPeriod('3m',this)">최근 3개월</button>
+        <button class="ai-p-btn" onclick="setAIPeriod('6m',this)">최근 6개월</button>
+        <button class="ai-p-btn" onclick="setAIPeriod('year',this)">올해 전체</button>
+        <div class="ai-p-custom">
+          <input type="date" id="aiDateFrom" onchange="applyAICustomDate()">
+          <span style="color:var(--text3)">~</span>
+          <input type="date" id="aiDateTo" onchange="applyAICustomDate()">
+        </div>
+        <span id="aiPeriodLabel" style="margin-left:auto;font-size:10.5px;color:#6366F1;font-family:'IBM Plex Mono',monospace"></span>
+      </div>
       <div class="chat" id="chatArea">
         <div style="text-align:center;padding:40px;color:var(--text3)">
           <div style="font-size:32px;margin-bottom:10px">💬</div>
@@ -5969,6 +5990,74 @@ const AI_QUESTIONS=[
   {icon:'🔄',text:'전월 대비 변화를 분석해줘',key:'compare'}
 ];
 
+function setAIPeriod(type,el){
+  const today=new Date();
+  const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let from,to;
+  if(type==='1m'){
+    from=new Date(today.getFullYear(),today.getMonth()-1,today.getDate());to=today;
+  }else if(type==='3m'){
+    from=new Date(today.getFullYear(),today.getMonth()-3,1);to=today;
+  }else if(type==='6m'){
+    from=new Date(today.getFullYear(),today.getMonth()-6,1);to=today;
+  }else if(type==='year'){
+    from=new Date(today.getFullYear(),0,1);to=today;
+  }
+  currentDateRange={from:fmt(from),to:fmt(to)};
+  currentReportMonth=fmt(from).slice(0,7);
+  sessionStorage.setItem('currentDateRange',JSON.stringify(currentDateRange));
+  sessionStorage.setItem('currentReportMonth',currentReportMonth);
+
+  // 캐시 초기화
+  Object.keys(REPORT_DATA).forEach(k=>{REPORT_DATA[k]=null;});
+  Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
+  Object.keys(window).filter(k=>k.startsWith('_store_')).forEach(k=>delete window[k]);
+
+  // 버튼 활성화
+  document.querySelectorAll('.ai-p-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+
+  // 기간 입력 동기화
+  const f=document.getElementById('aiDateFrom');
+  const t=document.getElementById('aiDateTo');
+  if(f)f.value=currentDateRange.from;
+  if(t)t.value=currentDateRange.to;
+
+  updateAIPeriodLabel();
+  toast(`📅 분석 기간: ${currentDateRange.from} ~ ${currentDateRange.to}`);
+}
+
+function applyAICustomDate(){
+  const f=document.getElementById('aiDateFrom')?.value;
+  const t=document.getElementById('aiDateTo')?.value;
+  if(!f||!t)return;
+  if(f>t){toast('⚠️ 시작일이 종료일보다 큽니다');return;}
+  currentDateRange={from:f,to:t};
+  currentReportMonth=f.slice(0,7);
+  sessionStorage.setItem('currentDateRange',JSON.stringify(currentDateRange));
+  sessionStorage.setItem('currentReportMonth',currentReportMonth);
+
+  Object.keys(REPORT_DATA).forEach(k=>{REPORT_DATA[k]=null;});
+  Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
+  Object.keys(window).filter(k=>k.startsWith('_store_')).forEach(k=>delete window[k]);
+
+  document.querySelectorAll('.ai-p-btn').forEach(b=>b.classList.remove('active'));
+  updateAIPeriodLabel();
+  toast(`📅 분석 기간: ${f} ~ ${t}`);
+}
+
+function updateAIPeriodLabel(){
+  const el=document.getElementById('aiPeriodLabel');
+  if(!el)return;
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  el.textContent=from&&to?`${from.replace(/-/g,'.')} ~ ${to.replace(/-/g,'.')}`:'';
+  const f=document.getElementById('aiDateFrom');
+  const t=document.getElementById('aiDateTo');
+  if(f&&!f.value)f.value=from;
+  if(t&&!t.value)t.value=to;
+}
+
 function openAIChat(){
   _aiChatMode=true;
   stopPolling();
@@ -5986,6 +6075,10 @@ function openAIChat(){
   // 파일 영역 숨기기
   const dropZone=document.getElementById('msgDropZone');
   if(dropZone)dropZone.style.display='none';
+
+  // 기간 바 표시
+  const periodBar=document.getElementById('aiPeriodBar');
+  if(periodBar){periodBar.style.display='flex';updateAIPeriodLabel();}
 
   chat.innerHTML=`
     <div style="text-align:center;padding:30px 16px">
@@ -6252,6 +6345,10 @@ async function openChat(clientKey, clientName){
   _aiChatMode=false;
   currentChatClient = clientKey;
   stopPolling();
+
+  // 기간 바 숨기기
+  const periodBar=document.getElementById('aiPeriodBar');
+  if(periodBar)periodBar.style.display='none';
 
   // 파일 영역 복원
   const dropZone=document.getElementById('msgDropZone');
