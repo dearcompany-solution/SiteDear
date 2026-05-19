@@ -5937,9 +5937,10 @@ function htmlMsg(){
         <button class="ai-p-btn" onclick="setAIPeriod('6m',this)">최근 6개월</button>
         <button class="ai-p-btn" onclick="setAIPeriod('year',this)">올해 전체</button>
         <div class="ai-p-custom">
-          <input type="date" id="aiDateFrom" onchange="applyAICustomDate()">
+          <div class="cdp-wrap" style="width:110px"><input type="text" class="cdp-input" id="aiDateFrom" value="${currentDateRange?.from||''}" readonly onclick="toggleCdp('aiDateFrom')" style="width:100%;padding:3px 8px;font-size:11px"><div id="cdp-aiDateFrom" style="display:none"></div></div>
           <span style="color:var(--text3)">~</span>
-          <input type="date" id="aiDateTo" onchange="applyAICustomDate()">
+          <div class="cdp-wrap" style="width:110px"><input type="text" class="cdp-input" id="aiDateTo" value="${currentDateRange?.to||''}" readonly onclick="toggleCdp('aiDateTo')" style="width:100%;padding:3px 8px;font-size:11px"><div id="cdp-aiDateTo" style="display:none"></div></div>
+          <button class="ai-p-btn" onclick="applyAICustomDate()" style="padding:3px 10px;font-size:11px;font-family:'Noto Sans KR',sans-serif">적용</button>
         </div>
         <span id="aiPeriodLabel" style="margin-left:auto;font-size:10.5px;color:#6366F1;font-family:'IBM Plex Mono',monospace"></span>
       </div>
