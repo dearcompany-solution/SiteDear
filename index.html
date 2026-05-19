@@ -5816,15 +5816,15 @@ function htmlMsg(){
       </div>
       <div class="msg-inp">
         <input type="file" id="msgFileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.hwp,.pptx" style="display:none" onchange="handleMsgFiles(this.files)">
-        <div id="msgDropZone" onclick="document.getElementById('msgFileInput').click()" style="border:1.5px dashed var(--border2);border-radius:var(--rsm);padding:10px 14px;cursor:pointer;background:var(--surface);transition:all .15s;position:relative;min-height:42px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div id="msgDropZone" onclick="document.getElementById('msgFileInput').click()" style="border:1.5px dashed var(--border2);border-radius:var(--rsm);padding:6px 14px;cursor:pointer;background:var(--surface);transition:all .15s;position:relative;min-height:32px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="msg-drop-zone" id="msgDropOverlay">📎 파일을 놓으세요</div>
           <div id="msgFileEmpty" style="display:flex;align-items:center;gap:6px;color:var(--text3);font-size:12px;width:100%"><span style="font-size:18px">📎</span> 클릭하거나 파일을 여기에 드래그하세요 <span style="margin-left:auto;font-size:10px;color:var(--border2)">이미지·문서·엑셀 | 최대 10MB, 5개</span></div>
           <div class="msg-file-preview" id="msgFilePreview"></div>
         </div>
         <div class="msg-inp-row">
           <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)"></textarea>
-          <button class="btn btn-bl" onclick="sendMsg()" style="height:40px;white-space:nowrap">전송 ↑</button>
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:10px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:64px;transition:border-color .15s;background:var(--surface)"></textarea>
+          <button class="btn btn-bl" onclick="sendMsg()" style="height:64px;white-space:nowrap">전송 ↑</button>
         </div>
       </div>
     </div>
