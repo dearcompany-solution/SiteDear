@@ -585,6 +585,28 @@ canvas{max-height:210px}
   .rpt-compare{grid-template-columns:1fr}
   .monthly-grid{grid-template-columns:repeat(4,1fr)}
 }
+@media(max-width:768px){
+  :root{--sw:0px}
+  .sb{transform:translateX(-280px);transition:transform .3s;width:280px;z-index:300}
+  .sb.open{transform:translateX(0)}
+  .main{margin-left:0}
+  #menuToggle{display:block!important}
+  .sb.open+.main::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:250}
+  .topbar{padding:12px 16px}
+  .content{padding:14px 16px}
+  .kpi6{grid-template-columns:1fr 1fr}
+  .row2,.row2b{grid-template-columns:1fr}
+  .sum-bar{flex-wrap:wrap}
+  .sum-item{flex:0 0 50%;border-bottom:1px solid var(--border)}
+  .msg-layout{flex-direction:column!important}
+  .msg-sb{width:100%!important;max-height:200px}
+  .kpi-target-bar{grid-template-columns:1fr!important}
+  .kt-form,.wl-form{grid-template-columns:1fr!important}
+  .lcrd{width:90%;padding:28px 24px}
+  .ai-suggest{gap:6px}
+  .ai-q-btn{font-size:11px;padding:6px 10px}
+  .ai-period-bar{flex-wrap:wrap;gap:4px}
+}
 /* ════ CAL 개선 ════ */
 .cal-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .cal-wrap{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--sh)}
@@ -720,6 +742,7 @@ canvas{max-height:210px}
   <main class="main">
    <header class="topbar">
       <div class="tb-row1">
+        <button id="menuToggle" onclick="document.querySelector('.sb').classList.toggle('open')" style="display:none;background:none;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:16px;cursor:pointer;margin-right:8px">☰</button>
         <div>
           <div class="tb-title" id="pgTitle">대시보드</div>
           <div class="tb-sub" id="pgSub">—</div>
@@ -1223,7 +1246,7 @@ function renderClientNav(){
     <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
     <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
     <div class="nsec">소통</div>
-    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
+    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
     <div class="ni" id="ni-req" onclick="go('req',this)"><span class="ic">📋</span>요청 관리</div>`;
 } 
@@ -6033,6 +6056,9 @@ function setAIPeriod(type,el){
   if(t)t.value=currentDateRange.to;
 
   updateAIPeriodLabel();
+  // 상단 topbar 날짜 동기화
+  const mainLabel=document.getElementById('drangeLabel');
+  if(mainLabel) mainLabel.textContent=`${currentDateRange.from.replace(/-/g,'.')} ~ ${currentDateRange.to.replace(/-/g,'.')}`;
   toast(`📅 분석 기간: ${currentDateRange.from} ~ ${currentDateRange.to}`);
 }
 
@@ -6052,6 +6078,8 @@ function applyAICustomDate(){
 
   document.querySelectorAll('.ai-p-btn').forEach(b=>b.classList.remove('active'));
   updateAIPeriodLabel();
+  const mainLabel=document.getElementById('drangeLabel');
+  if(mainLabel) mainLabel.textContent=`${f.replace(/-/g,'.')} ~ ${t.replace(/-/g,'.')}`;
   toast(`📅 분석 기간: ${f} ~ ${t}`);
 }
 
