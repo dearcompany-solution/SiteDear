@@ -259,6 +259,18 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .cdp-btn-today{background:var(--white);color:var(--text2)}
 .cdp-btn-today:hover{border-color:var(--blue);color:var(--blue)}
 
+/* ════ CUSTOM SELECT ════ */
+.csel-wrap{position:relative;display:inline-block;width:100%}
+.csel-btn{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 32px 8px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--surface);cursor:pointer;transition:all .15s;text-align:left;display:flex;align-items:center;gap:6px;outline:none}
+.csel-btn:hover,.csel-btn.open{border-color:var(--blue);background:var(--white)}
+.csel-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:10px;color:var(--text3);transition:transform .2s}
+.csel-btn.open+.csel-arrow{transform:translateY(-50%) rotate(180deg)}
+.csel-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:999;background:var(--white);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.13);padding:5px;max-height:220px;overflow-y:auto;animation:fadeIn .12s ease;display:none}
+.csel-drop.open{display:block}
+.csel-opt{padding:8px 11px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:7px;color:var(--text)}
+.csel-opt:hover{background:var(--blue-l);color:var(--blue)}
+.csel-opt.active{background:var(--blue);color:#fff;font-weight:600}
+
 /* ════ TABLE ════ */
 .tbl{width:100%;border-collapse:collapse}
 th{font-size:10.5px;color:var(--text3);text-align:left;padding:8px 12px;border-bottom:1.5px solid var(--border);font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
@@ -7730,8 +7742,34 @@ function selectDatePicker(inputId,dateStr){
   _cdpState[inputId].month=m;
   document.getElementById('cdp-'+inputId).style.display='none';
 }
+/* ── 커스텀 셀렉트 ── */
+function toggleCsel(name){
+  const btn=document.getElementById('csel-'+name+'-btn');
+  const drop=document.getElementById('csel-'+name+'-drop');
+  if(!btn||!drop)return;
+  const isOpen=drop.classList.contains('open');
+  // 다른 드롭다운 닫기
+  document.querySelectorAll('.csel-drop.open').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.csel-btn.open').forEach(b=>b.classList.remove('open'));
+  if(!isOpen){drop.classList.add('open');btn.classList.add('open');}
+}
+function pickCsel(name,val,label){
+  const inp=document.getElementById(name);
+  const btn=document.getElementById('csel-'+name+'-btn');
+  const drop=document.getElementById('csel-'+name+'-drop');
+  if(inp)inp.value=val;
+  if(btn){btn.innerHTML=label;btn.classList.remove('open');}
+  if(drop){
+    drop.querySelectorAll('.csel-opt').forEach(o=>{o.classList.toggle('active',o.dataset.val===val);});
+    drop.classList.remove('open');
+  }
+}
 // 바깥 클릭 시 닫기
 document.addEventListener('click',e=>{
+  if(!e.target.closest('.csel-wrap')){
+    document.querySelectorAll('.csel-drop.open').forEach(d=>d.classList.remove('open'));
+    document.querySelectorAll('.csel-btn.open').forEach(b=>b.classList.remove('open'));
+  }
   if(!e.target.closest('.cdp-wrap'))document.querySelectorAll('[id^="cdp-"]').forEach(el=>el.style.display='none');
 });
 
@@ -7753,7 +7791,7 @@ ${isAdmin?`
   <div style="font-size:14px;font-weight:600;margin-bottom:14px">➕ 새 작업 기록</div>
   <div class="wl-form">
     <div class="wl-fg"><label>날짜</label><div class="cdp-wrap" style="width:160px"><input type="text" class="cdp-input" id="wl-date" value="${new Date().toISOString().slice(0,10)}" readonly onclick="toggleDatePicker('wl-date')" style="width:100%"><span class="cdp-icon" onclick="toggleDatePicker('wl-date')" style="cursor:pointer">📅</span><div id="cdp-wl-date" style="display:none"></div></div></div>
-    <div class="wl-fg"><label>카테고리</label><select id="wl-cat">${WL_CATEGORIES.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</select></div>
+    <div class="wl-fg"><label>카테고리</label><input type="hidden" id="wl-cat" value="creative"><div class="csel-wrap"><button type="button" class="csel-btn" id="csel-wl-cat-btn" onclick="toggleCsel('wl-cat')">🎨 소재 교체</button><span class="csel-arrow">▼</span><div class="csel-drop" id="csel-wl-cat-drop">${WL_CATEGORIES.map(c=>`<div class="csel-opt ${c.id==='creative'?'active':''}" data-val="${c.id}" onclick="pickCsel('wl-cat','${c.id}','${c.icon} ${c.label}')">${c.icon} ${c.label}</div>`).join('')}</div></div></div>
     <div class="wl-fg full"><label>제목</label><input type="text" id="wl-title" placeholder="예: 메인 키워드 입찰가 500원 → 700원 조정"></div>
     <div class="wl-fg full"><label>상세 내용</label><textarea id="wl-content" rows="3" style="resize:vertical" placeholder="변경 사유, 기대 효과 등"></textarea></div>
   </div>
