@@ -7305,11 +7305,10 @@ async function generateAIBriefing(forceNew=false){
     const now=new Date();
     dateEl.textContent=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 분석`;
 
-    // DB에 캐시 저장
-    try{
-      await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}`,{method:'DELETE',headers:{...h,'Content-Type':'application/json'}});
-      await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:{...h,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text})});
-    }catch(e){}
+    // DB에 캐시 저장 (백그라운드 — 화면 표시 차단 안 함)
+    fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}`,{method:'DELETE',headers:{...h,'Content-Type':'application/json'}})
+      .then(()=>fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:{...h,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text})}))
+      .catch(()=>{});
   }catch(err){
     console.error('AI 브리핑 오류:',err);
     el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다.</span>';
