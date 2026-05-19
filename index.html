@@ -468,6 +468,7 @@ canvas{max-height:210px}
 .dp-custom input:focus{border-color:var(--blue)}
 .dp-apply{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
 .dp-apply:hover{background:#2563eb}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes feedbackDot {
   0%   { opacity:1; transform:scale(1); box-shadow:0 0 0px rgba(59,130,246,0.8); }
   50%  { opacity:0.4; transform:scale(1.4); box-shadow:0 0 6px rgba(59,130,246,1); }
@@ -1110,6 +1111,7 @@ function go(id,el){
   }
   renderContent(id);
   if(['naver','store','combined','meta'].includes(id))setTimeout(renderCharts,100);
+    if(id==='combined')setTimeout(generateAIBriefing,500);
   // 모든 페이지 전환 시 피드백 글로우 적용
   setTimeout(applyFeedbackGlow, 1000);
   setTimeout(applyFeedbackGlow, 2500);
@@ -2058,6 +2060,27 @@ ${ (()=>{
   <div class="sum-item"><div class="sum-lbl">📦 결제수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
 </div>`;
 })() }
+
+<!-- AI 운영 브리핑 -->
+<div class="card" id="aiBriefingCard" style="margin-bottom:18px;border-left:4px solid #6366F1;position:relative;min-height:80px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">AI</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text1)">AI 운영 브리핑</div>
+        <div style="font-size:11px;color:var(--text3)" id="aiBriefingDate">데이터 분석 중...</div>
+      </div>
+    </div>
+    <button class="btn btn-sm" onclick="generateAIBriefing(true)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+  </div>
+  <div id="aiBriefingContent" style="font-size:13px;line-height:1.7;color:var(--text2)">
+    <div style="display:flex;align-items:center;gap:8px;color:var(--text3)">
+      <div class="spinner" style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>
+      브리핑을 준비하고 있습니다...
+    </div>
+  </div>
+</div>
+
 <div class="row2b">
   <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
@@ -7181,7 +7204,111 @@ function clearReg(){
    CHARTS
 ════════════════════════════════════════ */
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
-async function renderCharts(){
+/* ════ AI 운영 브리핑 ════ */
+async function generateAIBriefing(forceNew=false){
+  const el=document.getElementById('aiBriefingContent');
+  const dateEl=document.getElementById('aiBriefingDate');
+  if(!el)return;
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck){el.innerHTML='<span style="color:var(--text3)">업체를 선택해주세요</span>';return;}
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  if(!from||!to){el.innerHTML='<span style="color:var(--text3)">기간을 선택해주세요</span>';return;}
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  // 캐시 확인 (같은 기간이면 DB에서 가져옴)
+  if(!forceNew){
+    try{
+      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&order=created_at.desc&limit=1`,{headers:h});
+      const cArr=await cRes.json();
+      if(Array.isArray(cArr)&&cArr.length>0&&cArr[0].briefing_text){
+        el.innerHTML=cArr[0].briefing_text;
+        const dt=new Date(cArr[0].created_at);
+        dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
+        return;
+      }
+    }catch(e){}
+  }
+
+  // 데이터 수집
+  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="spinner" style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>AI가 데이터를 분석하고 있습니다...</div>';
+
+  const d=REPORT_DATA[currentReportMonth];
+  const kpi=d?.kpi||{};
+  const company=isAdmin?(ACCOUNTS.find(a=>a.id===ck)?.company||ck):(currentUser?.company||ck);
+
+  // 네이버 데이터
+  const naverInfo=kpi.totalCost>0?`네이버 검색광고: 광고비 ${Math.round(kpi.totalCost).toLocaleString()}원, 노출 ${Math.round(kpi.totalImp).toLocaleString()}, 클릭 ${Math.round(kpi.totalClick).toLocaleString()}, 전환매출 ${Math.round(kpi.totalPurchaseRev||0).toLocaleString()}원, ROAS ${kpi.totalCost>0?((kpi.totalPurchaseRev||0)/kpi.totalCost*100).toFixed(1)+'%':'0%'}`:'네이버 검색광고: 데이터 없음';
+
+  // 스토어 데이터
+  const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+  const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+  const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+  const storeInfo=stRev>0?`스마트스토어: 매출 ${Math.round(stRev).toLocaleString()}원, 환불 ${Math.round(stRefund).toLocaleString()}원, 실매출 ${Math.round(stRev-stRefund).toLocaleString()}원, 주문수 ${stOrders}건`:'스마트스토어: 데이터 없음';
+
+  // META 데이터
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+  const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+  const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+  const metaCost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+  const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+  const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
+  const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+  const metaInfo=metaCost>0?`META 광고: 광고비 ${Math.round(metaCost).toLocaleString()}원, 노출 ${metaImp.toLocaleString()}, 클릭 ${metaClick.toLocaleString()}, 도달 ${metaReach.toLocaleString()}, CTR ${metaImp>0?(metaClick/metaImp*100).toFixed(2)+'%':'0%'}, CPC ${metaClick>0?Math.round(metaCost/metaClick).toLocaleString()+'원':'—'}`:'META 광고: 데이터 없음';
+
+  const prompt=`당신은 디지털 광고 운영 전문가입니다. 아래 데이터를 분석하여 광고주에게 보여줄 운영 브리핑을 작성하세요.
+
+업체: ${company}
+기간: ${from} ~ ${to}
+
+${naverInfo}
+${storeInfo}
+${metaInfo}
+
+다음 형식으로 작성하세요 (HTML 태그 사용):
+1. <b>📊 이번 기간 성과 요약</b> — 핵심 수치 2-3줄 요약
+2. <b>⚠️ 주의 포인트</b> — 개선이 필요한 부분 1-2가지
+3. <b>✅ 다음 액션 제안</b> — 구체적인 실행 방안 1-2가지
+
+규칙:
+- 데이터가 없는 채널은 언급하지 마세요
+- 전문 용어 대신 쉬운 표현 사용
+- 총 200자 이내로 간결하게
+- 각 항목은 <br>로 줄바꿈
+- <p> 태그로 각 섹션 감싸기`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'';
+    if(!text){el.innerHTML='<span style="color:var(--text3)">브리핑 생성에 실패했습니다. 다시 시도해주세요.</span>';return;}
+
+    el.innerHTML=text;
+    const now=new Date();
+    dateEl.textContent=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 분석`;
+
+    // DB에 캐시 저장
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}`,{method:'DELETE',headers:{...h,'Content-Type':'application/json'}});
+      await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:{...h,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text})});
+    }catch(e){}
+  }catch(err){
+    console.error('AI 브리핑 오류:',err);
+    el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</span>';
+  }
+}
   const mk=(id,cfg)=>{const el=document.getElementById(id);if(!el)return;try{if(charts[id])charts[id].destroy();charts[id]=new Chart(el,cfg);}catch(e){}};
   const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
   const lg={labels:{color:'#4a5670',font:{size:11,family:'Noto Sans KR'},padding:12}};
