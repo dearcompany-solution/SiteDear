@@ -283,7 +283,8 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .bubble.mgr{background:var(--white);border:1px solid var(--border)}.bubble.cli{background:var(--blue);color:#fff}
 .bmeta{font-size:10.5px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
 .brow.mine .bmeta{text-align:right}
-.msg-inp{padding:11px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.msg-inp{padding:11px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.msg-inp-row{display:flex;gap:8px;align-items:center}
 .msg-inp textarea{flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)}
 .msg-inp textarea:focus{border-color:var(--blue);background:var(--white)}
 .msg-inp-wrap{flex:1;position:relative}
@@ -5814,18 +5815,17 @@ function htmlMsg(){
         </div>
       </div>
       <div class="msg-inp">
-        <button class="btn-attach" onclick="document.getElementById('msgFileInput').click()" title="파일 첨부">📎</button>
         <input type="file" id="msgFileInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.hwp,.pptx" style="display:none" onchange="handleMsgFiles(this.files)">
-        <div class="msg-inp-wrap" id="msgDropZone">
+        <div id="msgDropZone" onclick="document.getElementById('msgFileInput').click()" style="border:1.5px dashed var(--border2);border-radius:var(--rsm);padding:10px 14px;cursor:pointer;background:var(--surface);transition:all .15s;position:relative;min-height:42px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="msg-drop-zone" id="msgDropOverlay">📎 파일을 놓으세요</div>
-          <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+          <div id="msgFileEmpty" style="display:flex;align-items:center;gap:6px;color:var(--text3);font-size:12px;width:100%"><span style="font-size:18px">📎</span> 클릭하거나 파일을 여기에 드래그하세요 <span style="margin-left:auto;font-size:10px;color:var(--border2)">이미지·문서·엑셀 | 최대 10MB, 5개</span></div>
           <div class="msg-file-preview" id="msgFilePreview"></div>
         </div>
-        <button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button>
-      </div>
-      <div style="padding:0 14px 8px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
-        <span>📎</span> 파일 첨부: 클립 버튼 클릭 또는 이 영역에 파일을 드래그하세요 (이미지·문서·엑셀, 최대 10MB, 5개)
+        <div class="msg-inp-row">
+          <textarea id="msgInput" placeholder="메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}" style="flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)"></textarea>
+          <button class="btn btn-bl" onclick="sendMsg()" style="height:40px;white-space:nowrap">전송 ↑</button>
+        </div>
       </div>
     </div>
   </div>`;}
@@ -5894,8 +5894,10 @@ function handleMsgFiles(files){
 
 function renderMsgFilePreview(){
   const el=document.getElementById('msgFilePreview');
+  const empty=document.getElementById('msgFileEmpty');
   if(!el)return;
-  if(!_msgPendingFiles.length){el.innerHTML='';return;}
+  if(!_msgPendingFiles.length){el.innerHTML='';if(empty)empty.style.display='flex';return;}
+  if(empty)empty.style.display='none';
   const isImg=f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name);
   el.innerHTML=_msgPendingFiles.map((f,i)=>{
     const thumb=isImg(f)?URL.createObjectURL(f):'';
