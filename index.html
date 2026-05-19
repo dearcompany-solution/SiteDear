@@ -8183,7 +8183,7 @@ function renderAlertList(rows){
           ${r.metric_name?`<span class="alert-metric">${r.metric_name}: ${r.current_value!=null?Number(r.current_value).toLocaleString():'-'}</span>`:''}
         </div>
         <div class="alert-actions">
-          ${!r.is_read?`<button class="btn btn-sm btn-ol" onclick="markAlertRead('${r.id}')">확인</button>`:'<span style="font-size:11px;color:var(--text3)">✓ 확인됨</span>'}
+          <button class="btn btn-sm btn-ol" onclick="${r.is_read?`markAlertUnread('${r.id}')`:`markAlertRead('${r.id}')`}" style="${r.is_read?'color:var(--naver)':''}">✓ 확인</button>
           <button class="btn btn-sm btn-rd" onclick="deleteAlert('${r.id}')" style="font-size:10px;padding:3px 8px">삭제</button>
         </div>
       </div>
@@ -8207,6 +8207,18 @@ async function markAlertRead(id){
     renderAlertList(window._alertRows);
   }
   updateAlertBadge();
+}
+
+async function markAlertUnread(id){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:false})});
+  if(window._alertRows){
+    const r=window._alertRows.find(a=>a.id===id);
+    if(r)r.is_read=false;
+    renderAlertList(window._alertRows);
+  }
+  updateAlertBadge();
+  toast('↩️ 미확인으로 되돌렸습니다');
 }
 
 async function markAllAlertsRead(){
