@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>디어컴퍼니 솔루션</title>
-  <script>console.log('SiteDear 버전: 2026-05-19-v4');</script>
+  <script>console.log('SiteDear 버전: 2026-05-19-v5');</script>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -342,6 +342,20 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .msg-thread:hover{background:var(--surface)}
 .msg-thread.active{background:var(--blue-l)}
 .msg-thread.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--blue)}
+.msg-thread.ai-thread{background:linear-gradient(135deg,rgba(99,102,241,.05),rgba(139,92,246,.05))}
+.msg-thread.ai-thread:hover{background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1))}
+.msg-thread.ai-thread.active{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.12))}
+.ai-suggest{display:flex;flex-wrap:wrap;gap:8px;padding:16px;justify-content:center}
+.ai-q-btn{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.ai-q-btn:hover{border-color:#6366F1;color:#6366F1;background:rgba(99,102,241,.05);transform:translateY(-1px);box-shadow:0 2px 8px rgba(99,102,241,.15)}
+.ai-bubble{background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.7;max-width:85%}
+.ai-bubble p{margin:6px 0}
+.ai-bubble b{color:#fde68a}
+.ai-typing{display:flex;align-items:center;gap:4px;padding:10px 14px}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:rgba(99,102,241,.5);animation:aiDot 1.2s infinite}
+.ai-typing span:nth-child(2){animation-delay:.2s}
+.ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.2)}}
 .mt-name{font-size:13px;font-weight:600}
 .mt-time{font-size:10.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
 .mt-prev{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
@@ -5856,11 +5870,17 @@ function htmlMsg(){
         </div>
         <div class="mt-prev" id="lastMsg-${c.id}">클릭해서 대화 열기</div>
       </div>`).join('')
-    : `<div class="msg-thread active">
+    : `<div class="msg-thread active" onclick="openChat('${currentUser.id}','디어컴퍼니 매니저')">
         <div style="display:flex;justify-content:space-between">
           <div class="mt-name">디어컴퍼니 매니저</div>
         </div>
         <div class="mt-prev">담당 매니저와 1:1 채팅</div>
+      </div>
+      <div class="msg-thread ai-thread" onclick="openAIChat()">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="mt-name" style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">AI</span> AI 어시스턴트</div>
+        </div>
+        <div class="mt-prev" style="color:#6366F1">데이터 기반 분석 · 전략 제안</div>
       </div>`;
 
   return `
@@ -5880,7 +5900,15 @@ function htmlMsg(){
             onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
         </div>`:''}
       </div>
-      <div class="msg-sb-list" id="msgThreadList">${threadList}</div>
+      <div class="msg-sb-list" id="msgThreadList">
+        <div class="msg-thread ai-thread" onclick="openAIChat()">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="mt-name" style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">AI</span> AI 어시스턴트</div>
+          </div>
+          <div class="mt-prev" style="color:#6366F1">데이터 기반 분석 · 전략 제안</div>
+        </div>
+        ${threadList}
+      </div>
     </div>
     <div class="msg-main">
       <div class="msg-main-hd">
@@ -5928,9 +5956,284 @@ function selT(el,name){
   el.classList.add('active');
 }
 
+/* ════ AI 어시스턴트 채팅 ════ */
+let _aiChatMode=false;
+const AI_QUESTIONS=[
+  {icon:'📊',text:'이번 기간 성과를 요약해줘',key:'summary'},
+  {icon:'⚠️',text:'지금 문제 있는 부분은?',key:'problems'},
+  {icon:'💰',text:'예산 조정이 필요한 채널은?',key:'budget'},
+  {icon:'🔑',text:'정리해야 할 키워드는?',key:'keyword'},
+  {icon:'🎨',text:'META 소재 교체가 필요한 건?',key:'meta_creative'},
+  {icon:'📈',text:'다음 달 전략 제안해줘',key:'strategy'},
+  {icon:'🛒',text:'스토어 매출 개선 방법은?',key:'store'},
+  {icon:'🔄',text:'전월 대비 변화를 분석해줘',key:'compare'}
+];
+
+function openAIChat(){
+  _aiChatMode=true;
+  stopPolling();
+  document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.msg-thread.ai-thread').forEach(t=>t.classList.add('active'));
+
+  const titleEl=document.getElementById('chatTitle');
+  const subEl=document.getElementById('chatSub');
+  if(titleEl) titleEl.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">AI</span> AI 어시스턴트</span>';
+  if(subEl) subEl.textContent='데이터 기반 분석 · 전략 제안';
+
+  const chat=document.getElementById('chatArea');
+  if(!chat)return;
+
+  // 파일 영역 숨기기
+  const dropZone=document.getElementById('msgDropZone');
+  if(dropZone)dropZone.style.display='none';
+
+  chat.innerHTML=`
+    <div style="text-align:center;padding:30px 16px">
+      <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;margin-bottom:10px">AI</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">AI 어시스턴트</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">현재 대시보드 데이터를 분석해서 답변합니다</div>
+      <div class="ai-suggest">
+        ${AI_QUESTIONS.map(q=>`<button class="ai-q-btn" onclick="askAI('${q.key}')">${q.icon} ${q.text}</button>`).join('')}
+      </div>
+    </div>`;
+
+  // 입력창 placeholder 변경
+  const inp=document.getElementById('msgInput');
+  if(inp) inp.placeholder='AI에게 질문하세요... (Enter: 전송)';
+}
+
+function collectAIData(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  const d=REPORT_DATA[currentReportMonth]||{};
+  const kpi=d?.kpi||{};
+  const gfa=d?.gfa||{};
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+
+  // 네이버
+  const naverCost=kpi.totalCost||0;
+  const naverRev=kpi.totalPurchaseRev||0;
+  const naverClick=kpi.totalClick||0;
+  const naverImp=kpi.totalImp||0;
+  const naverConv=kpi.totalConv||0;
+  const roas=naverCost>0?(naverRev/naverCost*100):0;
+  const cpc=naverClick>0?naverCost/naverClick:0;
+  const ctr=naverImp>0?naverClick/naverImp*100:0;
+
+  // GFA
+  const gfaCost=gfa.totalCost||0;
+  const gfaRev=gfa.totalRev||0;
+
+  // META
+  const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+  const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+  const metaCost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+  const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+  const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
+  const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+  const metaPurchaseRev=metaF.reduce((s,r)=>s+(+r.purchase_rev||0),0);
+  const metaCtr=metaImp>0?metaClick/metaImp*100:0;
+  const metaCpc=metaClick>0?metaCost/metaClick:0;
+  const metaFreq=metaReach>0?metaImp/metaReach:0;
+  const metaRoas=metaCost>0?metaPurchaseRev/metaCost*100:0;
+
+  // META 소재별
+  const adMap={};
+  metaF.forEach(r=>{const k=r.ad_name||'';if(!k)return;if(!adMap[k])adMap[k]={cost:0,imp:0,click:0,reach:0,purchase:0};const a=adMap[k];a.cost+=+r.cost||0;a.imp+=+r.imp||0;a.click+=+r.click||0;a.reach+=+r.reach||0;a.purchase+=+r.purchase||0;});
+  const adStats=Object.entries(adMap).map(([name,a])=>({name,cost:a.cost,ctr:a.imp>0?a.click/a.imp*100:0,cpc:a.click>0?a.cost/a.click:0,freq:a.reach>0?a.imp/a.reach:0,purchase:a.purchase}));
+
+  // 스토어
+  const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+  const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+  const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+  const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+
+  // 키워드
+  const topKw=d?.topKeywords?.filter(k=>k.cost>0).slice(0,10)||[];
+
+  return {naverCost,naverRev,roas,cpc,ctr,naverImp,naverClick,naverConv,gfaCost,gfaRev,metaCost,metaImp,metaClick,metaReach,metaCtr,metaCpc,metaFreq,metaRoas,metaPurchaseRev,adStats,stRev,stRefund,stOrders,topKw,from,to};
+}
+
+function generateAIAnswer(key,customQ){
+  const d=collectAIData();
+  const fmt=v=>'₩'+Math.round(v).toLocaleString();
+  const totalCost=d.naverCost+d.metaCost+d.gfaCost;
+  const totalRev=d.naverRev+d.gfaRev+d.stRev-d.stRefund;
+  const hasNaver=d.naverCost>0;
+  const hasMeta=d.metaCost>0;
+  const hasStore=d.stRev>0;
+
+  if(!hasNaver&&!hasMeta&&!hasStore) return '<p>현재 조회 기간에 데이터가 없습니다. 기간을 확인하거나 데이터를 업로드해주세요.</p>';
+
+  let answer='';
+
+  if(key==='summary'){
+    answer=`<p><b>📊 ${d.from} ~ ${d.to} 성과 요약</b></p>`;
+    answer+=`<p>총 광고비 <b>${fmt(totalCost)}</b>, 전체 매출 <b>${fmt(totalRev)}</b>입니다.</p>`;
+    if(hasNaver) answer+=`<p>▸ 네이버 검색광고: 광고비 ${fmt(d.naverCost)}, ROAS <b>${d.roas.toFixed(1)}%</b>, CPC ${fmt(d.cpc)}, CTR ${d.ctr.toFixed(2)}%</p>`;
+    if(hasMeta) answer+=`<p>▸ META 광고: 광고비 ${fmt(d.metaCost)}, ROAS <b>${d.metaRoas.toFixed(1)}%</b>, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
+    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 환불 ${fmt(d.stRefund)}, 실매출 <b>${fmt(d.stRev-d.stRefund)}</b>, 주문 ${d.stOrders.toLocaleString()}건</p>`;
+  }
+
+  else if(key==='problems'){
+    answer=`<p><b>⚠️ 현재 주의가 필요한 부분</b></p>`;
+    let issues=[];
+    if(hasNaver&&d.roas<100) issues.push(`네이버 ROAS ${d.roas.toFixed(1)}%로 <b>적자</b> 상태입니다. 저효율 캠페인 정리가 시급합니다.`);
+    if(hasNaver&&d.cpc>2000) issues.push(`네이버 CPC ${fmt(d.cpc)}로 높습니다. 입찰가 조정 또는 품질지수 개선을 검토하세요.`);
+    if(hasNaver&&d.ctr<1) issues.push(`네이버 CTR ${d.ctr.toFixed(2)}%로 낮습니다. 광고 제목/설명 A/B 테스트를 권장합니다.`);
+    if(hasMeta&&d.metaCtr<1) issues.push(`META CTR ${d.metaCtr.toFixed(2)}%로 소재 반응이 저조합니다. 크리에이티브 교체를 고려하세요.`);
+    if(hasMeta&&d.metaFreq>3) issues.push(`META 빈도 ${d.metaFreq.toFixed(1)}회로 피로도가 우려됩니다. 타겟 확장 또는 소재 로테이션이 필요합니다.`);
+    if(hasStore&&d.stRefund/d.stRev>0.1) issues.push(`스토어 환불률 ${(d.stRefund/d.stRev*100).toFixed(1)}%로 높습니다. 상품/배송 품질 점검이 필요합니다.`);
+    if(!issues.length) issues.push('특별한 이상 징후 없이 안정적으로 운영되고 있습니다. 👍');
+    answer+=issues.map(i=>`<p>▸ ${i}</p>`).join('');
+  }
+
+  else if(key==='budget'){
+    answer=`<p><b>💰 예산 조정 제안</b></p>`;
+    if(hasNaver&&d.roas>=300) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}%로 우수 — <b>예산 증액</b>을 추천합니다.</p>`;
+    else if(hasNaver&&d.roas<100) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}%로 저조 — 저효율 캠페인 <b>예산 축소</b> 후 고효율 키워드에 집중하세요.</p>`;
+    else if(hasNaver) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}% — 현 수준 유지하되 키워드별 효율 모니터링이 필요합니다.</p>`;
+    if(hasMeta&&d.metaRoas>=200) answer+=`<p>▸ META 광고 ROAS ${d.metaRoas.toFixed(0)}%로 양호 — 상위 소재 중심으로 <b>스케일업</b>을 고려하세요.</p>`;
+    else if(hasMeta) answer+=`<p>▸ META 광고 ROAS ${d.metaRoas.toFixed(0)}% — 소재 최적화 후 예산 조정을 권장합니다.</p>`;
+    if(d.gfaCost>0) answer+=`<p>▸ GFA 광고비 ${fmt(d.gfaCost)}, 매출 ${fmt(d.gfaRev)} — ${d.gfaRev/d.gfaCost>=1?'효율 양호':'효율 점검 필요'}</p>`;
+  }
+
+  else if(key==='keyword'){
+    answer=`<p><b>🔑 키워드 분석</b></p>`;
+    if(!d.topKw.length){answer+=`<p>키워드 데이터가 없습니다. 네이버 키워드 데이터를 업로드해주세요.</p>`;return answer;}
+    const good=d.topKw.filter(k=>k.cost>0&&k.rev/k.cost>=3);
+    const bad=d.topKw.filter(k=>k.cost>0&&k.rev/k.cost<1);
+    if(good.length) answer+=`<p>✅ <b>고효율 키워드</b> (ROAS 300%+): ${good.map(k=>`"${k.keyword}" (ROAS ${(k.rev/k.cost*100).toFixed(0)}%)`).join(', ')}</p>`;
+    if(bad.length) answer+=`<p>⚠️ <b>정리 검토 키워드</b> (ROAS 100% 미만): ${bad.map(k=>`"${k.keyword}" (ROAS ${(k.rev/k.cost*100).toFixed(0)}%, 광고비 ${fmt(k.cost)})`).join(', ')}</p>`;
+    if(!good.length&&!bad.length) answer+=`<p>현재 키워드들은 보통 수준의 효율을 보이고 있습니다.</p>`;
+  }
+
+  else if(key==='meta_creative'){
+    answer=`<p><b>🎨 META 소재 분석</b></p>`;
+    if(!hasMeta||!d.adStats.length){answer+=`<p>META 광고 데이터가 없습니다.</p>`;return answer;}
+    const fatigue=d.adStats.filter(a=>a.freq>3).sort((a,b)=>b.freq-a.freq);
+    const lowCtr=d.adStats.filter(a=>a.ctr<1&&a.cost>10000).sort((a,b)=>a.ctr-b.ctr);
+    const topCtr=d.adStats.filter(a=>a.ctr>0).sort((a,b)=>b.ctr-a.ctr).slice(0,3);
+    if(fatigue.length) answer+=`<p>🔄 <b>피로도 높은 소재</b> (교체 권장): ${fatigue.slice(0,3).map(a=>`"${a.name.slice(0,15)}" (빈도 ${a.freq.toFixed(1)}회)`).join(', ')}</p>`;
+    if(lowCtr.length) answer+=`<p>⚠️ <b>CTR 저조 소재</b>: ${lowCtr.slice(0,3).map(a=>`"${a.name.slice(0,15)}" (CTR ${a.ctr.toFixed(2)}%)`).join(', ')}</p>`;
+    if(topCtr.length) answer+=`<p>✅ <b>반응 좋은 소재</b>: ${topCtr.map(a=>`"${a.name.slice(0,15)}" (CTR ${a.ctr.toFixed(2)}%)`).join(', ')} — 유사 소재 확장을 추천합니다.</p>`;
+  }
+
+  else if(key==='strategy'){
+    answer=`<p><b>📈 다음 달 전략 제안</b></p>`;
+    if(hasNaver){
+      if(d.roas>=300) answer+=`<p>▸ 네이버: 고효율 유지 중. 신규 키워드 확장 + 예산 10~20% 증액 테스트를 권장합니다.</p>`;
+      else answer+=`<p>▸ 네이버: 저효율 키워드 OFF → 상위 전환 키워드에 예산 집중. 광고 소재 리뉴얼도 검토하세요.</p>`;
+    }
+    if(hasMeta){
+      if(d.metaFreq>3) answer+=`<p>▸ META: 빈도 ${d.metaFreq.toFixed(1)}회로 높음. 타겟 오디언스 갱신 + 새 크리에이티브 3~5개 제작을 추천합니다.</p>`;
+      else answer+=`<p>▸ META: 빈도 양호. 성과 좋은 소재 중심 스케일업 + 리타겟팅 강화를 고려하세요.</p>`;
+    }
+    if(hasStore){
+      const aov=d.stOrders>0?d.stRev/d.stOrders:0;
+      answer+=`<p>▸ 스토어: 객단가 ${fmt(aov)}. ${aov<30000?'번들/세트 상품으로 객단가 높이기 전략을 추천합니다.':'객단가 양호. 리뷰 확보와 재구매율 향상에 집중하세요.'}</p>`;
+    }
+  }
+
+  else if(key==='store'){
+    answer=`<p><b>🛒 스토어 매출 분석</b></p>`;
+    if(!hasStore){answer+=`<p>스토어 데이터가 없습니다.</p>`;return answer;}
+    const netRev=d.stRev-d.stRefund;
+    const aov=d.stOrders>0?d.stRev/d.stOrders:0;
+    const refundRate=d.stRev>0?d.stRefund/d.stRev*100:0;
+    answer+=`<p>매출 ${fmt(d.stRev)}, 환불 ${fmt(d.stRefund)} (${refundRate.toFixed(1)}%), 실매출 <b>${fmt(netRev)}</b></p>`;
+    answer+=`<p>주문 ${d.stOrders.toLocaleString()}건, 객단가 <b>${fmt(aov)}</b></p>`;
+    if(refundRate>10) answer+=`<p>⚠️ 환불률이 높습니다. 상품 상세페이지 정확성, 배송 품질, 사이즈 가이드를 점검하세요.</p>`;
+    if(aov<20000) answer+=`<p>💡 객단가가 낮은 편입니다. 묶음 할인, 사은품 증정, 무료배송 기준 상향을 검토하세요.</p>`;
+    else answer+=`<p>💡 객단가 양호. 크로스셀링(관련 상품 추천)으로 추가 상승을 노려보세요.</p>`;
+  }
+
+  else if(key==='compare'){
+    answer=`<p><b>🔄 전월 대비 분석</b></p>`;
+    answer+=`<p>현재 기간: ${d.from} ~ ${d.to}</p>`;
+    if(hasNaver) answer+=`<p>▸ 네이버: ROAS ${d.roas.toFixed(1)}%, CPC ${fmt(d.cpc)}, CTR ${d.ctr.toFixed(2)}%</p>`;
+    if(hasMeta) answer+=`<p>▸ META: ROAS ${d.metaRoas.toFixed(1)}%, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
+    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 주문 ${d.stOrders}건</p>`;
+    answer+=`<p style="margin-top:8px;color:#fde68a">💡 정확한 전월 비교는 이전 달 기간을 선택해서 비교해보시면 좋습니다.</p>`;
+  }
+
+  else {
+    // 커스텀 질문 - 범용 답변
+    answer=`<p><b>📊 현재 데이터 기반 분석</b></p>`;
+    if(hasNaver) answer+=`<p>▸ 네이버: 광고비 ${fmt(d.naverCost)}, ROAS ${d.roas.toFixed(1)}%, CPC ${fmt(d.cpc)}</p>`;
+    if(hasMeta) answer+=`<p>▸ META: 광고비 ${fmt(d.metaCost)}, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
+    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 주문 ${d.stOrders}건</p>`;
+    answer+=`<p style="margin-top:6px">더 구체적인 분석이 필요하시면 위 추천 질문 버튼을 이용해보세요!</p>`;
+  }
+
+  return answer;
+}
+
+function askAI(key){
+  const q=AI_QUESTIONS.find(a=>a.key===key);
+  const qText=q?`${q.icon} ${q.text}`:'질문';
+  _sendAIQuestion(qText,key);
+}
+
+function _sendAIQuestion(qText,key){
+  const chat=document.getElementById('chatArea');
+  if(!chat)return;
+
+  // 추천 버튼 영역 제거
+  const suggest=chat.querySelector('.ai-suggest')?.closest('div[style*="text-align:center"]');
+  if(suggest)suggest.remove();
+
+  // 사용자 질문 표시
+  const time=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const initials=(currentUser.name||currentUser.id).charAt(0);
+  chat.insertAdjacentHTML('beforeend',`
+    <div class="brow mine">
+      <div class="bav bav-c">${initials}</div>
+      <div><div class="bubble cli">${qText}</div><div class="bmeta">${time}</div></div>
+    </div>`);
+
+  // 타이핑 표시
+  chat.insertAdjacentHTML('beforeend',`
+    <div class="brow" id="aiTyping">
+      <div class="bav" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-size:10px;font-weight:700">AI</div>
+      <div class="ai-typing"><span></span><span></span><span></span></div>
+    </div>`);
+  chat.scrollTop=chat.scrollHeight;
+
+  // 딜레이 후 답변
+  setTimeout(()=>{
+    const typing=document.getElementById('aiTyping');
+    if(typing)typing.remove();
+
+    const answer=generateAIAnswer(key);
+    chat.insertAdjacentHTML('beforeend',`
+      <div class="brow">
+        <div class="bav" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-size:10px;font-weight:700">AI</div>
+        <div><div class="ai-bubble">${answer}</div><div class="bmeta">${time}</div></div>
+      </div>
+      <div style="padding:8px 40px"><div class="ai-suggest" style="justify-content:flex-start">
+        ${AI_QUESTIONS.filter(a=>a.key!==key).slice(0,4).map(q=>`<button class="ai-q-btn" onclick="askAI('${q.key}')" style="font-size:11px;padding:5px 10px">${q.icon} ${q.text}</button>`).join('')}
+      </div></div>`);
+    chat.scrollTop=chat.scrollHeight;
+  },800+Math.random()*600);
+}
+
 async function openChat(clientKey, clientName){
+  _aiChatMode=false;
   currentChatClient = clientKey;
   stopPolling();
+
+  // 파일 영역 복원
+  const dropZone=document.getElementById('msgDropZone');
+  if(dropZone)dropZone.style.display='';
+
+  // 입력창 placeholder 복원
+  const inp=document.getElementById('msgInput');
+  if(inp)inp.placeholder='메시지 입력... (Enter: 전송, Shift+Enter: 줄바꿈)';
 
   // 사이드바 활성화
   document.querySelectorAll('.msg-thread').forEach(t=>t.classList.remove('active'));
@@ -6049,6 +6352,12 @@ function renderBubbleContent(raw){
 async function sendMsg(){
   const inp = document.getElementById('msgInput');
   const txt = inp.value.trim();
+  if(_aiChatMode){
+    if(!txt)return;
+    inp.value='';
+    _sendAIQuestion(txt,'custom');
+    return;
+  }
   const hasFiles = _msgPendingFiles.length > 0;
   if(!txt && !hasFiles) return;
 
