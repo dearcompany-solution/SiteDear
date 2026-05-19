@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>디어컴퍼니 솔루션</title>
-  <script>console.log('SiteDear 버전: 2026-05-19-v3');</script>
+  <script>console.log('SiteDear 버전: 2026-05-19-v4');</script>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -233,6 +233,23 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .wl-fg input:focus,.wl-fg select:focus,.wl-fg textarea:focus{border-color:var(--blue);background:var(--white)}
 .wl-empty{text-align:center;padding:40px 20px;color:var(--text3)}
 .wl-filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+
+/* ════ META CREATIVE ANALYSIS ════ */
+.mc-rank{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.mc-rank:last-child{border-bottom:none}
+.mc-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;flex-shrink:0}
+.mc-num.top1{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff}
+.mc-num.top2{background:var(--blue);color:#fff}
+.mc-num.top3{background:var(--naver);color:#fff}
+.mc-num.rest{background:var(--surface);color:var(--text3)}
+.mc-name{font-size:12.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-stat{font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right;white-space:nowrap}
+.mc-bar{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;flex:0 0 80px}
+.mc-bar-fill{height:100%;border-radius:3px}
+.mc-fatigue{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.mf-safe{background:var(--naver-m);color:var(--naver)}
+.mf-warn{background:var(--gold-l);color:#b45309}
+.mf-danger{background:var(--red-l);color:var(--red)}
 
 /* ════ CUSTOM DATE PICKER ════ */
 .cdp-wrap{position:relative;display:inline-block}
@@ -8658,16 +8675,68 @@ async function loadMetaTab(tabId){
     const map={};
     rows.forEach(r=>{const k=r.ad_name||'기타';if(!map[k])map[k]=[];map[k].push(r);});
     const keys=Object.keys(map).sort((a,b)=>agg(map[b]).cost-agg(map[a]).cost);
-    const trs=keys.map((k,i)=>{const a=agg(map[k]);return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
-      <td style="font-size:12.5px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${k}">${k}</td>
+    const adStats=keys.map(k=>({name:k,...agg(map[k])}));
+    const maxCtr=Math.max(...adStats.map(a=>a.ctr),1);
+    const maxCpc=Math.max(...adStats.map(a=>a.cpc),1);
+
+    const trs=adStats.map((a,i)=>{
+      const fCls=a.frequency>5?'mf-danger':a.frequency>3?'mf-warn':'mf-safe';
+      const fLbl=a.frequency>5?'피로도 높음':a.frequency>3?'주의':'양호';
+      return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+      <td style="font-size:12.5px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.name}">${a.name}</td>
       <td style="font-family:monospace;font-size:12px">${fmt(a.cost)}</td><td style="font-family:monospace;font-size:12px">${fmtn(a.imp)}</td>
-      <td style="font-family:monospace;font-size:12px">${fmtn(a.click)}</td><td style="font-family:monospace;font-size:12px">${fmtn(a.reach)}</td>
-      <td style="font-family:monospace;font-size:12px">${a.ctr.toFixed(2)}%</td><td style="font-family:monospace;font-size:12px">${fmt(a.cpc)}</td>
-      <td style="font-family:monospace;font-size:12px">${fmt(a.cpm)}</td><td style="font-family:monospace;font-size:12px">${a.frequency.toFixed(2)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.click)}</td><td style="font-family:monospace;font-size:12px">${a.ctr.toFixed(2)}%</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(a.cpc)}</td><td style="font-family:monospace;font-size:12px">${a.frequency.toFixed(2)}</td>
+      <td><span class="mc-fatigue ${fCls}">${fLbl}</span></td>
       <td style="font-family:monospace;font-size:12px">${fmtn(a.purchase)}건</td>
       <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(a.cost,a.purchase_rev)}">${calcR(a.cost,a.purchase_rev)}</td>
     </tr>`;}).join('');
-    document.getElementById('mt-tab-ad').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">🎨 광고소재별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>광고소재</th><th>광고비</th><th>노출</th><th>클릭</th><th>도달</th><th>CTR</th><th>CPC</th><th>CPM</th><th>빈도</th><th>구매</th><th>ROAS</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+
+    // CTR 랭킹 (상위 5개)
+    const ctrTop=adStats.filter(a=>a.imp>100).sort((a,b)=>b.ctr-a.ctr).slice(0,5);
+    const ctrRankHtml=ctrTop.map((a,i)=>{
+      const numCls=i===0?'top1':i===1?'top2':i===2?'top3':'rest';
+      const pct=(a.ctr/maxCtr*100).toFixed(0);
+      return `<div class="mc-rank"><div class="mc-num ${numCls}">${i+1}</div><div class="mc-name" title="${a.name}">${a.name}</div><div class="mc-bar"><div class="mc-bar-fill" style="width:${pct}%;background:var(--blue)"></div></div><div class="mc-stat">${a.ctr.toFixed(2)}%</div></div>`;
+    }).join('');
+
+    // CPC 랭킹 (낮은 순 상위 5개 = 효율 좋은)
+    const cpcTop=adStats.filter(a=>a.click>10).sort((a,b)=>a.cpc-b.cpc).slice(0,5);
+    const cpcRankHtml=cpcTop.map((a,i)=>{
+      const numCls=i===0?'top1':i===1?'top2':i===2?'top3':'rest';
+      const pct=maxCpc>0?((maxCpc-a.cpc)/maxCpc*100).toFixed(0):'0';
+      return `<div class="mc-rank"><div class="mc-num ${numCls}">${i+1}</div><div class="mc-name" title="${a.name}">${a.name}</div><div class="mc-bar"><div class="mc-bar-fill" style="width:${pct}%;background:var(--naver)"></div></div><div class="mc-stat">${fmt(a.cpc)}</div></div>`;
+    }).join('');
+
+    // 피로도 위험 소재
+    const fatigueList=adStats.filter(a=>a.frequency>3).sort((a,b)=>b.frequency-a.frequency);
+    const fatigueHtml=fatigueList.length?fatigueList.map(a=>{
+      const fCls=a.frequency>5?'mf-danger':'mf-warn';
+      return `<div class="mc-rank"><span class="mc-fatigue ${fCls}">${a.frequency.toFixed(1)}회</span><div class="mc-name" title="${a.name}">${a.name}</div><div class="mc-stat" style="color:var(--text3)">도달 ${fmtn(a.reach)} · 노출 ${fmtn(a.imp)}</div></div>`;
+    }).join(''):`<div style="text-align:center;padding:20px;color:var(--text3);font-size:12.5px">✅ 빈도 3회 초과 소재 없음 — 양호</div>`;
+
+    document.getElementById('mt-tab-ad').innerHTML=kpiHtml+`
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card"><div class="card-hd"><div><div class="card-title">📊 소재별 CTR · CPC 비교</div></div></div><canvas id="metaAdCtrCpc" height="140"></canvas></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">🔄 소재별 피로도 (빈도)</div></div></div><canvas id="metaAdFatigue" height="140"></canvas></div>
+      </div>
+      <div class="row2b" style="margin-bottom:16px;grid-template-columns:1fr 1fr 1fr">
+        <div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700">🏆 CTR 상위 소재</div>${ctrRankHtml||'<div style="padding:20px;text-align:center;color:var(--text3)">데이터 부족</div>'}</div>
+        <div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700">💰 CPC 효율 소재</div>${cpcRankHtml||'<div style="padding:20px;text-align:center;color:var(--text3)">데이터 부족</div>'}</div>
+        <div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700">⚠️ 피로도 주의 소재</div>${fatigueHtml}</div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">🎨 광고소재별 성과 상세</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>광고소재</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>CPC</th><th>빈도</th><th>피로도</th><th>구매</th><th>ROAS</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+
+    // 차트
+    setTimeout(()=>{
+      const top8=adStats.slice(0,8);
+      const shortN=n=>n.length>10?n.slice(0,10)+'…':n;
+      mk('metaAdCtrCpc',{type:'bar',data:{labels:top8.map(a=>shortN(a.name)),datasets:[
+        {label:'CTR(%)',data:top8.map(a=>a.ctr),backgroundColor:'rgba(24,119,242,.7)',borderRadius:3,yAxisID:'y'},
+        {label:'CPC(원)',data:top8.map(a=>a.cpc),backgroundColor:'rgba(225,48,108,.7)',borderRadius:3,yAxisID:'y1'}
+      ]},options:{responsive:true,scales:{x:ax,y:{...ax,position:'left',ticks:{...ax.ticks,color:'#1877F2',callback:v=>v.toFixed(1)+'%'}},y1:{grid:{display:false},position:'right',ticks:{color:'#E1306C',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₩'+Math.round(v).toLocaleString()}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
+      mk('metaAdFatigue',{type:'bar',data:{labels:top8.map(a=>shortN(a.name)),datasets:[{label:'빈도',data:top8.map(a=>a.frequency),backgroundColor:top8.map(a=>a.frequency>5?'rgba(239,68,68,.7)':a.frequency>3?'rgba(245,158,11,.7)':'rgba(3,199,90,.7)'),borderRadius:3}]},options:{responsive:true,scales:{x:ax,y:{...ax,ticks:{...ax.ticks,callback:v=>v.toFixed(1)+'회'}}},plugins:{legend:{display:false},annotation:{}}}});
+    },100);
   }
 
   if(tabId==='reach'){
