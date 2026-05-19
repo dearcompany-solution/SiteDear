@@ -33,26 +33,51 @@
 body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 
 /* ════ LOGIN ════ */
-#loginPage{display:flex;min-height:100vh;background:linear-gradient(135deg,#d4e3f5 0%,#e8eef6 50%,#dde8f4 100%);align-items:center;justify-content:center;position:relative;overflow:hidden}
-#loginPage::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 700px 500px at 15% 25%,rgba(59,130,246,.1) 0%,transparent 70%),radial-gradient(ellipse 500px 400px at 85% 75%,rgba(3,199,90,.07) 0%,transparent 70%)}
-.lcrd{background:var(--white);border-radius:20px;padding:44px 44px 40px;width:420px;box-shadow:0 8px 40px rgba(0,0,0,.13);position:relative;z-index:1;animation:slideUp .4s cubic-bezier(.34,1.56,.64,1)}
-@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-.l-brand{text-align:center;margin-bottom:28px}
-.l-co{font-size:11px;font-weight:700;letter-spacing:3px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
-.l-prod{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px}
-.l-prod em{color:var(--blue);font-style:normal}
-.l-sub{font-size:12px;color:var(--text3);margin-top:3px}
-.lhr{height:1px;background:var(--border);margin:20px 0}
-.lg{margin-bottom:14px}
-.lg label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px}
-.lg input{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:10px 13px;font-size:13.5px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--surface);outline:none;transition:all .15s}
-.lg input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-m);background:var(--white)}
-.lbtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s;margin-top:4px}
-.lbtn:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 4px 14px rgba(59,130,246,.35)}
-.lerr{color:var(--red);font-size:12.5px;text-align:center;margin-top:9px;display:none}
-.lhint{margin-top:18px;padding:13px;background:var(--surface);border-radius:var(--rsm);border:1px solid var(--border);font-size:11.5px;color:var(--text3);line-height:1.9}
-.lhint b{color:var(--text2)}
+#loginPage{display:flex;min-height:100vh;background:#0f172a;align-items:center;justify-content:center;position:relative;overflow:hidden}
+#loginPage::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 800px 600px at 30% 20%,rgba(99,102,241,.15) 0%,transparent 60%),radial-gradient(ellipse 600px 500px at 70% 80%,rgba(59,130,246,.1) 0%,transparent 60%),radial-gradient(ellipse 400px 300px at 50% 50%,rgba(139,92,246,.08) 0%,transparent 60%)}
+#loginPage::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='.6' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E");opacity:.5}
+.lcrd{background:rgba(255,255,255,.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:48px 44px 44px;width:420px;box-shadow:0 24px 80px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06);position:relative;z-index:1;animation:slideUp .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.l-brand{text-align:center;margin-bottom:32px}
+.l-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 8px 24px rgba(99,102,241,.3)}
+.l-logo img{width:32px;height:32px;filter:brightness(10)}
+.l-logo span{color:#fff;font-size:22px;font-weight:800;font-family:'IBM Plex Mono',monospace}
+.l-co{font-size:10px;font-weight:700;letter-spacing:4px;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:6px}
+.l-prod{font-size:24px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.l-prod em{background:linear-gradient(135deg,#818CF8,#60A5FA);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-style:normal}
+.l-sub{font-size:12px;color:rgba(255,255,255,.35);margin-top:6px;letter-spacing:.3px}
+.lhr{height:1px;background:rgba(255,255,255,.06);margin:24px 0}
+.lg{margin-bottom:16px}
+.lg label{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.45);display:block;margin-bottom:6px;letter-spacing:.3px}
+.lg input{width:100%;border:1.5px solid rgba(255,255,255,.08);border-radius:10px;padding:11px 14px;font-size:13.5px;font-family:'Noto Sans KR',sans-serif;color:#fff;background:rgba(255,255,255,.04);outline:none;transition:all .2s}
+.lg input::placeholder{color:rgba(255,255,255,.2)}
+.lg input:focus{border-color:rgba(99,102,241,.5);box-shadow:0 0 0 3px rgba(99,102,241,.15);background:rgba(255,255,255,.06)}
+.lbtn{width:100%;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s;margin-top:6px;letter-spacing:.3px;box-shadow:0 4px 16px rgba(99,102,241,.3)}
+.lbtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.45)}
+.lbtn:active{transform:translateY(0)}
+.lerr{color:#f87171;font-size:12.5px;text-align:center;margin-top:10px;display:none}
+.lhint{margin-top:20px;padding:14px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.06);font-size:11.5px;color:rgba(255,255,255,.3);line-height:1.9}
+.lhint b{color:rgba(255,255,255,.5)}
+.l-features{display:flex;gap:16px;margin-top:20px;justify-content:center}
+.l-feat{text-align:center;font-size:10.5px;color:rgba(255,255,255,.3)}
+.l-feat-ic{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:15px}
 
+/* ════ SKELETON UI ════ */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skel{border-radius:var(--rsm);background:linear-gradient(90deg,var(--bg2) 0%,#e8eef6 40%,var(--bg2) 80%);background-size:800px 100%;animation:shimmer 1.5s infinite linear}
+.skel-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+.skel-kpi-item{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--sh)}
+.skel-kpi-top{display:flex;justify-content:space-between;margin-bottom:12px}
+.skel-circle{width:32px;height:32px;border-radius:8px}
+.skel-chip{width:48px;height:18px;border-radius:10px}
+.skel-line{height:10px;border-radius:5px;margin-bottom:8px}
+.skel-val{height:22px;border-radius:6px;width:70%}
+.skel-bar{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--sh);margin-bottom:18px;display:flex;gap:16px}
+.skel-bar-item{flex:1;padding:10px 0}
+.skel-chart{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--sh);margin-bottom:18px}
+.skel-chart-title{height:14px;width:140px;border-radius:5px;margin-bottom:16px}
+.skel-chart-area{height:160px;border-radius:var(--rsm)}
+.skel-row2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:18px}
 /* ════ APP ════ */
 #appShell{display:none}
 
@@ -705,15 +730,22 @@ canvas{max-height:210px}
 <div id="loginPage">
   <div class="lcrd">
     <div class="l-brand">
+      <div class="l-logo"><span>S</span></div>
       <div class="l-co">DEARCOMPANY</div>
-      <div class="l-prod">디어컴퍼니 <em>솔루션</em></div>
-      <div class="l-sub">광고주 리포트 대시보드</div>
+      <div class="l-prod">Site<em>Dear</em></div>
+      <div class="l-sub">광고 성과 분석 · 스마트 리포트 플랫폼</div>
     </div>
     <div class="lhr"></div>
     <div class="lg"><label>아이디</label><input id="lid" type="text" placeholder="아이디를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="lg"><label>비밀번호</label><input id="lpw" type="password" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="lbtn" onclick="doLogin()">로그인</button>
+    <button class="lbtn" onclick="doLogin()">로그인 →</button>
     <div class="lerr" id="lerr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="l-features">
+      <div class="l-feat"><div class="l-feat-ic">📊</div>실시간 대시보드</div>
+      <div class="l-feat"><div class="l-feat-ic">🤖</div>AI 분석</div>
+      <div class="l-feat"><div class="l-feat-ic">📑</div>자동 리포트</div>
+      <div class="l-feat"><div class="l-feat-ic">💬</div>메시지</div>
+    </div>
   </div>
 </div>
 
@@ -903,6 +935,7 @@ const MONTHLY_TREND=[];
 const SUPABASE_URL='https://pouqjsolszhntwkaaasj.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvdXFqc29sc3pobnR3a2FhYXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTc4NDIsImV4cCI6MjA5MDA3Mzg0Mn0.fkB0yMBWC8CtswYuhdCvNBGpKkW502e3vX_18b705lo';
 // ⚠️ 위 ANON KEY가 틀리면 클라이언트 로그인만 실패합니다. 관리자(dearcompany)는 로컬 계정이라 영향 없음.
+const SLACK_BOT_TOKEN='xoxb-2203957031460-11156934805157-orkrSmcDRst5tucQLvJrTRE3';
 let SLACK_BOT_TOKEN='';
 (async()=>{try{const r=await fetch(`${SUPABASE_URL}/rest/v1/app_config?key=eq.slack_bot_token&select=value`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});const d=await r.json();if(d&&d[0])SLACK_BOT_TOKEN=d[0].value;}catch(e){}})();
 // 올바른 키: Supabase 대시보드 → Settings → API → anon public (eyJ...로 시작하는 JWT)
@@ -1345,7 +1378,7 @@ function renderContent(id){
   document.getElementById('pgSub').textContent=t[1];
   switch(id){
     case 'naver':
-  c.innerHTML=htmlNaver();
+  c.innerHTML=skeletonKPI(8)+skeletonCharts();
   (async()=>{
     const d=await fetchReportData(currentReportMonth);
     if(d) REPORT_DATA[currentReportMonth]=d;
@@ -1360,22 +1393,24 @@ function renderContent(id){
   })();
   break;
     case 'store':
-      c.innerHTML=htmlStore();
+      c.innerHTML=skeletonKPI(6)+skeletonCharts();
       // 백그라운드 미리 로드
       setTimeout(async()=>{
         if(!window._storeSalesCache) window._storeSalesCache = await fetchStoreData('store_sales');
         if(!window._storeProductCache) window._storeProductCache = await fetchStoreData('store_products');
+        c.innerHTML=htmlStore();
         switchStoreTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]"));
       }, 50);
       break;
     case 'meta':
-      c.innerHTML=htmlMeta();
+      c.innerHTML=skeletonKPI(8)+skeletonCharts();
       setTimeout(async()=>{
+        c.innerHTML=htmlMeta();
         await loadMetaTab('summary');
       },50);
       break;
     case 'combined':
-      c.innerHTML=htmlCombined();
+      c.innerHTML=skeletonPage();
       setTimeout(async()=>{
         const d=await fetchReportData(currentReportMonth);
         if(d) REPORT_DATA[currentReportMonth]=d;
@@ -2261,6 +2296,19 @@ function renderStoreProductTable(rows){
 }
 
   /* ════ COMBINED ════ */
+function skeletonKPI(count=8){
+  return `<div class="skel-kpi" style="grid-template-columns:repeat(${Math.min(count,4)},1fr)">${Array.from({length:count},()=>`<div class="skel-kpi-item"><div class="skel-kpi-top"><div class="skel skel-circle"></div><div class="skel skel-chip"></div></div><div class="skel skel-line" style="width:50%"></div><div class="skel skel-val"></div></div>`).join('')}</div>`;
+}
+function skeletonSumBar(count=8){
+  return `<div class="skel-bar">${Array.from({length:count},()=>`<div class="skel-bar-item"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-val" style="height:18px"></div></div>`).join('')}</div>`;
+}
+function skeletonCharts(count=2){
+  return `<div class="skel-row2">${Array.from({length:count},()=>`<div class="skel-chart"><div class="skel skel-chart-title"></div><div class="skel skel-chart-area"></div></div>`).join('')}</div>`;
+}
+function skeletonPage(){
+  return skeletonSumBar()+skeletonKPI()+skeletonCharts();
+}
+
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
@@ -5794,6 +5842,36 @@ async function sendSlackNotify(clientKey, senderName, content){
     console.log(`✅ Slack 알림 전송: ${managerName} (${slackUserId})`);
   }catch(e){
     console.warn('Slack 알림 실패:',e);
+  }
+}
+
+/* ── Slack DM 알림 ── */
+async function sendSlackNotify(clientKey, senderName, content){
+  try{
+    const client=ACCOUNTS.find(a=>a.id===clientKey);
+    const managerName=client?.manager||'';
+    console.log('📨 Slack 알림 시도:', clientKey, '담당자:', managerName);
+    if(!managerName){console.warn('⚠️ 담당 매니저 없음');return;}
+
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_slack?manager_name=eq.${encodeURIComponent(managerName)}&limit=1`,{headers:h});
+    const rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length){console.warn('⚠️ Slack ID 매핑 없음:', managerName);return;}
+    const slackUserId=rows[0].slack_user_id;
+
+    const preview=content.length>100?content.slice(0,100)+'…':content;
+    const slackMsg=`📩 *SiteDear 새 메시지*\n\n👤 *보낸 사람:* ${senderName}\n🏢 *업체:* ${client?.company||clientKey}\n\n💬 ${preview}\n\n<https://dearcompany-web.vercel.app|→ SiteDear에서 확인하기>`;
+
+    const slackRes=await fetch('https://slack.com/api/chat.postMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SLACK_BOT_TOKEN},
+      body:JSON.stringify({channel:slackUserId,text:slackMsg})
+    });
+    const slackResult=await slackRes.json();
+    if(slackResult.ok) console.log('✅ Slack 알림 전송:', managerName, slackUserId);
+    else console.error('❌ Slack 전송 실패:', slackResult.error);
+  }catch(e){
+    console.error('❌ Slack 알림 예외:',e);
   }
 }
 
