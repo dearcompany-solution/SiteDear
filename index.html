@@ -1196,12 +1196,14 @@ function initApp(restorePage){
       setActive(page);
     });
   } else {
-    renderClientNav();
-    setSb(currentUser.company,currentUser.id,'광고 운영 중');
-    const page = restorePage || 'combined';
-    go(page, null);
-    setTimeout(renderCharts,100);
-    setActive(page);
+    loadClientDataFlags(currentUser.id).then(()=>{
+      renderClientNav();
+      setSb(currentUser.company,currentUser.id,'광고 운영 중');
+      const page = restorePage || 'combined';
+      go(page, null);
+      setTimeout(renderCharts,100);
+      setActive(page);
+    });
   }
  // 채팅 뱃지 주기적 업데이트 (30초마다)
   setInterval(updateMsgBadge, 30000);
@@ -1260,13 +1262,30 @@ async function loadClientsFromSupabase(){
 /* ════════════════════════════════════════
    NAV
 ════════════════════════════════════════ */
+let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true};
+
+async function loadClientDataFlags(clientKey){
+  if(!clientKey)return;
+  try{
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_client_data_flags`,{
+      method:'POST',headers:{...h,'Content-Type':'application/json'},
+      body:JSON.stringify({p_client_key:clientKey})
+    });
+    const data=await res.json();
+    if(data) _clientDataFlags=data;
+    console.log('📋 데이터 플래그:', clientKey, _clientDataFlags);
+  }catch(e){console.warn('데이터 플래그 로드 실패:',e);}
+}
+
 function renderClientNav(){
+  const f=_clientDataFlags;
   document.getElementById('navMenu').innerHTML=`
     <div class="nsec">대시보드</div>
     <div class="ni" id="ni-combined" onclick="go('combined',this)"><span class="ic">⚡</span>통합 대시보드</div>
-    <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>네이버 검색광고</div>
-    <div class="ni" id="ni-store"    onclick="go('store',this)"><span class="ic">🟠</span>스마트스토어</div>
-    <div class="ni" id="ni-meta"     onclick="go('meta',this)"><span class="ic">🔵</span>META 광고</div>
+    ${f.has_naver||f.has_gfa?'<div class="ni" id="ni-naver" onclick="go(\'naver\',this)"><span class="ic">🟢</span>네이버 검색광고</div>':''}
+    ${f.has_store?'<div class="ni" id="ni-store" onclick="go(\'store\',this)"><span class="ic">🟠</span>스마트스토어</div>':''}
+    ${f.has_meta?'<div class="ni" id="ni-meta" onclick="go(\'meta\',this)"><span class="ic">🔵</span>META 광고</div>':''}
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서 확인
@@ -7435,7 +7454,7 @@ function selClient(id){
   activeClientId=id;
   sessionStorage.setItem('activeClientId', id);
   const c=ACCOUNTS.find(a=>a.id===id);
-
+  loadClientDataFlags(id);
   // 사이드바 업체명 + 선택 해제 버튼 표시
   setSb(c.company, c.id, '광고 운영 중');
   const lbl = document.getElementById('sbLbl');
