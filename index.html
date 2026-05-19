@@ -283,7 +283,7 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .bubble.mgr{background:var(--white);border:1px solid var(--border)}.bubble.cli{background:var(--blue);color:#fff}
 .bmeta{font-size:10.5px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
 .brow.mine .bmeta{text-align:right}
-.msg-inp{padding:11px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end}
+.msg-inp{padding:11px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
 .msg-inp textarea{flex:1;border:1.5px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none;outline:none;height:40px;transition:border-color .15s;background:var(--surface)}
 .msg-inp textarea:focus{border-color:var(--blue);background:var(--white)}
 .msg-inp-wrap{flex:1;position:relative}
@@ -5823,6 +5823,9 @@ function htmlMsg(){
           <div class="msg-file-preview" id="msgFilePreview"></div>
         </div>
         <button class="btn btn-bl" onclick="sendMsg()">전송 ↑</button>
+      </div>
+      <div style="padding:0 14px 8px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
+        <span>📎</span> 파일 첨부: 클립 버튼 클릭 또는 이 영역에 파일을 드래그하세요 (이미지·문서·엑셀, 최대 10MB, 5개)
       </div>
     </div>
   </div>`;}
