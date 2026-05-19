@@ -351,6 +351,13 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .ai-bubble{background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.7;max-width:85%}
 .ai-bubble p{margin:6px 0}
 .ai-bubble b{color:#fde68a}
+.ai-bubble .ai-section{margin:12px 0 6px;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,.15);font-size:14px}
+.ai-bubble .ai-section:first-child{margin-top:0;padding-top:0;border-top:none}
+.ai-bubble .ai-item{padding:5px 0 5px 8px;border-left:2px solid rgba(255,255,255,.3);margin:6px 0;font-size:12.5px;line-height:1.7}
+.ai-bubble .ai-val{display:inline-block;background:rgba(255,255,255,.15);padding:1px 7px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;margin:0 2px}
+.ai-bubble .ai-good{color:#86efac}
+.ai-bubble .ai-warn{color:#fde68a}
+.ai-bubble .ai-bad{color:#fca5a5}
 .ai-typing{display:flex;align-items:center;gap:4px;padding:10px 14px}
 .ai-typing span{width:6px;height:6px;border-radius:50%;background:rgba(99,102,241,.5);animation:aiDot 1.2s infinite}
 .ai-typing span:nth-child(2){animation-delay:.2s}
@@ -6180,114 +6187,163 @@ async function collectAIData(){
 
 async function generateAIAnswer(key,customQ){
   const d=await collectAIData();
-  const fmt=v=>'₩'+Math.round(v).toLocaleString();
+  const fmt=v=>'<span class="ai-val">₩'+Math.round(v).toLocaleString()+'</span>';
+  const fmtP=v=>'<span class="ai-val">'+v+'</span>';
   const totalCost=d.naverCost+d.metaCost+d.gfaCost;
   const totalRev=d.naverRev+d.gfaRev+d.stRev-d.stRefund;
   const hasNaver=d.naverCost>0;
   const hasMeta=d.metaCost>0;
   const hasStore=d.stRev>0;
+  const cls=v=>(v>=100?'ai-good':v>=50?'ai-warn':'ai-bad');
 
-  if(!hasNaver&&!hasMeta&&!hasStore) return '<p>현재 조회 기간에 데이터가 없습니다. 기간을 확인하거나 데이터를 업로드해주세요.</p>';
+  if(!hasNaver&&!hasMeta&&!hasStore) return '<div class="ai-section"><b>📭 데이터 없음</b></div><div class="ai-item">현재 조회 기간에 데이터가 없습니다.<br><br>위 기간 선택에서 데이터가 있는 기간을 선택하거나,<br>파일관리에서 데이터를 업로드해주세요.</div>';
 
   let answer='';
 
   if(key==='summary'){
-    answer=`<p><b>📊 ${d.from} ~ ${d.to} 성과 요약</b></p>`;
-    answer+=`<p>총 광고비 <b>${fmt(totalCost)}</b>, 전체 매출 <b>${fmt(totalRev)}</b>입니다.</p>`;
-    if(hasNaver) answer+=`<p>▸ 네이버 검색광고: 광고비 ${fmt(d.naverCost)}, ROAS <b>${d.roas.toFixed(1)}%</b>, CPC ${fmt(d.cpc)}, CTR ${d.ctr.toFixed(2)}%</p>`;
-    if(hasMeta) answer+=`<p>▸ META 광고: 광고비 ${fmt(d.metaCost)}, ROAS <b>${d.metaRoas.toFixed(1)}%</b>, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
-    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 환불 ${fmt(d.stRefund)}, 실매출 <b>${fmt(d.stRev-d.stRefund)}</b>, 주문 ${d.stOrders.toLocaleString()}건</p>`;
+    answer+=`<div class="ai-section"><b>📊 ${d.from} ~ ${d.to} 성과 요약</b></div>`;
+    answer+=`<div class="ai-item">💵 총 광고비 ${fmt(totalCost)}<br>📈 전체 매출 ${fmt(totalRev)}</div>`;
+    if(hasNaver){
+      const roasCls=d.roas>=300?'ai-good':d.roas>=100?'ai-warn':'ai-bad';
+      answer+=`<div class="ai-section"><b>🟢 네이버 검색광고</b></div>`;
+      answer+=`<div class="ai-item">광고비 ${fmt(d.naverCost)}<br>ROAS <span class="ai-val ${roasCls}">${d.roas.toFixed(1)}%</span><br>CPC ${fmt(d.cpc)} · CTR ${fmtP(d.ctr.toFixed(2)+'%')}<br>클릭 ${fmtP(d.naverClick.toLocaleString()+'회')} · 전환 ${fmtP(d.naverConv.toLocaleString()+'건')}</div>`;
+    }
+    if(hasMeta){
+      const mCls=d.metaRoas>=200?'ai-good':d.metaRoas>=100?'ai-warn':'ai-bad';
+      answer+=`<div class="ai-section"><b>🔵 META 광고</b></div>`;
+      answer+=`<div class="ai-item">광고비 ${fmt(d.metaCost)}<br>ROAS <span class="ai-val ${mCls}">${d.metaRoas.toFixed(1)}%</span><br>CTR ${fmtP(d.metaCtr.toFixed(2)+'%')} · CPC ${fmt(d.metaCpc)}<br>빈도 <span class="ai-val ${d.metaFreq>3?'ai-bad':'ai-good'}">${d.metaFreq.toFixed(1)}회</span> · 도달 ${fmtP(d.metaReach.toLocaleString())}</div>`;
+    }
+    if(hasStore){
+      answer+=`<div class="ai-section"><b>🟠 스마트스토어</b></div>`;
+      answer+=`<div class="ai-item">매출 ${fmt(d.stRev)}<br>환불 ${fmt(d.stRefund)}<br>실매출 ${fmt(d.stRev-d.stRefund)}<br>주문 ${fmtP(d.stOrders.toLocaleString()+'건')}</div>`;
+    }
   }
 
   else if(key==='problems'){
-    answer=`<p><b>⚠️ 현재 주의가 필요한 부분</b></p>`;
+    answer+=`<div class="ai-section"><b>⚠️ 현재 주의가 필요한 부분</b></div>`;
     let issues=[];
-    if(hasNaver&&d.roas<100) issues.push(`네이버 ROAS ${d.roas.toFixed(1)}%로 <b>적자</b> 상태입니다. 저효율 캠페인 정리가 시급합니다.`);
-    if(hasNaver&&d.cpc>2000) issues.push(`네이버 CPC ${fmt(d.cpc)}로 높습니다. 입찰가 조정 또는 품질지수 개선을 검토하세요.`);
-    if(hasNaver&&d.ctr<1) issues.push(`네이버 CTR ${d.ctr.toFixed(2)}%로 낮습니다. 광고 제목/설명 A/B 테스트를 권장합니다.`);
-    if(hasMeta&&d.metaCtr<1) issues.push(`META CTR ${d.metaCtr.toFixed(2)}%로 소재 반응이 저조합니다. 크리에이티브 교체를 고려하세요.`);
-    if(hasMeta&&d.metaFreq>3) issues.push(`META 빈도 ${d.metaFreq.toFixed(1)}회로 피로도가 우려됩니다. 타겟 확장 또는 소재 로테이션이 필요합니다.`);
-    if(hasStore&&d.stRefund/d.stRev>0.1) issues.push(`스토어 환불률 ${(d.stRefund/d.stRev*100).toFixed(1)}%로 높습니다. 상품/배송 품질 점검이 필요합니다.`);
-    if(!issues.length) issues.push('특별한 이상 징후 없이 안정적으로 운영되고 있습니다. 👍');
-    answer+=issues.map(i=>`<p>▸ ${i}</p>`).join('');
+    if(hasNaver&&d.roas<100) issues.push({icon:'🔴',text:`네이버 ROAS <span class="ai-val ai-bad">${d.roas.toFixed(1)}%</span>로 적자 상태`,action:'저효율 캠페인 정리가 시급합니다'});
+    if(hasNaver&&d.cpc>2000) issues.push({icon:'🟡',text:`네이버 CPC ${fmt(d.cpc)}로 높음`,action:'입찰가 조정 또는 품질지수 개선을 검토하세요'});
+    if(hasNaver&&d.ctr<1) issues.push({icon:'🟡',text:`네이버 CTR <span class="ai-val ai-warn">${d.ctr.toFixed(2)}%</span>로 낮음`,action:'광고 제목/설명 A/B 테스트를 권장합니다'});
+    if(hasMeta&&d.metaCtr<1) issues.push({icon:'🟡',text:`META CTR <span class="ai-val ai-warn">${d.metaCtr.toFixed(2)}%</span>로 저조`,action:'크리에이티브 교체를 고려하세요'});
+    if(hasMeta&&d.metaFreq>3) issues.push({icon:'🔴',text:`META 빈도 <span class="ai-val ai-bad">${d.metaFreq.toFixed(1)}회</span>로 피로도 우려`,action:'타겟 확장 또는 소재 로테이션이 필요합니다'});
+    if(hasStore&&d.stRev>0&&d.stRefund/d.stRev>0.1) issues.push({icon:'🔴',text:`스토어 환불률 <span class="ai-val ai-bad">${(d.stRefund/d.stRev*100).toFixed(1)}%</span>`,action:'상품/배송 품질 점검이 필요합니다'});
+    if(!issues.length) answer+=`<div class="ai-item"><span class="ai-good">✅ 특별한 이상 징후 없이 안정적으로 운영되고 있습니다.</span></div>`;
+    else issues.forEach(i=>{ answer+=`<div class="ai-item">${i.icon} ${i.text}<br>→ <b>${i.action}</b></div>`; });
   }
 
   else if(key==='budget'){
-    answer=`<p><b>💰 예산 조정 제안</b></p>`;
-    if(hasNaver&&d.roas>=300) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}%로 우수 — <b>예산 증액</b>을 추천합니다.</p>`;
-    else if(hasNaver&&d.roas<100) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}%로 저조 — 저효율 캠페인 <b>예산 축소</b> 후 고효율 키워드에 집중하세요.</p>`;
-    else if(hasNaver) answer+=`<p>▸ 네이버 검색광고 ROAS ${d.roas.toFixed(0)}% — 현 수준 유지하되 키워드별 효율 모니터링이 필요합니다.</p>`;
-    if(hasMeta&&d.metaRoas>=200) answer+=`<p>▸ META 광고 ROAS ${d.metaRoas.toFixed(0)}%로 양호 — 상위 소재 중심으로 <b>스케일업</b>을 고려하세요.</p>`;
-    else if(hasMeta) answer+=`<p>▸ META 광고 ROAS ${d.metaRoas.toFixed(0)}% — 소재 최적화 후 예산 조정을 권장합니다.</p>`;
-    if(d.gfaCost>0) answer+=`<p>▸ GFA 광고비 ${fmt(d.gfaCost)}, 매출 ${fmt(d.gfaRev)} — ${d.gfaRev/d.gfaCost>=1?'효율 양호':'효율 점검 필요'}</p>`;
+    answer+=`<div class="ai-section"><b>💰 예산 조정 제안</b></div>`;
+    if(hasNaver){
+      answer+=`<div class="ai-section"><b>🟢 네이버 검색광고</b></div>`;
+      if(d.roas>=300) answer+=`<div class="ai-item">ROAS <span class="ai-val ai-good">${d.roas.toFixed(0)}%</span>로 우수<br>→ <b>예산 증액</b>을 추천합니다</div>`;
+      else if(d.roas<100) answer+=`<div class="ai-item">ROAS <span class="ai-val ai-bad">${d.roas.toFixed(0)}%</span>로 저조<br>→ 저효율 캠페인 <b>예산 축소</b> 후<br>→ 고효율 키워드에 집중하세요</div>`;
+      else answer+=`<div class="ai-item">ROAS <span class="ai-val ai-warn">${d.roas.toFixed(0)}%</span><br>→ 현 수준 유지, 키워드별 효율 모니터링 필요</div>`;
+    }
+    if(hasMeta){
+      answer+=`<div class="ai-section"><b>🔵 META 광고</b></div>`;
+      if(d.metaRoas>=200) answer+=`<div class="ai-item">ROAS <span class="ai-val ai-good">${d.metaRoas.toFixed(0)}%</span>로 양호<br>→ 상위 소재 중심 <b>스케일업</b> 고려</div>`;
+      else answer+=`<div class="ai-item">ROAS <span class="ai-val ai-warn">${d.metaRoas.toFixed(0)}%</span><br>→ 소재 최적화 후 예산 조정 권장</div>`;
+    }
+    if(d.gfaCost>0){
+      answer+=`<div class="ai-section"><b>📡 GFA</b></div>`;
+      answer+=`<div class="ai-item">광고비 ${fmt(d.gfaCost)} · 매출 ${fmt(d.gfaRev)}<br>→ ${d.gfaRev/d.gfaCost>=1?'<span class="ai-good">효율 양호</span>':'<span class="ai-bad">효율 점검 필요</span>'}</div>`;
+    }
   }
 
   else if(key==='keyword'){
-    answer=`<p><b>🔑 키워드 분석</b></p>`;
-    if(!d.topKw.length){answer+=`<p>키워드 데이터가 없습니다. 네이버 키워드 데이터를 업로드해주세요.</p>`;return answer;}
+    answer+=`<div class="ai-section"><b>🔑 키워드 분석</b></div>`;
+    if(!d.topKw.length){answer+=`<div class="ai-item">키워드 데이터가 없습니다.<br>네이버 키워드 데이터를 업로드해주세요.</div>`;return answer;}
     const good=d.topKw.filter(k=>k.cost>0&&k.rev/k.cost>=3);
     const bad=d.topKw.filter(k=>k.cost>0&&k.rev/k.cost<1);
-    if(good.length) answer+=`<p>✅ <b>고효율 키워드</b> (ROAS 300%+): ${good.map(k=>`"${k.keyword}" (ROAS ${(k.rev/k.cost*100).toFixed(0)}%)`).join(', ')}</p>`;
-    if(bad.length) answer+=`<p>⚠️ <b>정리 검토 키워드</b> (ROAS 100% 미만): ${bad.map(k=>`"${k.keyword}" (ROAS ${(k.rev/k.cost*100).toFixed(0)}%, 광고비 ${fmt(k.cost)})`).join(', ')}</p>`;
-    if(!good.length&&!bad.length) answer+=`<p>현재 키워드들은 보통 수준의 효율을 보이고 있습니다.</p>`;
+    if(good.length){
+      answer+=`<div class="ai-section"><b>✅ 고효율 키워드</b> <span style="font-size:11px;opacity:.7">ROAS 300%+</span></div>`;
+      good.forEach(k=>{ answer+=`<div class="ai-item"><span class="ai-good">●</span> "${k.keyword}"<br>ROAS <span class="ai-val ai-good">${(k.rev/k.cost*100).toFixed(0)}%</span> · 광고비 ${fmt(k.cost)}</div>`; });
+    }
+    if(bad.length){
+      answer+=`<div class="ai-section"><b>⚠️ 정리 검토 키워드</b> <span style="font-size:11px;opacity:.7">ROAS 100% 미만</span></div>`;
+      bad.forEach(k=>{ answer+=`<div class="ai-item"><span class="ai-bad">●</span> "${k.keyword}"<br>ROAS <span class="ai-val ai-bad">${(k.rev/k.cost*100).toFixed(0)}%</span> · 광고비 ${fmt(k.cost)}</div>`; });
+    }
+    if(!good.length&&!bad.length) answer+=`<div class="ai-item">현재 키워드들은 보통 수준의 효율을 보이고 있습니다.</div>`;
   }
 
   else if(key==='meta_creative'){
-    answer=`<p><b>🎨 META 소재 분석</b></p>`;
-    if(!hasMeta||!d.adStats.length){answer+=`<p>META 광고 데이터가 없습니다.</p>`;return answer;}
+    answer+=`<div class="ai-section"><b>🎨 META 소재 분석</b></div>`;
+    if(!hasMeta||!d.adStats.length){answer+=`<div class="ai-item">META 광고 데이터가 없습니다.</div>`;return answer;}
     const fatigue=d.adStats.filter(a=>a.freq>3).sort((a,b)=>b.freq-a.freq);
     const lowCtr=d.adStats.filter(a=>a.ctr<1&&a.cost>10000).sort((a,b)=>a.ctr-b.ctr);
     const topCtr=d.adStats.filter(a=>a.ctr>0).sort((a,b)=>b.ctr-a.ctr).slice(0,3);
-    if(fatigue.length) answer+=`<p>🔄 <b>피로도 높은 소재</b> (교체 권장): ${fatigue.slice(0,3).map(a=>`"${a.name.slice(0,15)}" (빈도 ${a.freq.toFixed(1)}회)`).join(', ')}</p>`;
-    if(lowCtr.length) answer+=`<p>⚠️ <b>CTR 저조 소재</b>: ${lowCtr.slice(0,3).map(a=>`"${a.name.slice(0,15)}" (CTR ${a.ctr.toFixed(2)}%)`).join(', ')}</p>`;
-    if(topCtr.length) answer+=`<p>✅ <b>반응 좋은 소재</b>: ${topCtr.map(a=>`"${a.name.slice(0,15)}" (CTR ${a.ctr.toFixed(2)}%)`).join(', ')} — 유사 소재 확장을 추천합니다.</p>`;
+    if(fatigue.length){
+      answer+=`<div class="ai-section"><b>🔄 피로도 높은 소재</b> <span style="font-size:11px;opacity:.7">교체 권장</span></div>`;
+      fatigue.slice(0,3).forEach(a=>{ answer+=`<div class="ai-item"><span class="ai-bad">●</span> "${a.name.length>20?a.name.slice(0,20)+'…':a.name}"<br>빈도 <span class="ai-val ai-bad">${a.freq.toFixed(1)}회</span></div>`; });
+    }
+    if(lowCtr.length){
+      answer+=`<div class="ai-section"><b>⚠️ CTR 저조 소재</b></div>`;
+      lowCtr.slice(0,3).forEach(a=>{ answer+=`<div class="ai-item"><span class="ai-warn">●</span> "${a.name.length>20?a.name.slice(0,20)+'…':a.name}"<br>CTR <span class="ai-val ai-warn">${a.ctr.toFixed(2)}%</span></div>`; });
+    }
+    if(topCtr.length){
+      answer+=`<div class="ai-section"><b>✅ 반응 좋은 소재</b> <span style="font-size:11px;opacity:.7">유사 확장 추천</span></div>`;
+      topCtr.forEach(a=>{ answer+=`<div class="ai-item"><span class="ai-good">●</span> "${a.name.length>20?a.name.slice(0,20)+'…':a.name}"<br>CTR <span class="ai-val ai-good">${a.ctr.toFixed(2)}%</span></div>`; });
+    }
   }
 
   else if(key==='strategy'){
-    answer=`<p><b>📈 다음 달 전략 제안</b></p>`;
+    answer+=`<div class="ai-section"><b>📈 다음 달 전략 제안</b></div>`;
     if(hasNaver){
-      if(d.roas>=300) answer+=`<p>▸ 네이버: 고효율 유지 중. 신규 키워드 확장 + 예산 10~20% 증액 테스트를 권장합니다.</p>`;
-      else answer+=`<p>▸ 네이버: 저효율 키워드 OFF → 상위 전환 키워드에 예산 집중. 광고 소재 리뉴얼도 검토하세요.</p>`;
+      answer+=`<div class="ai-section"><b>🟢 네이버</b></div>`;
+      if(d.roas>=300) answer+=`<div class="ai-item">고효율 유지 중<br>→ 신규 키워드 확장<br>→ 예산 10~20% 증액 테스트 권장</div>`;
+      else answer+=`<div class="ai-item">→ 저효율 키워드 OFF<br>→ 상위 전환 키워드에 예산 집중<br>→ 광고 소재 리뉴얼 검토</div>`;
     }
     if(hasMeta){
-      if(d.metaFreq>3) answer+=`<p>▸ META: 빈도 ${d.metaFreq.toFixed(1)}회로 높음. 타겟 오디언스 갱신 + 새 크리에이티브 3~5개 제작을 추천합니다.</p>`;
-      else answer+=`<p>▸ META: 빈도 양호. 성과 좋은 소재 중심 스케일업 + 리타겟팅 강화를 고려하세요.</p>`;
+      answer+=`<div class="ai-section"><b>🔵 META</b></div>`;
+      if(d.metaFreq>3) answer+=`<div class="ai-item">빈도 <span class="ai-val ai-bad">${d.metaFreq.toFixed(1)}회</span>로 높음<br>→ 타겟 오디언스 갱신<br>→ 새 크리에이티브 3~5개 제작 추천</div>`;
+      else answer+=`<div class="ai-item">빈도 양호<br>→ 성과 좋은 소재 중심 스케일업<br>→ 리타겟팅 강화 고려</div>`;
     }
     if(hasStore){
       const aov=d.stOrders>0?d.stRev/d.stOrders:0;
-      answer+=`<p>▸ 스토어: 객단가 ${fmt(aov)}. ${aov<30000?'번들/세트 상품으로 객단가 높이기 전략을 추천합니다.':'객단가 양호. 리뷰 확보와 재구매율 향상에 집중하세요.'}</p>`;
+      answer+=`<div class="ai-section"><b>🟠 스토어</b></div>`;
+      answer+=`<div class="ai-item">객단가 ${fmt(aov)}<br>→ ${aov<30000?'번들/세트 상품으로 객단가 높이기':'리뷰 확보와 재구매율 향상에 집중'}</div>`;
     }
   }
 
   else if(key==='store'){
-    answer=`<p><b>🛒 스토어 매출 분석</b></p>`;
-    if(!hasStore){answer+=`<p>스토어 데이터가 없습니다.</p>`;return answer;}
+    answer+=`<div class="ai-section"><b>🛒 스토어 매출 분석</b></div>`;
+    if(!hasStore){answer+=`<div class="ai-item">스토어 데이터가 없습니다.</div>`;return answer;}
     const netRev=d.stRev-d.stRefund;
     const aov=d.stOrders>0?d.stRev/d.stOrders:0;
     const refundRate=d.stRev>0?d.stRefund/d.stRev*100:0;
-    answer+=`<p>매출 ${fmt(d.stRev)}, 환불 ${fmt(d.stRefund)} (${refundRate.toFixed(1)}%), 실매출 <b>${fmt(netRev)}</b></p>`;
-    answer+=`<p>주문 ${d.stOrders.toLocaleString()}건, 객단가 <b>${fmt(aov)}</b></p>`;
-    if(refundRate>10) answer+=`<p>⚠️ 환불률이 높습니다. 상품 상세페이지 정확성, 배송 품질, 사이즈 가이드를 점검하세요.</p>`;
-    if(aov<20000) answer+=`<p>💡 객단가가 낮은 편입니다. 묶음 할인, 사은품 증정, 무료배송 기준 상향을 검토하세요.</p>`;
-    else answer+=`<p>💡 객단가 양호. 크로스셀링(관련 상품 추천)으로 추가 상승을 노려보세요.</p>`;
+    answer+=`<div class="ai-section"><b>📊 핵심 지표</b></div>`;
+    answer+=`<div class="ai-item">매출 ${fmt(d.stRev)}<br>환불 ${fmt(d.stRefund)} <span class="ai-val ${refundRate>10?'ai-bad':refundRate>5?'ai-warn':'ai-good'}">${refundRate.toFixed(1)}%</span><br>실매출 ${fmt(netRev)}<br>주문 ${fmtP(d.stOrders.toLocaleString()+'건')} · 객단가 ${fmt(aov)}</div>`;
+    answer+=`<div class="ai-section"><b>💡 개선 제안</b></div>`;
+    if(refundRate>10) answer+=`<div class="ai-item"><span class="ai-bad">●</span> 환불률이 높습니다<br>→ 상세페이지 정확성 점검<br>→ 배송 품질 확인<br>→ 사이즈 가이드 보강</div>`;
+    if(aov<20000) answer+=`<div class="ai-item"><span class="ai-warn">●</span> 객단가가 낮은 편<br>→ 묶음 할인, 사은품 증정<br>→ 무료배송 기준 상향 검토</div>`;
+    else answer+=`<div class="ai-item"><span class="ai-good">●</span> 객단가 양호<br>→ 크로스셀링(관련 상품 추천)으로 추가 상승</div>`;
   }
 
   else if(key==='compare'){
-    answer=`<p><b>🔄 전월 대비 분석</b></p>`;
-    answer+=`<p>현재 기간: ${d.from} ~ ${d.to}</p>`;
-    if(hasNaver) answer+=`<p>▸ 네이버: ROAS ${d.roas.toFixed(1)}%, CPC ${fmt(d.cpc)}, CTR ${d.ctr.toFixed(2)}%</p>`;
-    if(hasMeta) answer+=`<p>▸ META: ROAS ${d.metaRoas.toFixed(1)}%, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
-    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 주문 ${d.stOrders}건</p>`;
-    answer+=`<p style="margin-top:8px;color:#fde68a">💡 정확한 전월 비교는 이전 달 기간을 선택해서 비교해보시면 좋습니다.</p>`;
+    answer+=`<div class="ai-section"><b>🔄 현재 기간 데이터</b></div>`;
+    answer+=`<div class="ai-item">📅 ${d.from} ~ ${d.to}</div>`;
+    if(hasNaver){
+      answer+=`<div class="ai-section"><b>🟢 네이버</b></div>`;
+      answer+=`<div class="ai-item">ROAS ${fmtP(d.roas.toFixed(1)+'%')}<br>CPC ${fmt(d.cpc)} · CTR ${fmtP(d.ctr.toFixed(2)+'%')}</div>`;
+    }
+    if(hasMeta){
+      answer+=`<div class="ai-section"><b>🔵 META</b></div>`;
+      answer+=`<div class="ai-item">ROAS ${fmtP(d.metaRoas.toFixed(1)+'%')}<br>CTR ${fmtP(d.metaCtr.toFixed(2)+'%')} · 빈도 ${fmtP(d.metaFreq.toFixed(1)+'회')}</div>`;
+    }
+    if(hasStore){
+      answer+=`<div class="ai-section"><b>🟠 스토어</b></div>`;
+      answer+=`<div class="ai-item">매출 ${fmt(d.stRev)} · 주문 ${fmtP(d.stOrders+'건')}</div>`;
+    }
+    answer+=`<div class="ai-section"><b>💡 팁</b></div><div class="ai-item">위 기간 선택에서 이전 달로 변경 후<br>같은 질문을 하시면 비교가 가능합니다.</div>`;
   }
 
   else {
-    // 커스텀 질문 - 범용 답변
-    answer=`<p><b>📊 현재 데이터 기반 분석</b></p>`;
-    if(hasNaver) answer+=`<p>▸ 네이버: 광고비 ${fmt(d.naverCost)}, ROAS ${d.roas.toFixed(1)}%, CPC ${fmt(d.cpc)}</p>`;
-    if(hasMeta) answer+=`<p>▸ META: 광고비 ${fmt(d.metaCost)}, CTR ${d.metaCtr.toFixed(2)}%, 빈도 ${d.metaFreq.toFixed(1)}회</p>`;
-    if(hasStore) answer+=`<p>▸ 스토어: 매출 ${fmt(d.stRev)}, 주문 ${d.stOrders}건</p>`;
-    answer+=`<p style="margin-top:6px">더 구체적인 분석이 필요하시면 위 추천 질문 버튼을 이용해보세요!</p>`;
+    answer+=`<div class="ai-section"><b>📊 현재 데이터 기반 분석</b></div>`;
+    if(hasNaver) answer+=`<div class="ai-item">🟢 네이버: 광고비 ${fmt(d.naverCost)} · ROAS ${fmtP(d.roas.toFixed(1)+'%')} · CPC ${fmt(d.cpc)}</div>`;
+    if(hasMeta) answer+=`<div class="ai-item">🔵 META: 광고비 ${fmt(d.metaCost)} · CTR ${fmtP(d.metaCtr.toFixed(2)+'%')} · 빈도 ${fmtP(d.metaFreq.toFixed(1)+'회')}</div>`;
+    if(hasStore) answer+=`<div class="ai-item">🟠 스토어: 매출 ${fmt(d.stRev)} · 주문 ${fmtP(d.stOrders+'건')}</div>`;
+    answer+=`<div class="ai-section"><b>💡 팁</b></div><div class="ai-item">더 구체적인 분석은 위 추천 질문 버튼을 이용해보세요!</div>`;
   }
 
   return answer;
