@@ -8221,7 +8221,7 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('.csel-drop.open').forEach(d=>d.classList.remove('open'));
     document.querySelectorAll('.csel-btn.open').forEach(b=>b.classList.remove('open'));
   }
-  if(!e.target.closest('.cdp-wrap'))document.querySelectorAll('[id^="cdp-"]').forEach(el=>el.style.display='none');
+  if(!e.target.closest('.cdp-wrap')&&!e.target.closest('.cdp-dropdown'))document.querySelectorAll('[id^="cdp-"]').forEach(el=>el.style.display='none');
 });
 
 function htmlWorkLog(){
