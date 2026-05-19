@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>디어컴퍼니 솔루션</title>
-  <script>console.log('SiteDear 버전: 2026-05-19-v2');</script>
+  <script>console.log('SiteDear 버전: 2026-05-19-v3');</script>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -211,6 +211,28 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .kt-h-vals{display:flex;gap:16px;flex:1;flex-wrap:wrap}
 .kt-h-item{display:flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
 .kt-h-item span{color:var(--text3);font-size:10px}
+
+/* ════ WORK LOGS ════ */
+.wl-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--sh);margin-bottom:10px;position:relative;transition:box-shadow .2s}
+.wl-card:hover{box-shadow:var(--shm)}
+.wl-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.wl-title{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.wl-cat{font-size:9.5px;padding:2px 8px;border-radius:10px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.wc-creative{background:rgba(139,92,246,.12);color:#7C3AED}
+.wc-budget{background:var(--gold-l);color:#b45309}
+.wc-keyword{background:var(--naver-m);color:var(--naver)}
+.wc-target{background:var(--blue-m);color:var(--blue)}
+.wc-etc{background:var(--surface);color:var(--text3)}
+.wl-content{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:8px;white-space:pre-wrap}
+.wl-meta{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.wl-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wl-fg{display:flex;flex-direction:column;gap:4px}
+.wl-fg.full{grid-column:1/-1}
+.wl-fg label{font-size:11.5px;font-weight:600;color:var(--text2)}
+.wl-fg input,.wl-fg select,.wl-fg textarea{border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s}
+.wl-fg input:focus,.wl-fg select:focus,.wl-fg textarea:focus{border-color:var(--blue);background:var(--white)}
+.wl-empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.wl-filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 
 /* ════ TABLE ════ */
 .tbl{width:100%;border-collapse:collapse}
@@ -1115,8 +1137,9 @@ function renderClientNav(){
     <div class="nsec">모니터링</div>
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
     <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
+    <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
     <div class="nsec">소통</div>
-    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
+    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
     <div class="ni" id="ni-req" onclick="go('req',this)"><span class="ic">📋</span>요청 관리</div>`;
 } 
@@ -1138,6 +1161,7 @@ function renderAdminNav(){
     <div class="nsec">모니터링</div>
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
     <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
+    <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>`;
@@ -1159,11 +1183,12 @@ const pageTitles={
   cal:     ['일정 (공지)','미팅 · 공지사항 일정 관리'],
   alerts:  ['이상 감지 알림','ROAS · CPC · CTR · 환불률 자동 모니터링'],
   'kpi-target':['KPI 목표 관리','월간 목표 설정 · 달성률 추적'],
+  'work-log':['작업 로그','소재 교체 · 예산 조정 · 키워드 변경 기록'],
  admin:   ['클라이언트 관리',''],
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts','kpi-target'];
+  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts','kpi-target','work-log'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
@@ -1182,7 +1207,7 @@ function go(id,el){
   if(dr&&aa&&da){
     if(id==='admin'){
       dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
-    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'||id==='alerts'||id==='kpi-target'){
+    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'||id==='alerts'||id==='kpi-target'||id==='work-log'){
       dr.style.display='none'; aa.style.display='none'; da.style.display='none';
     } else {
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
@@ -1302,6 +1327,13 @@ function renderContent(id){
       setTimeout(renderAdminTable,50);
       document.getElementById('dateRow').style.display='none';
       document.getElementById('adminActions').style.display='flex';
+      document.getElementById('defaultActions').style.display='none';
+      break;
+    case 'work-log':
+      c.innerHTML=htmlWorkLog();
+      setTimeout(()=>{ loadWorkLogs(); },50);
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
       document.getElementById('defaultActions').style.display='none';
       break;
     case 'kpi-target':
@@ -7577,6 +7609,133 @@ async function updateAlertBadge(){
     badge.textContent=cnt;
     badge.style.display=cnt>0?'inline-block':'none';
   }catch(e){}
+}
+
+/* ════════════════════════════════════════
+   작업 로그
+════════════════════════════════════════ */
+const WL_CATEGORIES=[
+  {id:'creative',label:'소재 교체',icon:'🎨',cls:'wc-creative'},
+  {id:'budget',label:'예산 조정',icon:'💰',cls:'wc-budget'},
+  {id:'keyword',label:'키워드 변경',icon:'🔑',cls:'wc-keyword'},
+  {id:'target',label:'타겟 변경',icon:'🎯',cls:'wc-target'},
+  {id:'etc',label:'기타',icon:'📋',cls:'wc-etc'}
+];
+let _wlFilter='all';
+let _wlRows=[];
+
+function htmlWorkLog(){
+  const isAdmin=currentUser?.role==='admin';
+  return `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#EF4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">📝</div>
+    <div>
+      <div style="font-size:15px;font-weight:700">작업 로그</div>
+      <div style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace" id="wlInfo">불러오는 중...</div>
+    </div>
+  </div>
+</div>
+
+${isAdmin?`
+<div class="card" style="margin-bottom:18px">
+  <div style="font-size:14px;font-weight:600;margin-bottom:14px">➕ 새 작업 기록</div>
+  <div class="wl-form">
+    <div class="wl-fg"><label>날짜</label><input type="date" id="wl-date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="wl-fg"><label>카테고리</label><select id="wl-cat">${WL_CATEGORIES.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</select></div>
+    <div class="wl-fg full"><label>제목</label><input type="text" id="wl-title" placeholder="예: 메인 키워드 입찰가 500원 → 700원 조정"></div>
+    <div class="wl-fg full"><label>상세 내용</label><textarea id="wl-content" rows="3" style="resize:vertical" placeholder="변경 사유, 기대 효과 등"></textarea></div>
+  </div>
+  <div style="margin-top:12px"><button class="btn btn-bl" onclick="saveWorkLog()">💾 저장</button></div>
+</div>`:''}
+
+<div class="wl-filters" id="wlFilters">
+  <button class="af-btn active" onclick="filterWorkLogs('all',this)">전체</button>
+  ${WL_CATEGORIES.map(c=>`<button class="af-btn" onclick="filterWorkLogs('${c.id}',this)">${c.icon} ${c.label}</button>`).join('')}
+</div>
+<div id="wlList"><div class="wl-empty">불러오는 중...</div></div>`;
+}
+
+async function loadWorkLogs(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/work_logs?client_key=eq.${encodeURIComponent(ck)}&order=log_date.desc,created_at.desc&limit=100`,{headers:h});
+    const rows=await res.json();
+    _wlRows=Array.isArray(rows)?rows:[];
+    const info=document.getElementById('wlInfo');
+    if(info) info.textContent=`총 ${_wlRows.length}건`;
+    renderWorkLogList(_wlRows);
+  }catch(e){console.error('작업 로그 로드 오류:',e);}
+}
+
+function renderWorkLogList(rows){
+  const list=document.getElementById('wlList');
+  if(!list)return;
+  let filtered=rows;
+  if(_wlFilter!=='all') filtered=rows.filter(r=>r.category===_wlFilter);
+  if(!filtered.length){
+    list.innerHTML=`<div class="wl-empty"><div style="font-size:32px;margin-bottom:8px">📝</div>${_wlFilter==='all'?'등록된 작업 로그가 없습니다':'해당 카테고리의 로그가 없습니다'}</div>`;
+    return;
+  }
+  const isAdmin=currentUser?.role==='admin';
+  const catMap={};WL_CATEGORIES.forEach(c=>catMap[c.id]=c);
+  list.innerHTML=filtered.map(r=>{
+    const cat=catMap[r.category]||catMap['etc'];
+    const dt=r.log_date||'';
+    return `<div class="wl-card">
+      <div class="wl-hd">
+        <div class="wl-title"><span class="wl-cat ${cat.cls}">${cat.icon} ${cat.label}</span> ${r.title||''}</div>
+        ${isAdmin?`<button class="btn btn-sm btn-rd" onclick="deleteWorkLog('${r.id}')" style="font-size:10px;padding:3px 8px">삭제</button>`:''}
+      </div>
+      ${r.content?`<div class="wl-content">${r.content}</div>`:''}
+      <div class="wl-meta">
+        <span>📅 ${dt}</span>
+        ${r.author?`<span>👤 ${r.author}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterWorkLogs(type,el){
+  _wlFilter=type;
+  document.querySelectorAll('#wlFilters .af-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderWorkLogList(_wlRows);
+}
+
+async function saveWorkLog(){
+  const isAdmin=currentUser?.role==='admin';
+  if(!isAdmin){toast('⚠️ 관리자만 작성할 수 있습니다');return;}
+  const ck=activeClientId||'';
+  if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
+  const date=document.getElementById('wl-date')?.value||new Date().toISOString().slice(0,10);
+  const cat=document.getElementById('wl-cat')?.value||'etc';
+  const title=document.getElementById('wl-title')?.value?.trim()||'';
+  const content=document.getElementById('wl-content')?.value?.trim()||'';
+  if(!title){toast('⚠️ 제목을 입력해주세요');return;}
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/work_logs`,{
+      method:'POST',headers:{...h,'Prefer':'return=minimal'},
+      body:JSON.stringify({client_key:ck,log_date:date,category:cat,title:title,content:content,author:currentUser?.name||currentUser?.id||''})
+    });
+    if(!res.ok){const err=await res.json();toast('❌ 저장 실패: '+(err.message||''));return;}
+    toast('✅ 작업 로그가 저장되었습니다');
+    document.getElementById('wl-title').value='';
+    document.getElementById('wl-content').value='';
+    loadWorkLogs();
+  }catch(e){toast('❌ 저장 오류');console.error(e);}
+}
+
+async function deleteWorkLog(id){
+  if(!confirm('이 작업 로그를 삭제하시겠습니까?'))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  await fetch(`${SUPABASE_URL}/rest/v1/work_logs?id=eq.${id}`,{method:'DELETE',headers:h});
+  toast('🗑 삭제되었습니다');
+  loadWorkLogs();
 }
 
 /* ════════════════════════════════════════
