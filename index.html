@@ -6882,8 +6882,9 @@ function selClient(id){
 
   // ▼ 추가: 현재 열린 페이지가 데이터 페이지면 자동 갱신
   const curPage = sessionStorage.getItem('currentPage') || '';
-  if(['combined','naver','store','report'].includes(curPage)){
+  if(['combined','naver','store','report','meta'].includes(curPage)){
     REPORT_DATA[currentReportMonth] = null;
+    Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
     refreshAllPages();
   }
 
