@@ -5613,6 +5613,16 @@ async function saveMessage(clientKey, content){
   try{
     const senderName = currentUser?.name || currentUser?.id || '';
     const isAdmin    = currentUser?.role === 'admin';
+    const payload = {
+      client_key:   clientKey,
+      content:      content,
+      sender_role:  isAdmin ? 'admin' : 'client',
+      sender:       senderName,
+      sender_id:    currentUser?.id || '',
+      topic:        'chat',
+      is_read:      false
+    };
+    console.log('📨 메시지 저장 시도:', JSON.stringify(payload));
     const res = await fetch(`${SUPABASE_URL}/rest/v1/messages`,{
       method:'POST',
       headers:{
@@ -5621,19 +5631,19 @@ async function saveMessage(clientKey, content){
         'Authorization':'Bearer '+SUPABASE_ANON_KEY,
         'Prefer':'return=representation'
       },
-      body:JSON.stringify({
-        client_key:   clientKey,
-        content:      content,
-        sender_role:  isAdmin ? 'admin' : 'client',
-        sender:       senderName,
-        sender_id:    currentUser?.id || '',
-        topic:        'chat',
-        is_read:      false
-      }) 
+      body:JSON.stringify(payload)
     });
-    return await res.json();
+    const result = await res.json();
+    if(!res.ok){
+      console.error('❌ 메시지 저장 실패:', res.status, JSON.stringify(result));
+      toast('❌ 메시지 저장 실패: '+(result.message||result.hint||'알 수 없는 오류'));
+    } else {
+      console.log('✅ 메시지 저장 성공:', JSON.stringify(result));
+    }
+    return result;
   }catch(e){
-    console.warn('메시지 저장 실패:',e);
+    console.error('❌ 메시지 저장 예외:',e);
+    toast('❌ 메시지 전송 오류');
     return null;
   }
 }
