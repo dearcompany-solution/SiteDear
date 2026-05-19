@@ -6002,16 +6002,42 @@ function openAIChat(){
   if(inp) inp.placeholder='AI에게 질문하세요... (Enter: 전송)';
 }
 
-function collectAIData(){
+async function collectAIData(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
-  const d=REPORT_DATA[currentReportMonth]||{};
-  const kpi=d?.kpi||{};
-  const gfa=d?.gfa||{};
   const from=currentDateRange?.from||'';
   const to=currentDateRange?.to||'';
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  // 네이버 데이터 없으면 fetch
+  if(!REPORT_DATA[currentReportMonth]){
+    const rd=await fetchReportData(currentReportMonth);
+    if(rd) REPORT_DATA[currentReportMonth]=rd;
+  }
+  // META 캐시 없으면 fetch
+  const metaCacheKey=`_meta_${ck}_${fromMonth}_${toMonth}`;
+  if(!window[metaCacheKey]&&ck){
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(ck)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+      const data=await res.json();
+      window[metaCacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=from&&r.date<=to)):[];
+    }catch(e){window[metaCacheKey]=[];}
+  }
+  // 스토어 캐시 없으면 fetch
+  const stCacheKey=`_store_store_sales_${ck}_${currentReportMonth}`;
+  if(!window[stCacheKey]&&ck){
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/store_sales?client_key=eq.${encodeURIComponent(ck)}&month=eq.${currentReportMonth}&select=*`,{headers:h});
+      const data=await res.json();
+      window[stCacheKey]=Array.isArray(data)?data:[];
+    }catch(e){window[stCacheKey]=[];}
+  }
+
+  const d=REPORT_DATA[currentReportMonth]||{};
+  const kpi=d?.kpi||{};
+  const gfa=d?.gfa||{};
 
   // 네이버
   const naverCost=kpi.totalCost||0;
@@ -6058,8 +6084,8 @@ function collectAIData(){
   return {naverCost,naverRev,roas,cpc,ctr,naverImp,naverClick,naverConv,gfaCost,gfaRev,metaCost,metaImp,metaClick,metaReach,metaCtr,metaCpc,metaFreq,metaRoas,metaPurchaseRev,adStats,stRev,stRefund,stOrders,topKw,from,to};
 }
 
-function generateAIAnswer(key,customQ){
-  const d=collectAIData();
+async function generateAIAnswer(key,customQ){
+  const d=await collectAIData();
   const fmt=v=>'₩'+Math.round(v).toLocaleString();
   const totalCost=d.naverCost+d.metaCost+d.gfaCost;
   const totalRev=d.naverRev+d.gfaRev+d.stRev-d.stRefund;
@@ -6204,12 +6230,12 @@ function _sendAIQuestion(qText,key){
     </div>`);
   chat.scrollTop=chat.scrollHeight;
 
-  // 딜레이 후 답변
-  setTimeout(()=>{
+  // 딜레이 후 답변 (데이터 로드 포함)
+  setTimeout(async()=>{
     const typing=document.getElementById('aiTyping');
     if(typing)typing.remove();
 
-    const answer=generateAIAnswer(key);
+    const answer=await generateAIAnswer(key);
     chat.insertAdjacentHTML('beforeend',`
       <div class="brow">
         <div class="bav" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-size:10px;font-weight:700">AI</div>
