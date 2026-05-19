@@ -5629,7 +5629,7 @@ async function saveMessage(clientKey, content){
         sender_id:    currentUser?.id || '',
         topic:        'chat',
         is_read:      false
-      })
+      }) 
     });
     return await res.json();
   }catch(e){
