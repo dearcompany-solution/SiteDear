@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>디어컴퍼니 솔루션</title>
-  <script>console.log('SiteDear 버전: 2026-05-19-v1');</script>
+  <script>console.log('SiteDear 버전: 2026-05-19-v2');</script>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -185,6 +185,32 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .af-btn{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border2);background:var(--white);color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s}
 .af-btn:hover{border-color:var(--gold);color:#b45309}
 .af-btn.active{background:#F59E0B;border-color:#F59E0B;color:#fff}
+
+/* ════ KPI TARGETS ════ */
+.kpi-target-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.kt-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--sh);position:relative}
+.kt-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kt-lbl{font-size:11.5px;color:var(--text3);font-weight:500}
+.kt-vals{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.kt-cur{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-.5px}
+.kt-tgt{font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.kt-prog{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.kt-prog-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.34,1.56,.64,1)}
+.kt-pct{font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;margin-top:5px;text-align:right}
+.kt-over{color:var(--naver)}.kt-good{color:var(--blue)}.kt-warn{color:var(--gold)}.kt-bad{color:var(--red)}
+.kt-form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.kt-fg{display:flex;flex-direction:column;gap:4px}
+.kt-fg label{font-size:11.5px;font-weight:600;color:var(--text2)}
+.kt-fg input{border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 11px;font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s}
+.kt-fg input:focus{border-color:var(--blue);background:var(--white)}
+.kt-fg .kt-unit{font-size:10px;color:var(--text3);margin-top:1px}
+.kt-history{margin-top:16px}
+.kt-h-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12.5px}
+.kt-h-row:last-child{border-bottom:none}
+.kt-h-month{font-weight:700;font-family:'IBM Plex Mono',monospace;width:80px}
+.kt-h-vals{display:flex;gap:16px;flex:1;flex-wrap:wrap}
+.kt-h-item{display:flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.kt-h-item span{color:var(--text3);font-size:10px}
 
 /* ════ TABLE ════ */
 .tbl{width:100%;border-collapse:collapse}
@@ -1069,8 +1095,9 @@ function renderClientNav(){
     <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
     <div class="nsec">모니터링</div>
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
+    <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
     <div class="nsec">소통</div>
-    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
+    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
     <div class="ni" id="ni-req" onclick="go('req',this)"><span class="ic">📋</span>요청 관리</div>`;
 }
@@ -1091,8 +1118,9 @@ function renderAdminNav(){
     <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
     <div class="nsec">모니터링</div>
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
+    <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
     <div class="nsec">소통</div>
-    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
+    <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>`;
 }
 function setActive(id){
@@ -1111,11 +1139,12 @@ const pageTitles={
   req:     ['요청 관리','작업 요청 · 진행 현황 · 완료 내역'],
   cal:     ['일정 (공지)','미팅 · 공지사항 일정 관리'],
   alerts:  ['이상 감지 알림','ROAS · CPC · CTR · 환불률 자동 모니터링'],
+  'kpi-target':['KPI 목표 관리','월간 목표 설정 · 달성률 추적'],
  admin:   ['클라이언트 관리',''],
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts'];
+  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts','kpi-target'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
@@ -1134,7 +1163,7 @@ function go(id,el){
   if(dr&&aa&&da){
     if(id==='admin'){
       dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
-    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'||id==='alerts'){
+    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'||id==='alerts'||id==='kpi-target'){
       dr.style.display='none'; aa.style.display='none'; da.style.display='none';
     } else {
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
@@ -1254,6 +1283,13 @@ function renderContent(id){
       setTimeout(renderAdminTable,50);
       document.getElementById('dateRow').style.display='none';
       document.getElementById('adminActions').style.display='flex';
+      document.getElementById('defaultActions').style.display='none';
+      break;
+    case 'kpi-target':
+      c.innerHTML=htmlKpiTarget();
+      setTimeout(()=>{ loadKpiTargets(); },50);
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
       document.getElementById('defaultActions').style.display='none';
       break;
     case 'alerts':
@@ -2101,6 +2137,9 @@ ${ (()=>{
   <div class="sum-item"><div class="sum-lbl">📦 결제수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
 </div>`;
 })() }
+
+<!-- KPI 목표 달성률 미니 -->
+<div id="kpiMiniProgress"></div>
 
 <!-- AI 운영 브리핑 -->
 <div class="card" id="aiBriefingCard" style="margin-bottom:18px;border-left:4px solid #6366F1;position:relative;min-height:80px">
@@ -7393,6 +7432,267 @@ async function updateAlertBadge(){
   }catch(e){}
 }
 
+/* ════════════════════════════════════════
+   KPI 목표 관리
+════════════════════════════════════════ */
+let _kpiTargetData=null;
+
+function htmlKpiTarget(){
+  const month=currentReportMonth;
+  const isAdmin=currentUser?.role==='admin';
+  return `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3B82F6,#6366F1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">🎯</div>
+    <div>
+      <div style="font-size:15px;font-weight:700">KPI 목표 관리</div>
+      <div style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace" id="ktMonthInfo">${month}</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <label style="font-size:12px;color:var(--text2);font-weight:600">월 선택</label>
+    <input type="month" id="ktMonthPicker" value="${month}" style="border:1.5px solid var(--border);border-radius:var(--rsm);padding:5px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer;outline:none" onchange="changeKpiMonth(this.value)">
+  </div>
+</div>
+
+<!-- 달성률 프로그레스 -->
+<div id="ktProgressArea"></div>
+
+<!-- 목표 설정 폼 -->
+${isAdmin ? `
+<div class="card" style="margin-bottom:18px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:600">📝 <span id="ktFormMonth">${month}</span> 목표 설정</div>
+  </div>
+  <div class="kt-form">
+    <div class="kt-fg"><label>목표 ROAS</label><input type="text" id="kt-roas" placeholder="300"><div class="kt-unit">% (예: 300)</div></div>
+    <div class="kt-fg"><label>목표 광고비</label><input type="text" id="kt-cost" placeholder="5,000,000"><div class="kt-unit">원</div></div>
+    <div class="kt-fg"><label>목표 매출</label><input type="text" id="kt-revenue" placeholder="15,000,000"><div class="kt-unit">원</div></div>
+    <div class="kt-fg"><label>목표 CPC</label><input type="text" id="kt-cpc" placeholder="500"><div class="kt-unit">원 이하</div></div>
+    <div class="kt-fg"><label>목표 CTR</label><input type="text" id="kt-ctr" placeholder="3.5"><div class="kt-unit">% 이상</div></div>
+    <div class="kt-fg"><label>목표 전환수</label><input type="text" id="kt-conv" placeholder="100"><div class="kt-unit">건</div></div>
+  </div>
+  <div class="kt-fg" style="margin-top:12px"><label>메모</label><input type="text" id="kt-memo" placeholder="이번 달 목표 배경, 특이사항 등" style="width:100%"></div>
+  <div style="margin-top:14px;display:flex;gap:8px">
+    <button class="btn btn-bl" onclick="saveKpiTarget()">💾 저장</button>
+    <button class="btn btn-rd" onclick="deleteKpiTarget()" style="font-size:11px">🗑 삭제</button>
+  </div>
+</div>` : ''}
+
+<!-- 월별 이력 -->
+<div class="card">
+  <div style="font-size:14px;font-weight:600;margin-bottom:12px">📅 월별 목표 이력</div>
+  <div id="ktHistory"><div style="text-align:center;padding:20px;color:var(--text3)">불러오는 중...</div></div>
+</div>`;
+}
+
+function changeKpiMonth(v){
+  const el=document.getElementById('ktFormMonth');
+  if(el) el.textContent=v;
+  document.getElementById('ktMonthInfo').textContent=v;
+  loadKpiTargets(v);
+}
+
+async function loadKpiTargets(overrideMonth){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const month=overrideMonth||currentReportMonth;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  // 현재 월 목표
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&limit=1`,{headers:h});
+    const rows=await res.json();
+    _kpiTargetData=Array.isArray(rows)&&rows.length?rows[0]:null;
+    if(_kpiTargetData&&isAdmin) fillKpiForm(_kpiTargetData);
+    else if(isAdmin) clearKpiForm();
+    renderKpiProgress(ck,month);
+  }catch(e){console.error('KPI 목표 로드 오류:',e);}
+
+  // 전체 이력
+  try{
+    const res2=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&order=month.desc&limit=12`,{headers:h});
+    const all=await res2.json();
+    renderKpiHistory(Array.isArray(all)?all:[]);
+  }catch(e){}
+}
+
+function fillKpiForm(d){
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  s('kt-roas',d.target_roas||'');
+  s('kt-cost',d.target_cost?Number(d.target_cost).toLocaleString():'');
+  s('kt-revenue',d.target_revenue?Number(d.target_revenue).toLocaleString():'');
+  s('kt-cpc',d.target_cpc||'');
+  s('kt-ctr',d.target_ctr||'');
+  s('kt-conv',d.target_conv||'');
+  s('kt-memo',d.memo||'');
+}
+function clearKpiForm(){
+  ['kt-roas','kt-cost','kt-revenue','kt-cpc','kt-ctr','kt-conv','kt-memo'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+}
+
+async function saveKpiTarget(){
+  const isAdmin=currentUser?.role==='admin';
+  if(!isAdmin){toast('⚠️ 관리자만 설정할 수 있습니다');return;}
+  const ck=activeClientId||'';
+  if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
+  const month=document.getElementById('ktMonthPicker')?.value||currentReportMonth;
+  const pn=v=>parseFloat((v||'').replace(/,/g,'').trim())||0;
+  const data={
+    client_key:ck,month:month,
+    target_roas:pn(document.getElementById('kt-roas')?.value),
+    target_cost:pn(document.getElementById('kt-cost')?.value),
+    target_revenue:pn(document.getElementById('kt-revenue')?.value),
+    target_cpc:pn(document.getElementById('kt-cpc')?.value),
+    target_ctr:pn(document.getElementById('kt-ctr')?.value),
+    target_conv:pn(document.getElementById('kt-conv')?.value),
+    memo:document.getElementById('kt-memo')?.value?.trim()||'',
+    updated_at:new Date().toISOString()
+  };
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  try{
+    // UPSERT: 삭제 후 삽입
+    await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}`,{method:'DELETE',headers:h});
+    await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets`,{method:'POST',headers:{...h,'Prefer':'return=minimal'},body:JSON.stringify(data)});
+    toast('✅ KPI 목표가 저장되었습니다');
+    loadKpiTargets(month);
+  }catch(e){
+    toast('❌ 저장 실패');console.error(e);
+  }
+}
+
+async function deleteKpiTarget(){
+  const isAdmin=currentUser?.role==='admin';
+  if(!isAdmin)return;
+  const ck=activeClientId||'';
+  const month=document.getElementById('ktMonthPicker')?.value||currentReportMonth;
+  if(!confirm(`${month} 목표를 삭제하시겠습니까?`))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}`,{method:'DELETE',headers:h});
+  toast('🗑 목표가 삭제되었습니다');
+  _kpiTargetData=null;
+  clearKpiForm();
+  loadKpiTargets(month);
+}
+
+async function renderKpiProgress(ck,month){
+  const area=document.getElementById('ktProgressArea');
+  if(!area)return;
+  const tgt=_kpiTargetData;
+  if(!tgt||(!tgt.target_roas&&!tgt.target_cost&&!tgt.target_revenue&&!tgt.target_cpc&&!tgt.target_ctr&&!tgt.target_conv)){
+    area.innerHTML=`<div class="card" style="margin-bottom:18px;text-align:center;padding:28px;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">🎯</div>${currentUser?.role==='admin'?'아래에서 목표를 설정하면 달성률이 여기에 표시됩니다':'아직 설정된 KPI 목표가 없습니다'}</div>`;
+    return;
+  }
+
+  // 실적 데이터 수집
+  let d=REPORT_DATA[month];
+  if(!d){
+    try{d=await fetchReportData(month);if(d)REPORT_DATA[month]=d;}catch(e){}
+  }
+  const kpi=d?.kpi||{};
+  const naverCost=kpi.totalCost||0;
+  const naverRev=kpi.totalPurchaseRev||0;
+  const naverClick=kpi.totalClick||0;
+  const naverImp=kpi.totalImp||0;
+  const naverConv=kpi.totalConv||0;
+  const roas=naverCost>0?naverRev/naverCost*100:0;
+  const cpc=naverClick>0?naverCost/naverClick:0;
+  const ctr=naverImp>0?naverClick/naverImp*100:0;
+
+  const items=[];
+  const mkProg=(label,icon,cur,target,unit,reverse)=>{
+    if(!target)return;
+    let pct;
+    if(reverse){
+      // CPC: 낮을수록 좋음 → target/cur로 계산
+      pct=cur>0?(target/cur*100):100;
+    } else {
+      pct=target>0?(cur/target*100):0;
+    }
+    pct=Math.min(pct,150);
+    const cls=pct>=100?'kt-over':pct>=70?'kt-good':pct>=40?'kt-warn':'kt-bad';
+    const barColor=pct>=100?'var(--naver)':pct>=70?'var(--blue)':pct>=40?'var(--gold)':'var(--red)';
+    const curFmt=unit==='원'?'₩'+Math.round(cur).toLocaleString():unit==='%'?cur.toFixed(1)+unit:Math.round(cur).toLocaleString()+unit;
+    const tgtFmt=unit==='원'?'₩'+Math.round(target).toLocaleString():unit==='%'?target+unit:Math.round(target).toLocaleString()+unit;
+    items.push(`<div class="kt-card">
+      <div class="kt-hd"><div class="kt-lbl">${icon} ${label}</div></div>
+      <div class="kt-vals"><div class="kt-cur">${curFmt}</div><div class="kt-tgt">/ ${tgtFmt}</div></div>
+      <div class="kt-prog"><div class="kt-prog-fill" style="width:${Math.min(pct,100)}%;background:${barColor}"></div></div>
+      <div class="kt-pct ${cls}">${pct.toFixed(1)}% 달성</div>
+    </div>`);
+  };
+
+  mkProg('ROAS','⚡',roas,+tgt.target_roas,'%',false);
+  mkProg('광고비','💰',naverCost,+tgt.target_cost,'원',false);
+  mkProg('매출','💵',naverRev,+tgt.target_revenue,'원',false);
+  mkProg('CPC','👆',cpc,+tgt.target_cpc,'원',true);
+  mkProg('CTR','📊',ctr,+tgt.target_ctr,'%',false);
+  mkProg('전환수','🛒',naverConv,+tgt.target_conv,'건',false);
+
+  area.innerHTML=items.length?`<div class="kpi-target-bar" style="grid-template-columns:repeat(${Math.min(items.length,3)},1fr)">${items.join('')}</div>`:'';
+}
+
+function renderKpiHistory(rows){
+  const el=document.getElementById('ktHistory');
+  if(!el)return;
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3)">설정된 목표가 없습니다</div>';return;}
+  const fmt=v=>v?Number(v).toLocaleString():'—';
+  el.innerHTML=rows.map(r=>`<div class="kt-h-row">
+    <div class="kt-h-month">${r.month}</div>
+    <div class="kt-h-vals">
+      ${+r.target_roas?`<div class="kt-h-item"><span>ROAS</span>${r.target_roas}%</div>`:''}
+      ${+r.target_cost?`<div class="kt-h-item"><span>광고비</span>₩${fmt(r.target_cost)}</div>`:''}
+      ${+r.target_revenue?`<div class="kt-h-item"><span>매출</span>₩${fmt(r.target_revenue)}</div>`:''}
+      ${+r.target_cpc?`<div class="kt-h-item"><span>CPC</span>₩${fmt(r.target_cpc)}</div>`:''}
+      ${+r.target_ctr?`<div class="kt-h-item"><span>CTR</span>${r.target_ctr}%</div>`:''}
+      ${+r.target_conv?`<div class="kt-h-item"><span>전환</span>${fmt(r.target_conv)}건</div>`:''}
+    </div>
+    ${r.memo?`<div style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.memo}">💬 ${r.memo}</div>`:''}
+  </div>`).join('');
+}
+
+/* ── 통합 대시보드용: KPI 바 아래에 달성률 미니 표시 ── */
+async function renderKpiMiniProgress(){
+  const el=document.getElementById('kpiMiniProgress');
+  if(!el)return;
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck){el.innerHTML='';return;}
+  const month=currentReportMonth;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&limit=1`,{headers:h});
+    const rows=await res.json();
+    const tgt=Array.isArray(rows)&&rows.length?rows[0]:null;
+    if(!tgt||(!tgt.target_roas&&!tgt.target_revenue)){el.innerHTML='';return;}
+
+    const d=REPORT_DATA[currentReportMonth];
+    const kpi=d?.kpi||{};
+    const naverCost=kpi.totalCost||0;
+    const naverRev=kpi.totalPurchaseRev||0;
+    const roas=naverCost>0?naverRev/naverCost*100:0;
+
+    const items=[];
+    if(+tgt.target_roas){
+      const pct=+tgt.target_roas>0?(roas/+tgt.target_roas*100):0;
+      const cls=pct>=100?'kt-over':pct>=70?'kt-good':'kt-warn';
+      const barC=pct>=100?'var(--naver)':pct>=70?'var(--blue)':'var(--gold)';
+      items.push(`<div style="flex:1;min-width:120px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--text3)">🎯 ROAS 목표</span><span class="${cls}" style="font-weight:700">${pct.toFixed(0)}%</span></div><div class="kt-prog"><div class="kt-prog-fill" style="width:${Math.min(pct,100)}%;background:${barC}"></div></div></div>`);
+    }
+    if(+tgt.target_revenue){
+      const pct=+tgt.target_revenue>0?(naverRev/+tgt.target_revenue*100):0;
+      const cls=pct>=100?'kt-over':pct>=70?'kt-good':'kt-warn';
+      const barC=pct>=100?'var(--naver)':pct>=70?'var(--blue)':'var(--gold)';
+      items.push(`<div style="flex:1;min-width:120px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--text3)">🎯 매출 목표</span><span class="${cls}" style="font-weight:700">${pct.toFixed(0)}%</span></div><div class="kt-prog"><div class="kt-prog-fill" style="width:${Math.min(pct,100)}%;background:${barC}"></div></div></div>`);
+    }
+    if(items.length) el.innerHTML=`<div style="display:flex;gap:16px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--sh);margin-bottom:18px">${items.join('')}<div style="display:flex;align-items:center"><button class="btn btn-sm btn-ol" onclick="go('kpi-target',null);setActive('kpi-target')" style="font-size:10px;white-space:nowrap">상세 →</button></div></div>`;
+    else el.innerHTML='';
+  }catch(e){el.innerHTML='';}
+}
+
 /* ═══ 이상 감지 엔진 ═══ */
 async function runAnomalyDetection(manual=false){
   const isAdmin=currentUser?.role==='admin';
@@ -7750,6 +8050,9 @@ async function renderCharts(){
 
   // 이상 감지 — 데이터 로딩 완료 후 자동 실행
   runAnomalyDetection(false);
+
+  // KPI 목표 달성률 미니 표시
+  if(document.getElementById('kpiMiniProgress')) renderKpiMiniProgress();
 }
 /* ════ META 광고 ════ */
 function htmlMeta(){
