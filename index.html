@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>디어컴퍼니 솔루션</title>
-  <script>console.log('SiteDear 버전: 2026-05-08-v5');</script>
+  <script>console.log('SiteDear 버전: 2026-05-19-v1');</script>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -158,6 +158,33 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .sum-lbl{font-size:11px;color:var(--text3);margin-bottom:4px}
 .sum-val{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-.5px}
 .sum-ch{font-size:11px;margin-top:3px}
+
+/* ════ ALERTS ════ */
+.alert-list{display:flex;flex-direction:column;gap:10px}
+.alert-item{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:all .2s}
+.alert-item:hover{box-shadow:var(--shm)}
+.alert-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
+.alert-item.sev-critical::before{background:var(--red)}
+.alert-item.sev-warning::before{background:var(--gold)}
+.alert-item.sev-info::before{background:var(--blue)}
+.alert-item.is-read{opacity:.55}
+.alert-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.alert-title{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.alert-sev{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+.as-critical{background:var(--red-l);color:var(--red)}
+.as-warning{background:var(--gold-l);color:#b45309}
+.as-info{background:var(--blue-l);color:var(--blue)}
+.alert-msg{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+.alert-meta{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.alert-metric{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--surface);border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text2)}
+.alert-actions{display:flex;gap:6px;margin-top:10px}
+.nb-y{background:rgba(245,158,11,.15);color:#b45309}
+.alert-empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.alert-empty .ei{font-size:40px;margin-bottom:10px}
+.alert-filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.af-btn{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border2);background:var(--white);color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s}
+.af-btn:hover{border-color:var(--gold);color:#b45309}
+.af-btn.active{background:#F59E0B;border-color:#F59E0B;color:#fff}
 
 /* ════ TABLE ════ */
 .tbl{width:100%;border-collapse:collapse}
@@ -969,9 +996,12 @@ function initApp(restorePage){
     setTimeout(renderCharts,100);
     setActive(page);
   }
-  // 채팅 뱃지 주기적 업데이트 (30초마다)
+ // 채팅 뱃지 주기적 업데이트 (30초마다)
   setInterval(updateMsgBadge, 30000);
   setTimeout(updateMsgBadge, 2000);
+  // 알림 뱃지 초기화 + 주기적 업데이트 (60초마다)
+  setTimeout(updateAlertBadge, 3000);
+  setInterval(updateAlertBadge, 60000);
 }
 /* ── Supabase 계정 목록 로드 ── */
 async function loadClientsFromSupabase(){
@@ -1037,6 +1067,8 @@ function renderClientNav(){
     </div>
     <div class="nsec">데이터 관리</div>
     <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
+    <div class="nsec">모니터링</div>
+    <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
@@ -1057,6 +1089,8 @@ function renderAdminNav(){
       <span class="ic">📑</span>보고서 확인
     </div>
     <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
+    <div class="nsec">모니터링</div>
+    <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지</div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>`;
@@ -1076,11 +1110,12 @@ const pageTitles={
   msg:     ['메시지',''],
   req:     ['요청 관리','작업 요청 · 진행 현황 · 완료 내역'],
   cal:     ['일정 (공지)','미팅 · 공지사항 일정 관리'],
+  alerts:  ['이상 감지 알림','ROAS · CPC · CTR · 환불률 자동 모니터링'],
  admin:   ['클라이언트 관리',''],
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report'];
+  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
@@ -1099,7 +1134,7 @@ function go(id,el){
   if(dr&&aa&&da){
     if(id==='admin'){
       dr.style.display='none'; aa.style.display='flex'; da.style.display='none';
-    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'){
+    } else if(id==='register'||id==='input'||id==='msg'||id==='cal'||id==='alerts'){
       dr.style.display='none'; aa.style.display='none'; da.style.display='none';
     } else {
       dr.style.display='flex'; aa.style.display='none'; da.style.display='flex';
@@ -1219,6 +1254,13 @@ function renderContent(id){
       setTimeout(renderAdminTable,50);
       document.getElementById('dateRow').style.display='none';
       document.getElementById('adminActions').style.display='flex';
+      document.getElementById('defaultActions').style.display='none';
+      break;
+    case 'alerts':
+      c.innerHTML=htmlAlerts();
+      setTimeout(()=>{ loadAlerts(); },50);
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
       document.getElementById('defaultActions').style.display='none';
       break;
     case 'register':
@@ -7203,6 +7245,314 @@ function clearReg(){
    CHARTS
 ════════════════════════════════════════ */
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
+/* ════════════════════════════════════════
+   이상 감지 알림 시스템
+════════════════════════════════════════ */
+let _alertFilter='all';
+
+function htmlAlerts(){
+  return `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#EF4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">🚨</div>
+    <div>
+      <div style="font-size:15px;font-weight:700">이상 감지 알림</div>
+      <div style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace" id="alertCountInfo">불러오는 중...</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="btn btn-sm btn-ol" onclick="markAllAlertsRead()" title="모두 읽음 처리">✓ 모두 읽음</button>
+    <button class="btn btn-sm btn-ol" onclick="runAnomalyDetection(true)" title="수동 감지 실행">🔍 지금 감지</button>
+  </div>
+</div>
+<div class="alert-filters" id="alertFilters">
+  <button class="af-btn active" onclick="filterAlerts('all',this)">전체</button>
+  <button class="af-btn" onclick="filterAlerts('critical',this)">🔴 심각</button>
+  <button class="af-btn" onclick="filterAlerts('warning',this)">🟡 주의</button>
+  <button class="af-btn" onclick="filterAlerts('info',this)">🔵 정보</button>
+  <button class="af-btn" onclick="filterAlerts('unread',this)">미확인</button>
+</div>
+<div id="alertList" class="alert-list">
+  <div style="text-align:center;padding:40px;color:var(--text3)">
+    <div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px"></div>
+    알림을 불러오는 중...
+  </div>
+</div>`;
+}
+
+async function loadAlerts(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&order=created_at.desc&limit=50`,{headers:h});
+    const rows=await res.json();
+    if(!Array.isArray(rows)){document.getElementById('alertList').innerHTML='<div class="alert-empty"><div class="ei">⚠️</div><p>알림을 불러올 수 없습니다</p></div>';return;}
+    window._alertRows=rows;
+    renderAlertList(rows);
+  }catch(e){
+    console.error('알림 로드 오류:',e);
+  }
+}
+
+function renderAlertList(rows){
+  const list=document.getElementById('alertList');
+  const info=document.getElementById('alertCountInfo');
+  if(!list)return;
+  let filtered=rows;
+  if(_alertFilter==='unread') filtered=rows.filter(r=>!r.is_read);
+  else if(_alertFilter!=='all') filtered=rows.filter(r=>r.severity===_alertFilter);
+  const unreadCount=rows.filter(r=>!r.is_read).length;
+  if(info) info.textContent=`총 ${rows.length}건 · 미확인 ${unreadCount}건`;
+  if(!filtered.length){
+    list.innerHTML=`<div class="alert-empty"><div class="ei">✅</div><p>${_alertFilter==='all'?'감지된 이상 항목이 없습니다':'해당 필터에 맞는 알림이 없습니다'}</p></div>`;
+    return;
+  }
+  const sevIcon={critical:'🔴',warning:'🟡',info:'🔵'};
+  const sevLabel={critical:'심각',warning:'주의',info:'정보'};
+  const typeIcon={roas_drop:'📉',cpc_spike:'💸',ctr_drop:'👆',refund_spike:'↩️',cost_anomaly:'🔥',frequency_high:'🔄',meta_ctr_drop:'📱',conv_drop:'🛒'};
+  list.innerHTML=filtered.map(r=>{
+    const dt=new Date(r.created_at);
+    const timeStr=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    return `<div class="alert-item sev-${r.severity} ${r.is_read?'is-read':''}" data-id="${r.id}">
+      <div class="alert-hd">
+        <div class="alert-title">${typeIcon[r.alert_type]||'⚠️'} ${r.title}</div>
+        <span class="alert-sev as-${r.severity}">${sevLabel[r.severity]||r.severity}</span>
+      </div>
+      <div class="alert-msg">${r.message}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div class="alert-meta">
+          <span>${timeStr}</span>
+          ${r.metric_name?`<span class="alert-metric">${r.metric_name}: ${r.current_value!=null?Number(r.current_value).toLocaleString():'-'}</span>`:''}
+        </div>
+        <div class="alert-actions">
+          ${!r.is_read?`<button class="btn btn-sm btn-ol" onclick="markAlertRead('${r.id}')">확인</button>`:'<span style="font-size:11px;color:var(--text3)">✓ 확인됨</span>'}
+          <button class="btn btn-sm btn-rd" onclick="deleteAlert('${r.id}')" style="font-size:10px;padding:3px 8px">삭제</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterAlerts(type,el){
+  _alertFilter=type;
+  document.querySelectorAll('.af-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(window._alertRows) renderAlertList(window._alertRows);
+}
+
+async function markAlertRead(id){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:true})});
+  if(window._alertRows){
+    const r=window._alertRows.find(a=>a.id===id);
+    if(r)r.is_read=true;
+    renderAlertList(window._alertRows);
+  }
+  updateAlertBadge();
+}
+
+async function markAllAlertsRead(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:true})});
+  if(window._alertRows){
+    window._alertRows.forEach(r=>r.is_read=true);
+    renderAlertList(window._alertRows);
+  }
+  updateAlertBadge();
+  toast('✓ 모든 알림을 읽음 처리했습니다');
+}
+
+async function deleteAlert(id){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'DELETE',headers:h});
+  if(window._alertRows){
+    window._alertRows=window._alertRows.filter(a=>a.id!==id);
+    renderAlertList(window._alertRows);
+  }
+  updateAlertBadge();
+}
+
+async function updateAlertBadge(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false&select=id`,{headers:h});
+    const rows=await res.json();
+    const badge=document.getElementById('alertBadge');
+    if(!badge)return;
+    const cnt=Array.isArray(rows)?rows.length:0;
+    badge.textContent=cnt;
+    badge.style.display=cnt>0?'inline-block':'none';
+  }catch(e){}
+}
+
+/* ═══ 이상 감지 엔진 ═══ */
+async function runAnomalyDetection(manual=false){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const alerts=[];
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+
+  // ── 1) 네이버 검색광고 데이터 ──
+  const d=REPORT_DATA[currentReportMonth];
+  const kpi=d?.kpi||{};
+  const naverCost=kpi.totalCost||0;
+  const naverRev=kpi.totalPurchaseRev||0;
+  const naverClick=kpi.totalClick||0;
+  const naverImp=kpi.totalImp||0;
+  const naverConv=kpi.totalConv||0;
+
+  if(naverCost>0){
+    const roas=naverRev/naverCost*100;
+    const cpc=naverClick>0?naverCost/naverClick:0;
+    const ctr=naverImp>0?naverClick/naverImp*100:0;
+
+    // ROAS 100% 미만 → 심각
+    if(roas<100){
+      alerts.push({client_key:ck,alert_type:'roas_drop',severity:'critical',
+        title:'네이버 ROAS 100% 미만',
+        message:`현재 ROAS ${roas.toFixed(1)}%로 광고비 대비 매출이 부족합니다. 저효율 캠페인 정리 및 키워드 점검이 필요합니다.`,
+        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:100});
+    }
+    // ROAS 150% 미만 → 주의
+    else if(roas<150){
+      alerts.push({client_key:ck,alert_type:'roas_drop',severity:'warning',
+        title:'네이버 ROAS 저조',
+        message:`현재 ROAS ${roas.toFixed(1)}%로 효율이 다소 낮습니다. 키워드별 성과 분석을 권장합니다.`,
+        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:150});
+    }
+
+    // CPC 2000원 초과 → 주의
+    if(cpc>2000){
+      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
+        title:'네이버 CPC 높음',
+        message:`평균 CPC ${Math.round(cpc).toLocaleString()}원으로 클릭 단가가 높습니다. 입찰가 조정 또는 품질지수 개선을 검토하세요.`,
+        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:2000});
+    }
+    // CPC 5000원 초과 → 심각
+    if(cpc>5000){
+      // 이전 주의 알림 대신 심각으로 덮어쓰기
+      const idx=alerts.findIndex(a=>a.alert_type==='cpc_spike'&&a.severity==='warning');
+      if(idx>=0)alerts.splice(idx,1);
+      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'critical',
+        title:'네이버 CPC 매우 높음',
+        message:`평균 CPC ${Math.round(cpc).toLocaleString()}원으로 비정상적으로 높습니다. 즉각적인 입찰가 점검이 필요합니다.`,
+        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:5000});
+    }
+
+    // CTR 1% 미만 → 주의
+    if(naverImp>1000&&ctr<1){
+      alerts.push({client_key:ck,alert_type:'ctr_drop',severity:'warning',
+        title:'네이버 CTR 저조',
+        message:`CTR ${ctr.toFixed(2)}%로 광고 클릭률이 낮습니다. 광고 소재(제목/설명) 개선을 검토하세요.`,
+        metric_name:'CTR',current_value:+ctr.toFixed(2),threshold_value:1});
+    }
+  }
+
+  // ── 2) META 광고 데이터 ──
+  const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+  const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+  const metaCost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+  const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+  const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
+  const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+
+  if(metaCost>0){
+    const mCtr=metaImp>0?metaClick/metaImp*100:0;
+    const mCpc=metaClick>0?metaCost/metaClick:0;
+    const mFreq=metaReach>0?metaImp/metaReach:0;
+
+    // META CTR 1% 미만
+    if(metaImp>5000&&mCtr<1){
+      alerts.push({client_key:ck,alert_type:'meta_ctr_drop',severity:'warning',
+        title:'META CTR 1% 미만',
+        message:`META 광고 CTR ${mCtr.toFixed(2)}%로 소재 반응이 저조합니다. 크리에이티브 교체를 검토하세요.`,
+        metric_name:'META CTR',current_value:+mCtr.toFixed(2),threshold_value:1});
+    }
+
+    // META 빈도 3회 초과 → 피로도
+    if(mFreq>3){
+      alerts.push({client_key:ck,alert_type:'frequency_high',severity:mFreq>5?'critical':'warning',
+        title:`META 빈도 ${mFreq.toFixed(1)}회 — 피로도 우려`,
+        message:`동일 사용자에게 평균 ${mFreq.toFixed(1)}회 노출 중입니다. 타겟 확장 또는 소재 교체가 필요합니다.`,
+        metric_name:'빈도',current_value:+mFreq.toFixed(1),threshold_value:3});
+    }
+
+    // META CPC 3000원 초과
+    if(mCpc>3000){
+      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
+        title:'META CPC 높음',
+        message:`META 평균 CPC ${Math.round(mCpc).toLocaleString()}원으로 클릭 단가가 높습니다.`,
+        metric_name:'META CPC',current_value:Math.round(mCpc),threshold_value:3000});
+    }
+  }
+
+  // ── 3) 스마트스토어 환불률 ──
+  const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+  const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+  const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+  const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+
+  if(stRev>0){
+    const refundRate=stRefund/stRev*100;
+    if(refundRate>10){
+      alerts.push({client_key:ck,alert_type:'refund_spike',severity:'critical',
+        title:`환불률 ${refundRate.toFixed(1)}% — 즉시 점검 필요`,
+        message:`스마트스토어 환불률이 ${refundRate.toFixed(1)}%로 매우 높습니다. 상품 품질, 배송, 상세페이지를 점검하세요.`,
+        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:10});
+    } else if(refundRate>5){
+      alerts.push({client_key:ck,alert_type:'refund_spike',severity:'warning',
+        title:`환불률 ${refundRate.toFixed(1)}% 주의`,
+        message:`스마트스토어 환불률이 ${refundRate.toFixed(1)}%입니다. 주요 환불 상품을 확인해보세요.`,
+        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:5});
+    }
+  }
+
+  // ── 4) 기존 알림과 중복 체크 후 저장 ──
+  if(alerts.length===0){
+    if(manual) toast('✅ 이상 항목이 감지되지 않았습니다');
+    updateAlertBadge();
+    return;
+  }
+
+  // 오늘 이미 같은 타입 알림이 있으면 건너뛰기
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    const existRes=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&created_at=gte.${today}T00:00:00&select=alert_type,severity`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const existing=await existRes.json();
+    const existSet=new Set((Array.isArray(existing)?existing:[]).map(e=>e.alert_type+'_'+e.severity));
+    const newAlerts=alerts.filter(a=>!existSet.has(a.alert_type+'_'+a.severity));
+    if(newAlerts.length===0){
+      if(manual) toast('ℹ️ 오늘 이미 감지된 알림입니다');
+      updateAlertBadge();
+      return;
+    }
+    // 100건 배치 INSERT
+    for(let i=0;i<newAlerts.length;i+=100){
+      const batch=newAlerts.slice(i,i+100);
+      await fetch(`${SUPABASE_URL}/rest/v1/alerts`,{method:'POST',headers:{...h,'Prefer':'return=minimal'},body:JSON.stringify(batch)});
+    }
+    if(manual) toast(`🚨 ${newAlerts.length}건의 이상 항목이 감지되었습니다`);
+    // 알림 페이지 열려있으면 리로드
+    if(sessionStorage.getItem('currentPage')==='alerts') loadAlerts();
+  }catch(e){
+    console.error('알림 저장 오류:',e);
+  }
+  updateAlertBadge();
+}
+
 /* ════ AI 운영 브리핑 ════ */
 /* ════ AI 운영 브리핑 ════ */
 async function generateAIBriefing(forceNew=false){
@@ -7397,6 +7747,9 @@ async function renderCharts(){
 
   // AI 브리핑 — 데이터 로딩 완료 후 호출
   if(document.getElementById('aiBriefingCard')) generateAIBriefing();
+
+  // 이상 감지 — 데이터 로딩 완료 후 자동 실행
+  runAnomalyDetection(false);
 }
 /* ════ META 광고 ════ */
 function htmlMeta(){
