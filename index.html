@@ -277,7 +277,9 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .brow.mine{flex-direction:row-reverse}
 .bav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 .bav-m{background:var(--naver-l);color:var(--naver)}.bav-c{background:var(--blue-l);color:var(--blue)}
-.bubble{max-width:72%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.6}
+.bubble{max-width:72%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+.brow>div:last-child{max-width:72%}
+.bubble{max-width:100%}
 .bubble.mgr{background:var(--white);border:1px solid var(--border)}.bubble.cli{background:var(--blue);color:#fff}
 .bmeta{font-size:10.5px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
 .brow.mine .bmeta{text-align:right}
@@ -5589,14 +5591,14 @@ function renderMessages(rows){
   }
 
   chat.innerHTML = rows.map(r=>{
-    const isMine = r.sender_id === currentUser.id;
+    const isMine = r.sender_id === currentUser.id || (r.sender_role===(currentUser?.role==='admin'?'admin':'client'));
     const time = new Date(r.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    const initials = r.sender_name?.charAt(0) || '?';
+    const initials = (r.sender||r.sender_name||'?').charAt(0);
     return `<div class="brow ${isMine?'mine':''}">
       <div class="bav ${isMine?'bav-c':'bav-m'}">${initials}</div>
       <div>
-        ${!isMine?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px">${r.sender_name}</div>`:''}
-        <div class="bubble ${isMine?'cli':'mgr'}">${r.content}</div>
+        ${!isMine?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px">${r.sender||r.sender_name||''}</div>`:''}
+        <div class="bubble ${isMine?'cli':'mgr'}">${(r.content||'').replace(/\n/g,'<br>')}</div>
         <div class="bmeta">${time}</div>
       </div>
     </div>`;
@@ -5623,7 +5625,9 @@ async function saveMessage(clientKey, content){
         client_key:   clientKey,
         content:      content,
         sender_role:  isAdmin ? 'admin' : 'client',
-        sender_name:  senderName,
+        sender:       senderName,
+        sender_id:    currentUser?.id || '',
+        topic:        'chat',
         is_read:      false
       })
     });
@@ -5662,24 +5666,24 @@ function subscribeMessages(clientKey){
         const msg = JSON.parse(e.data);
         if(msg.event === 'postgres_changes' || (msg.payload?.data?.type === 'INSERT')){
           const newRow = msg.payload?.data?.record || msg.payload?.record;
-          if(newRow && newRow.sender_id !== currentUser.id){
+          if(newRow && newRow.sender_role !== currentUser.role){
             // 상대방 메시지 실시간 추가
             const chat = document.getElementById('chatArea');
             if(chat){
               const time = new Date(newRow.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-              const initials = newRow.sender_name?.charAt(0)||'?';
+              const initials = (newRow.sender||newRow.sender_name||'?').charAt(0);
               chat.insertAdjacentHTML('beforeend',`
                 <div class="brow">
                   <div class="bav bav-m">${initials}</div>
                   <div>
-                    <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${newRow.sender_name}</div>
+                    <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${newRow.sender||newRow.sender_name||''}</div>
                     <div class="bubble mgr">${newRow.content}</div>
                     <div class="bmeta">${time}</div>
                   </div>
                 </div>`);
               chat.scrollTop = chat.scrollHeight;
               // 알림음 효과
-              toast('💬 새 메시지: '+newRow.sender_name);
+              toast('💬 새 메시지: '+(newRow.sender||newRow.sender_name||''));
             }
           }
         }
@@ -5854,7 +5858,7 @@ async function sendMsg(){
       <div class="brow mine">
         <div class="bav bav-c">${initials}</div>
         <div>
-          <div class="bubble cli">${txt}</div>
+          <div class="bubble cli">${txt.replace(/\n/g,'<br>')}</div>
           <div class="bmeta">${time}</div>
         </div>
       </div>`);
