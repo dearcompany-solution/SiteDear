@@ -7282,18 +7282,50 @@ ${metaInfo}
 - <p> 태그로 각 섹션 감싸기`;
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data=await res.json();
-    const text=data.content?.map(c=>c.text||'').join('')||'';
-    if(!text){el.innerHTML='<span style="color:var(--text3)">브리핑 생성에 실패했습니다. 다시 시도해주세요.</span>';return;}
+    // 데이터 기반 자동 브리핑 생성 (CORS 이슈 없음)
+    const lines=[];
+    // 1. 성과 요약
+    const totalCostAll=naverCost+(metaCost||0)+(gfaCost||0);
+    const gfaCache2=d?.gfa||{};
+    const gfaCost=gfaCache2.totalCost||0;
+    const gfaRev=gfaCache2.totalRev||0;
+    const totalRev=naverRev+gfaRev+stNetRev;
+    const overallRoas=totalCostAll>0?((totalRev/totalCostAll)*100).toFixed(1):'0';
+    lines.push(`<p><b>📊 이번 기간 성과 요약</b><br>`);
+    if(totalCostAll>0) lines.push(`총 광고비 ${Math.round(totalCostAll).toLocaleString()}원 집행, `);
+    if(totalRev>0) lines.push(`전체 매출 ${Math.round(totalRev).toLocaleString()}원, 통합 ROAS ${overallRoas}%입니다. `);
+    if(naverCost>0){
+      const nRoas=naverCost>0?((naverRev/naverCost)*100).toFixed(1):'0';
+      lines.push(`네이버 검색광고 ROAS ${nRoas}%`);
+      if(+nRoas>=300) lines.push('로 양호한 수준입니다. ');
+      else if(+nRoas>=100) lines.push('로 보통 수준입니다. ');
+      else lines.push('로 개선이 필요합니다. ');
+    }
+    if(metaCost>0){
+      const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
+      const mCpc=metaClick>0?Math.round(metaCost/metaClick):0;
+      lines.push(`META 광고 CTR ${mCtr}%, CPC ${mCpc.toLocaleString()}원. `);
+    }
+    if(stRev>0) lines.push(`스마트스토어 실매출 ${Math.round(stNetRev).toLocaleString()}원 (환불률 ${stRev>0?(stRefund/stRev*100).toFixed(1):'0'}%). `);
+    lines.push(`</p>`);
+    // 2. 주의 포인트
+    lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+    let hasWarning=false;
+    if(naverCost>0&&naverRev/naverCost<1){lines.push(`네이버 검색광고 ROAS가 100% 미만으로 광고비 대비 매출이 부족합니다. 저효율 키워드 점검이 필요합니다. `);hasWarning=true;}
+    if(metaCost>0&&metaImp>0&&(metaClick/metaImp*100)<1){lines.push(`META 광고 CTR이 1% 미만으로 소재 반응이 낮습니다. 소재 교체를 검토해주세요. `);hasWarning=true;}
+    if(metaCost>0&&metaReach>0&&(metaImp/metaReach)>3){lines.push(`META 광고 빈도가 ${(metaImp/metaReach).toFixed(1)}회로 높아 광고 피로도가 우려됩니다. `);hasWarning=true;}
+    if(stRev>0&&stRefund/stRev>0.1){lines.push(`스마트스토어 환불률이 ${(stRefund/stRev*100).toFixed(1)}%로 높습니다. 상품/배송 점검이 필요합니다. `);hasWarning=true;}
+    if(!hasWarning) lines.push(`현재 특별한 이상 징후 없이 안정적으로 운영되고 있습니다.`);
+    lines.push(`</p>`);
+    // 3. 액션 제안
+    lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+    if(naverCost>0&&naverRev/naverCost>=3) lines.push(`네이버 검색광고 성과가 좋으므로 예산 증액을 검토해보세요. `);
+    else if(naverCost>0) lines.push(`네이버 검색광고 저효율 캠페인을 정리하고 고효율 키워드에 예산을 집중해보세요. `);
+    if(metaCost>0) lines.push(`META 광고는 상위 성과 소재를 파악하여 유사 소재를 확장하는 것을 추천합니다. `);
+    if(stRev>0&&stOrders>0) lines.push(`스마트스토어 객단가 ${Math.round(stRev/stOrders).toLocaleString()}원 기준, 번들 상품이나 사은품 전략으로 객단가 상승을 시도해보세요.`);
+    if(!naverCost&&!metaCost&&!stRev) lines.push(`데이터가 부족합니다. 광고 데이터를 업로드하면 더 정확한 분석이 가능합니다.`);
+    lines.push(`</p>`);
+    const text=lines.join('');
 
     el.innerHTML=text;
     const now=new Date();
