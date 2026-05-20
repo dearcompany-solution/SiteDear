@@ -3842,80 +3842,117 @@ async function downloadReportTabPDF(){
 
   const tabNames={summary:'통합요약',weekly:'주간데이터',monthly:'월간데이터',gfa:'GFA',meta:'META'};
   const tabName=tabNames[activeTab]||activeTab;
-  const period=currentDateRange?.from?`${currentDateRange.from}~${currentDateRange.to}`:currentReportMonth;
+  const period=currentDateRange?.from?`${currentDateRange.from} ~ ${currentDateRange.to}`:currentReportMonth;
 
-  toast(`📥 ${tabName} PDF 생성 중...`);
+  toast(`📥 ${tabName} PDF 생성 중... (잠시 기다려주세요)`);
 
   try{
-    await new Promise(r=>setTimeout(r,500));
+    await new Promise(r=>setTimeout(r,300));
 
-    // 보고서 KPI 영역도 포함
+    // 1) 원본 탭에서 canvas(차트)를 이미지로 미리 변환
+    const origCanvases=tabEl.querySelectorAll('canvas');
+    origCanvases.forEach(c=>{
+      try{
+        const img=document.createElement('img');
+        img.src=c.toDataURL('image/png');
+        img.style.cssText='width:100%;height:auto';
+        img.className='_pdf_chart_img';
+        c.parentNode.insertBefore(img,c);
+        c.style.display='none';
+        c._pdfHidden=true;
+      }catch(e){}
+    });
+
+    // KPI도 포함
     const kpiRow=document.querySelector('.rpt-kpi-row');
-    const wrapper=document.createElement('div');
-    wrapper.style.cssText='background:#f4f6fa;padding:20px;font-family:Noto Sans KR,sans-serif';
 
-    // 헤더 추가
-    wrapper.innerHTML=`<div style="text-align:center;margin-bottom:16px">
-      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">S</div>
-        <div style="text-align:left"><div style="font-size:8px;letter-spacing:2px;color:#aaa">DEARCOMPANY</div><div style="font-size:16px;font-weight:800">광고 성과 리포트 — ${tabName}</div></div>
-      </div>
-      <div style="font-size:11px;color:#888">${period} · ${document.getElementById('rptSubTitle')?.textContent||''}</div>
+    // 2) 래퍼 생성
+    const wrapper=document.createElement('div');
+    wrapper.style.cssText='background:#fff;padding:24px 28px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:1000px;position:absolute;left:-9999px';
+
+    // 헤더
+    wrapper.innerHTML=`<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:18px">
+      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0">S</div>
+      <div style="flex:1"><div style="font-size:8px;letter-spacing:2px;color:#aaa">DEARCOMPANY</div><div style="font-size:18px;font-weight:800">광고 성과 리포트 — ${tabName}</div></div>
+      <div style="text-align:right"><div style="font-size:12px;font-weight:600">${period}</div><div style="font-size:10px;color:#888">${document.getElementById('rptSubTitle')?.textContent||''}</div></div>
     </div>`;
 
     // KPI 복사
-    if(kpiRow){
-      const kpiClone=kpiRow.cloneNode(true);
-      wrapper.appendChild(kpiClone);
-    }
+    if(kpiRow) wrapper.appendChild(kpiRow.cloneNode(true));
 
-    // 탭 내용 복사
+    // 탭 내용 복사 (차트는 이미 이미지로 변환됨)
     const tabClone=tabEl.cloneNode(true);
     tabClone.style.display='block';
+    // max-height 스크롤 제거 (전체 표시)
+    tabClone.querySelectorAll('[style*="max-height"]').forEach(el=>{el.style.maxHeight='none';el.style.overflow='visible';});
+    // display:none 캔버스 제거 (이미지만 남김)
+    tabClone.querySelectorAll('canvas').forEach(c=>c.remove());
     wrapper.appendChild(tabClone);
 
     // 푸터
     const footer=document.createElement('div');
-    footer.innerHTML=`<div style="text-align:center;font-size:9px;color:#aaa;border-top:1px solid #ddd;padding-top:10px;margin-top:16px">SiteDear by DearCompany · 자동 생성 리포트 · ${period}</div>`;
+    footer.style.cssText='text-align:center;font-size:9px;color:#aaa;border-top:1px solid #e2e8f0;padding-top:10px;margin-top:18px';
+    footer.textContent=`SiteDear by DearCompany · 자동 생성 리포트 · ${period}`;
     wrapper.appendChild(footer);
 
-    // 임시로 body에 추가 (캡처용)
-    wrapper.style.position='absolute';
-    wrapper.style.left='-9999px';
-    wrapper.style.width='1100px';
     document.body.appendChild(wrapper);
+    await new Promise(r=>setTimeout(r,200));
 
-    const canvas=await html2canvas(wrapper,{
-      scale:2,useCORS:true,backgroundColor:'#f4f6fa',logging:false,
-      windowWidth:1100,windowHeight:wrapper.scrollHeight
+    // 3) 캡처
+    const fullCanvas=await html2canvas(wrapper,{
+      scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
+      windowWidth:1000,windowHeight:wrapper.scrollHeight
     });
 
     document.body.removeChild(wrapper);
 
-    const imgData=canvas.toDataURL('image/jpeg',0.92);
+    // 4) 원본 탭 canvas 복원
+    origCanvases.forEach(c=>{
+      if(c._pdfHidden){c.style.display='';delete c._pdfHidden;}
+    });
+    tabEl.querySelectorAll('._pdf_chart_img').forEach(img=>img.remove());
+
+    // 5) PDF 생성 — 슬라이스 방식 (짤림 방지)
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pageW=pdf.internal.pageSize.getWidth();
     const pageH=pdf.internal.pageSize.getHeight();
-    const margin=8;
+    const margin=10;
     const contentW=pageW-margin*2;
-    const contentH=(canvas.height*contentW)/canvas.width;
-
-    let yOffset=0;
     const availH=pageH-margin*2;
-    while(yOffset<contentH){
-      if(yOffset>0) pdf.addPage();
-      pdf.addImage(imgData,'JPEG',margin,margin-yOffset,contentW,contentH);
-      yOffset+=availH;
+    const srcW=fullCanvas.width;
+    const srcTotalH=fullCanvas.height;
+    const pxPerMm=srcW/contentW;
+    const sliceHpx=Math.floor(availH*pxPerMm);
+
+    let srcY=0;
+    let page=0;
+    while(srcY<srcTotalH){
+      if(page>0) pdf.addPage();
+      const thisH=Math.min(sliceHpx,srcTotalH-srcY);
+
+      const sliceCanvas=document.createElement('canvas');
+      sliceCanvas.width=srcW;
+      sliceCanvas.height=thisH;
+      const ctx=sliceCanvas.getContext('2d');
+      ctx.drawImage(fullCanvas,0,srcY,srcW,thisH,0,0,srcW,thisH);
+
+      const sliceImg=sliceCanvas.toDataURL('image/jpeg',0.95);
+      const sliceHmm=thisH/pxPerMm;
+      pdf.addImage(sliceImg,'JPEG',margin,margin,contentW,sliceHmm);
+
+      srcY+=thisH;
+      page++;
+      if(page>30)break;
     }
 
     const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
-    const fileName=`${client?.company||'report'}_${tabName}_${period.replace(/[~\s]/g,'_')}.pdf`;
+    const fileName=`${client?.company||'report'}_${tabName}_${period.replace(/[\s~]/g,'_')}.pdf`;
     pdf.save(fileName);
-    toast(`✅ ${tabName} PDF 다운로드 완료`);
+    toast(`✅ ${tabName} PDF 다운로드 완료 (${page}페이지)`);
   }catch(e){
     console.error('PDF 생성 오류:',e);
-    toast('❌ PDF 생성 실패');
+    toast('❌ PDF 생성 실패: '+e.message);
   }
 }
 
