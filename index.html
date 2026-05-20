@@ -3845,28 +3845,46 @@ async function downloadReportTabPDF(){
   const period=currentDateRange?.from?`${currentDateRange.from} ~ ${currentDateRange.to}`:currentReportMonth;
   const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
 
-  toast(`📥 ${tabName} PDF 생성 중... (10초 정도 걸릴 수 있습니다)`);
+  toast(`📥 ${tabName} PDF 생성 중...`);
 
   try{
     await new Promise(r=>setTimeout(r,300));
 
-    // 1) 원본 canvas → 이미지 임시 변환
+    // 1) 차트를 데이터 테이블로 변환
     const origCanvases=tabEl.querySelectorAll('canvas');
     origCanvases.forEach(c=>{
       try{
-        const img=document.createElement('img');
-        img.src=c.toDataURL('image/png');
-        img.style.cssText='width:100%;height:auto';
-        img.className='_pdf_tmp_img';
-        c.parentNode.insertBefore(img,c);
+        const chart=Chart.getChart(c);
+        if(!chart)return;
+        const tbl=document.createElement('table');
+        tbl.className='tbl _pdf_tmp_tbl';
+        tbl.style.cssText='width:100%;border-collapse:collapse;font-size:12px;margin:8px 0';
+        const labels=chart.data.labels||[];
+        const datasets=chart.data.datasets||[];
+        let thead='<thead><tr style="background:#1c2535;color:#fff"><th style="padding:6px 10px;text-align:left">구분</th>';
+        datasets.forEach(ds=>{thead+=`<th style="padding:6px 10px;text-align:right">${ds.label||''}</th>`;});
+        thead+='</tr></thead>';
+        let tbody='<tbody>';
+        labels.forEach((lbl,i)=>{
+          tbody+=`<tr style="background:${i%2===0?'#f8fafc':'#fff'}"><td style="padding:5px 10px;font-weight:600">${lbl}</td>`;
+          datasets.forEach(ds=>{
+            const v=ds.data[i];
+            const formatted=typeof v==='number'?(v>=1000?'₩'+Math.round(v).toLocaleString():v%1===0?v.toLocaleString():v.toFixed(1)):v;
+            tbody+=`<td style="padding:5px 10px;text-align:right;font-family:monospace">${formatted}</td>`;
+          });
+          tbody+='</tr>';
+        });
+        tbody+='</tbody>';
+        tbl.innerHTML=thead+tbody;
+        c.parentNode.insertBefore(tbl,c);
         c.style.display='none';
         c._wasHidden=true;
-      }catch(e){}
+      }catch(e){console.warn('차트 변환 실패:',e);}
     });
 
     // 2) 래퍼 생성
     const wrapper=document.createElement('div');
-    wrapper.style.cssText='background:#fff;padding:28px 32px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:1000px;position:absolute;left:-9999px';
+    wrapper.style.cssText='background:#fff;padding:28px 32px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:900px;position:absolute;left:-9999px';
 
     // 헤더
     const headerDiv=document.createElement('div');
@@ -3883,10 +3901,12 @@ async function downloadReportTabPDF(){
     // 탭 내용 복사
     const tabClone=tabEl.cloneNode(true);
     tabClone.style.display='block';
-    // 스크롤 제한 해제 (전체 데이터 표시)
-    tabClone.querySelectorAll('[style*="max-height"]').forEach(el=>{el.style.maxHeight='none';el.style.overflow='visible';});
-    tabClone.querySelectorAll('[style*="overflow-y"]').forEach(el=>{el.style.overflowY='visible';el.style.maxHeight='none';});
-    // 숨겨진 canvas 제거 (이미지만 남김)
+    // 스크롤 제한 전부 해제
+    tabClone.querySelectorAll('*').forEach(el=>{
+      if(el.style.maxHeight){el.style.maxHeight='none';el.style.overflow='visible';}
+      if(el.style.overflowY==='auto'||el.style.overflowY==='scroll'){el.style.overflowY='visible';el.style.maxHeight='none';}
+    });
+    // 숨겨진 canvas 제거
     tabClone.querySelectorAll('canvas').forEach(c=>c.remove());
     wrapper.appendChild(tabClone);
 
@@ -3897,25 +3917,25 @@ async function downloadReportTabPDF(){
     wrapper.appendChild(footer);
 
     document.body.appendChild(wrapper);
-    await new Promise(r=>setTimeout(r,300));
+    await new Promise(r=>setTimeout(r,500));
 
-    // 3) 캡처
+    // 3) html2canvas 캡처
     const fullCanvas=await html2canvas(wrapper,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
-      windowWidth:1000,windowHeight:wrapper.scrollHeight
+      windowWidth:900,windowHeight:wrapper.scrollHeight
     });
     document.body.removeChild(wrapper);
 
-    // 4) 원본 canvas 복원
+    // 4) 원본 canvas 복원 + 임시 테이블 제거
     origCanvases.forEach(c=>{if(c._wasHidden){c.style.display='';delete c._wasHidden;}});
-    tabEl.querySelectorAll('._pdf_tmp_img').forEach(img=>img.remove());
+    tabEl.querySelectorAll('._pdf_tmp_tbl').forEach(t=>t.remove());
 
-    // 5) PDF — 슬라이스 페이징 (짤림 방지)
+    // 5) PDF — 슬라이스 페이징
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pageW=pdf.internal.pageSize.getWidth();
     const pageH=pdf.internal.pageSize.getHeight();
-    const margin=8;
+    const margin=6;
     const contentW=pageW-margin*2;
     const availH=pageH-margin*2;
     const srcW=fullCanvas.width;
@@ -3930,6 +3950,7 @@ async function downloadReportTabPDF(){
       const sliceCanvas=document.createElement('canvas');
       sliceCanvas.width=srcW;sliceCanvas.height=thisH;
       const ctx=sliceCanvas.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,srcW,thisH);
       ctx.drawImage(fullCanvas,0,srcY,srcW,thisH,0,0,srcW,thisH);
       const sliceImg=sliceCanvas.toDataURL('image/jpeg',0.95);
       const sliceHmm=thisH/pxPerMm;
@@ -10104,7 +10125,7 @@ function switchRptTab(id, el){
         {lbl:'총 광고비', val:fmt(kpi.totalCost), diff:mom.cost, unit:'₩'},
         {lbl:'총 클릭수', val:fmtn(kpi.totalClick), diff:mom.click, unit:''},
         {lbl:'전환매출', val:fmt(kpi.totalRev), diff:mom.rev, unit:'₩'},
-        {lbl:'ROAS', val:kpi.roas?Math.round(kpi.roas*100)+'%':'0%', diff:mom.roas, unit:'x'},
+        {lbl:'ROAS', val:kpi.roas?(kpi.roas>=10?Math.round(kpi.roas):kpi.roas.toFixed(2))+'%':'0%', diff:mom.roas, unit:'x'},
         {lbl:'전환수', val:fmtn(kpi.totalConv)+'건', diff:null, unit:''},
       ];
       momEl.innerHTML = momItems.map(item=>{
