@@ -836,7 +836,7 @@ canvas{max-height:210px}
           </div>
           <button id="screenPdfBtn" class="btn-pdf" style="display:none" onclick="downloadScreenPDF()">📥 PDF 다운로드</button>
           <div id="reportPdfBtn" style="display:none">
-                      <button class="btn-pdf" onclick="openPdfPreview()">📄 PDF 다운로드</button>
+                      <button class="btn-pdf" onclick="downloadReportTabPDF()">📄 PDF 다운로드</button>
 
 
 
@@ -3833,6 +3833,90 @@ function downloadPDF(){
   
   closePdfOverlay();
   toast('📥 인쇄 창에서 PDF로 저장을 선택하세요');
+}
+
+async function downloadReportTabPDF(){
+  const activeTab=sessionStorage.getItem('currentRptTab')||'summary';
+  const tabEl=document.getElementById('rpt-tab-'+activeTab);
+  if(!tabEl){toast('⚠️ 보고서 탭을 선택해주세요');return;}
+
+  const tabNames={summary:'통합요약',weekly:'주간데이터',monthly:'월간데이터',gfa:'GFA',meta:'META'};
+  const tabName=tabNames[activeTab]||activeTab;
+  const period=currentDateRange?.from?`${currentDateRange.from}~${currentDateRange.to}`:currentReportMonth;
+
+  toast(`📥 ${tabName} PDF 생성 중...`);
+
+  try{
+    await new Promise(r=>setTimeout(r,500));
+
+    // 보고서 KPI 영역도 포함
+    const kpiRow=document.querySelector('.rpt-kpi-row');
+    const wrapper=document.createElement('div');
+    wrapper.style.cssText='background:#f4f6fa;padding:20px;font-family:Noto Sans KR,sans-serif';
+
+    // 헤더 추가
+    wrapper.innerHTML=`<div style="text-align:center;margin-bottom:16px">
+      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">S</div>
+        <div style="text-align:left"><div style="font-size:8px;letter-spacing:2px;color:#aaa">DEARCOMPANY</div><div style="font-size:16px;font-weight:800">광고 성과 리포트 — ${tabName}</div></div>
+      </div>
+      <div style="font-size:11px;color:#888">${period} · ${document.getElementById('rptSubTitle')?.textContent||''}</div>
+    </div>`;
+
+    // KPI 복사
+    if(kpiRow){
+      const kpiClone=kpiRow.cloneNode(true);
+      wrapper.appendChild(kpiClone);
+    }
+
+    // 탭 내용 복사
+    const tabClone=tabEl.cloneNode(true);
+    tabClone.style.display='block';
+    wrapper.appendChild(tabClone);
+
+    // 푸터
+    const footer=document.createElement('div');
+    footer.innerHTML=`<div style="text-align:center;font-size:9px;color:#aaa;border-top:1px solid #ddd;padding-top:10px;margin-top:16px">SiteDear by DearCompany · 자동 생성 리포트 · ${period}</div>`;
+    wrapper.appendChild(footer);
+
+    // 임시로 body에 추가 (캡처용)
+    wrapper.style.position='absolute';
+    wrapper.style.left='-9999px';
+    wrapper.style.width='1100px';
+    document.body.appendChild(wrapper);
+
+    const canvas=await html2canvas(wrapper,{
+      scale:2,useCORS:true,backgroundColor:'#f4f6fa',logging:false,
+      windowWidth:1100,windowHeight:wrapper.scrollHeight
+    });
+
+    document.body.removeChild(wrapper);
+
+    const imgData=canvas.toDataURL('image/jpeg',0.92);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pageW=pdf.internal.pageSize.getWidth();
+    const pageH=pdf.internal.pageSize.getHeight();
+    const margin=8;
+    const contentW=pageW-margin*2;
+    const contentH=(canvas.height*contentW)/canvas.width;
+
+    let yOffset=0;
+    const availH=pageH-margin*2;
+    while(yOffset<contentH){
+      if(yOffset>0) pdf.addPage();
+      pdf.addImage(imgData,'JPEG',margin,margin-yOffset,contentW,contentH);
+      yOffset+=availH;
+    }
+
+    const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
+    const fileName=`${client?.company||'report'}_${tabName}_${period.replace(/[~\s]/g,'_')}.pdf`;
+    pdf.save(fileName);
+    toast(`✅ ${tabName} PDF 다운로드 완료`);
+  }catch(e){
+    console.error('PDF 생성 오류:',e);
+    toast('❌ PDF 생성 실패');
+  }
 }
 
 async function downloadScreenPDF(){
