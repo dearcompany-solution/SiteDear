@@ -9680,14 +9680,14 @@ async function loadGoogleTab(tabId){
   const convRate=totalClick>0?(totalConv/totalClick*100):0;
   const roasColor=roas>=200?'var(--naver)':roas>=100?'':'var(--red)';
   const kpiHtml=`<div class="kpi6">
-    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">💰</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
-    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${ctr.toFixed(2)}%</div></div>
-    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">🎯</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">전환수</div><div class="kpi-val">${totalConv.toFixed(0)}건</div></div>
-    <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">전환가치</div><div class="kpi-val">${fmt(totalConvValue)}</div></div>
-    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val" style="color:${roasColor}">${roas.toFixed(1)}%</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">💸</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">CPC</div><div class="kpi-val">${fmt(cpc)}</div></div>
+    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">💰</div></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${ctr.toFixed(2)}%</div></div>
+    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">🎯</div></div><div class="kpi-lbl">전환수</div><div class="kpi-val">${totalConv.toFixed(0)}건</div></div>
+    <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div></div><div class="kpi-lbl">전환가치</div><div class="kpi-val">${fmt(totalConvValue)}</div></div>
+    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div></div><div class="kpi-lbl">ROAS</div><div class="kpi-val" style="color:${roasColor}">${roas.toFixed(1)}%</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">💸</div></div><div class="kpi-lbl">CPC</div><div class="kpi-val">${fmt(cpc)}</div></div>
   </div>`;
 
   if(tabId==='summary'){
