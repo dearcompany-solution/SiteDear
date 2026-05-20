@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/dearcompany-solution/SiteDear/main/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script>ChartDataLabels&&Chart.register(ChartDataLabels);Chart.defaults.plugins.datalabels={display:false};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -3845,68 +3847,69 @@ async function downloadReportTabPDF(){
   const period=currentDateRange?.from?`${currentDateRange.from} ~ ${currentDateRange.to}`:currentReportMonth;
   const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
 
-  toast(`📥 ${tabName} PDF 생성 중...`);
+  toast(`📥 ${tabName} PDF 생성 중... (잠시 기다려주세요)`);
 
   try{
     await new Promise(r=>setTimeout(r,300));
 
-    // 1) 차트를 데이터 테이블로 변환
-    const origCanvases=tabEl.querySelectorAll('canvas');
-    origCanvases.forEach(c=>{
-      try{
-        const chart=Chart.getChart(c);
-        if(!chart)return;
-        const tbl=document.createElement('table');
-        tbl.className='tbl _pdf_tmp_tbl';
-        tbl.style.cssText='width:100%;border-collapse:collapse;font-size:12px;margin:8px 0';
-        const labels=chart.data.labels||[];
-        const datasets=chart.data.datasets||[];
-        let thead='<thead><tr style="background:#1c2535;color:#fff"><th style="padding:6px 10px;text-align:left">구분</th>';
-        datasets.forEach(ds=>{thead+=`<th style="padding:6px 10px;text-align:right">${ds.label||''}</th>`;});
-        thead+='</tr></thead>';
-        let tbody='<tbody>';
-        labels.forEach((lbl,i)=>{
-          tbody+=`<tr style="background:${i%2===0?'#f8fafc':'#fff'}"><td style="padding:5px 10px;font-weight:600">${lbl}</td>`;
-          datasets.forEach(ds=>{
-            const v=ds.data[i];
-            const formatted=typeof v==='number'?(v>=1000?'₩'+Math.round(v).toLocaleString():v%1===0?v.toLocaleString():v.toFixed(1)):v;
-            tbody+=`<td style="padding:5px 10px;text-align:right;font-family:monospace">${formatted}</td>`;
-          });
-          tbody+='</tr>';
-        });
-        tbody+='</tbody>';
-        tbl.innerHTML=thead+tbody;
-        c.parentNode.insertBefore(tbl,c);
-        c.style.display='none';
-        c._wasHidden=true;
-      }catch(e){console.warn('차트 변환 실패:',e);}
+    // 1) 모든 차트에 데이터 라벨 ON
+    const allCharts=[];
+    tabEl.querySelectorAll('canvas').forEach(c=>{
+      const chart=Chart.getChart(c);
+      if(!chart)return;
+      allCharts.push(chart);
+      chart.options.plugins.datalabels={
+        display:true,
+        color:'#1c2535',
+        font:{size:10,weight:'bold',family:'IBM Plex Mono'},
+        anchor:'end',
+        align:'top',
+        offset:2,
+        formatter:(v)=>{
+          if(typeof v!=='number')return v;
+          if(v>=1000000)return '₩'+(v/10000).toFixed(0)+'만';
+          if(v>=1000)return v>=10000?'₩'+Math.round(v).toLocaleString():v.toLocaleString();
+          if(v%1!==0)return v.toFixed(1);
+          return v.toString();
+        }
+      };
+      chart.update('none');
     });
+
+    await new Promise(r=>setTimeout(r,400));
 
     // 2) 래퍼 생성
     const wrapper=document.createElement('div');
-    wrapper.style.cssText='background:#fff;padding:28px 32px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:900px;position:absolute;left:-9999px';
+    wrapper.style.cssText='background:#fff;padding:28px 32px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:1000px;position:absolute;left:-9999px';
 
     // 헤더
-    const headerDiv=document.createElement('div');
-    headerDiv.style.cssText='display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;margin-bottom:20px';
-    headerDiv.innerHTML=`<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;flex-shrink:0">S</div>
+    wrapper.innerHTML=`<div style="display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;margin-bottom:20px">
+      <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;flex-shrink:0">S</div>
       <div style="flex:1"><div style="font-size:9px;letter-spacing:3px;color:#aaa">DEARCOMPANY</div><div style="font-size:20px;font-weight:800">광고 성과 리포트 — ${tabName}</div></div>
-      <div style="text-align:right"><div style="font-size:13px;font-weight:700">${period}</div><div style="font-size:11px;color:#888">${client?.company||''} · 담당: ${client?.manager||''}</div></div>`;
-    wrapper.appendChild(headerDiv);
+      <div style="text-align:right"><div style="font-size:13px;font-weight:700">${period}</div><div style="font-size:11px;color:#888">${client?.company||''} · 담당: ${client?.manager||''}</div></div>
+    </div>`;
 
-    // KPI
-    const kpiRow=document.querySelector('.rpt-kpi-row');
-    if(kpiRow){const kc=kpiRow.cloneNode(true);kc.style.marginBottom='20px';wrapper.appendChild(kc);}
+    // 3) 차트 canvas → 이미지 변환 (라벨 포함 상태)
+    const origCanvases=tabEl.querySelectorAll('canvas');
+    origCanvases.forEach(c=>{
+      try{
+        const img=document.createElement('img');
+        img.src=c.toDataURL('image/png');
+        img.style.cssText='width:100%;height:auto';
+        img.className='_pdf_tmp_img';
+        c.parentNode.insertBefore(img,c);
+        c.style.display='none';
+        c._wasHidden=true;
+      }catch(e){}
+    });
 
     // 탭 내용 복사
     const tabClone=tabEl.cloneNode(true);
     tabClone.style.display='block';
-    // 스크롤 제한 전부 해제
     tabClone.querySelectorAll('*').forEach(el=>{
       if(el.style.maxHeight){el.style.maxHeight='none';el.style.overflow='visible';}
       if(el.style.overflowY==='auto'||el.style.overflowY==='scroll'){el.style.overflowY='visible';el.style.maxHeight='none';}
     });
-    // 숨겨진 canvas 제거
     tabClone.querySelectorAll('canvas').forEach(c=>c.remove());
     wrapper.appendChild(tabClone);
 
@@ -3919,18 +3922,22 @@ async function downloadReportTabPDF(){
     document.body.appendChild(wrapper);
     await new Promise(r=>setTimeout(r,500));
 
-    // 3) html2canvas 캡처
+    // 4) 캡처
     const fullCanvas=await html2canvas(wrapper,{
       scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
-      windowWidth:900,windowHeight:wrapper.scrollHeight
+      windowWidth:1000,windowHeight:wrapper.scrollHeight
     });
     document.body.removeChild(wrapper);
 
-    // 4) 원본 canvas 복원 + 임시 테이블 제거
+    // 5) 복원 — 라벨 OFF + 임시 이미지 제거
+    allCharts.forEach(chart=>{
+      chart.options.plugins.datalabels={display:false};
+      chart.update('none');
+    });
     origCanvases.forEach(c=>{if(c._wasHidden){c.style.display='';delete c._wasHidden;}});
-    tabEl.querySelectorAll('._pdf_tmp_tbl').forEach(t=>t.remove());
+    tabEl.querySelectorAll('._pdf_tmp_img').forEach(img=>img.remove());
 
-    // 5) PDF — 슬라이스 페이징
+    // 6) PDF 슬라이스
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pageW=pdf.internal.pageSize.getWidth();
