@@ -1355,7 +1355,7 @@ const pageTitles={
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','google','req','msg','cal','input','report','alerts','kpi-target','work-log'];
+  const needsClient=['naver','store','combined','meta','google','req','cal','input','report','alerts','kpi-target','work-log'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
