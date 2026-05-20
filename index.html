@@ -3843,179 +3843,195 @@ async function downloadReportTabPDF(){
   const tabNames={summary:'통합요약',weekly:'주간데이터',monthly:'월간데이터',gfa:'GFA',meta:'META'};
   const tabName=tabNames[activeTab]||activeTab;
   const period=currentDateRange?.from?`${currentDateRange.from} ~ ${currentDateRange.to}`:currentReportMonth;
+  const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
+  const clientName=client?.company||'';
+  const managerName=client?.manager||'';
 
-  toast(`📥 ${tabName} PDF 생성 중... (잠시 기다려주세요)`);
+  toast(`📥 ${tabName} PDF 생성 중...`);
 
   try{
-    await new Promise(r=>setTimeout(r,300));
-
-    // 1) 원본 탭에서 canvas(차트)를 이미지로 미리 변환
-    const origCanvases=tabEl.querySelectorAll('canvas');
-    origCanvases.forEach(c=>{
-      try{
-        const img=document.createElement('img');
-        img.src=c.toDataURL('image/png');
-        img.style.cssText='width:100%;height:auto';
-        img.className='_pdf_chart_img';
-        c.parentNode.insertBefore(img,c);
-        c.style.display='none';
-        c._pdfHidden=true;
-      }catch(e){}
-    });
-
-    // KPI도 포함
-    const kpiRow=document.querySelector('.rpt-kpi-row');
-
-    // 2) 래퍼 생성
-    const wrapper=document.createElement('div');
-    wrapper.style.cssText='background:#fff;padding:24px 28px;font-family:Noto Sans KR,sans-serif;color:#1c2535;width:1000px;position:absolute;left:-9999px';
-
-    // 헤더
-    wrapper.innerHTML=`<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:18px">
-      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0">S</div>
-      <div style="flex:1"><div style="font-size:8px;letter-spacing:2px;color:#aaa">DEARCOMPANY</div><div style="font-size:18px;font-weight:800">광고 성과 리포트 — ${tabName}</div></div>
-      <div style="text-align:right"><div style="font-size:12px;font-weight:600">${period}</div><div style="font-size:10px;color:#888">${document.getElementById('rptSubTitle')?.textContent||''}</div></div>
-    </div>`;
-
-    // KPI 복사
-    if(kpiRow) wrapper.appendChild(kpiRow.cloneNode(true));
-
-    // 탭 내용 복사 (차트는 이미 이미지로 변환됨)
-    const tabClone=tabEl.cloneNode(true);
-    tabClone.style.display='block';
-    // max-height 스크롤 제거 (전체 표시)
-    tabClone.querySelectorAll('[style*="max-height"]').forEach(el=>{el.style.maxHeight='none';el.style.overflow='visible';});
-    // display:none 캔버스 제거 (이미지만 남김)
-    tabClone.querySelectorAll('canvas').forEach(c=>c.remove());
-    wrapper.appendChild(tabClone);
-
-    // 푸터
-    const footer=document.createElement('div');
-    footer.style.cssText='text-align:center;font-size:9px;color:#aaa;border-top:1px solid #e2e8f0;padding-top:10px;margin-top:18px';
-    footer.textContent=`SiteDear by DearCompany · 자동 생성 리포트 · ${period}`;
-    wrapper.appendChild(footer);
-
-    document.body.appendChild(wrapper);
     await new Promise(r=>setTimeout(r,200));
-
-    // 3) 캡처
-    const fullCanvas=await html2canvas(wrapper,{
-      scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
-      windowWidth:1000,windowHeight:wrapper.scrollHeight
-    });
-
-    document.body.removeChild(wrapper);
-
-    // 4) 원본 탭 canvas 복원
-    origCanvases.forEach(c=>{
-      if(c._pdfHidden){c.style.display='';delete c._pdfHidden;}
-    });
-    tabEl.querySelectorAll('._pdf_chart_img').forEach(img=>img.remove());
-
-    // 5) PDF 생성 — 슬라이스 방식 (짤림 방지)
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pageW=pdf.internal.pageSize.getWidth();
-    const pageH=pdf.internal.pageSize.getHeight();
-    const margin=10;
-    const contentW=pageW-margin*2;
-    const availH=pageH-margin*2;
-    const srcW=fullCanvas.width;
-    const srcTotalH=fullCanvas.height;
-    const pxPerMm=srcW/contentW;
-    const sliceHpx=Math.floor(availH*pxPerMm);
+    const pw=pdf.internal.pageSize.getWidth();
+    const ph=pdf.internal.pageSize.getHeight();
+    const ml=14,mr=14,mt=14,mb=14;
+    const cw=pw-ml-mr;
+    let y=mt;
 
-    let srcY=0;
-    let page=0;
-    while(srcY<srcTotalH){
-      if(page>0) pdf.addPage();
-      const thisH=Math.min(sliceHpx,srcTotalH-srcY);
+    const addPage=()=>{pdf.addPage();y=mt;};
+    const checkPage=(need)=>{if(y+need>ph-mb)addPage();};
 
-      const sliceCanvas=document.createElement('canvas');
-      sliceCanvas.width=srcW;
-      sliceCanvas.height=thisH;
-      const ctx=sliceCanvas.getContext('2d');
-      ctx.drawImage(fullCanvas,0,srcY,srcW,thisH,0,0,srcW,thisH);
+    const cPrimary=[28,37,53];
+    const cGray=[136,136,136];
+    const cBlue=[59,130,246];
+    const cGreen=[3,199,90];
+    const cRed=[239,68,68];
+    const cGold=[245,158,11];
 
-      const sliceImg=sliceCanvas.toDataURL('image/jpeg',0.95);
-      const sliceHmm=thisH/pxPerMm;
-      pdf.addImage(sliceImg,'JPEG',margin,margin,contentW,sliceHmm);
+    // ── 헤더 ──
+    pdf.setFillColor(99,102,241);
+    pdf.roundedRect(ml,y,8,8,2,2,'F');
+    pdf.setTextColor(255,255,255);
+    pdf.setFontSize(7);pdf.text('S',ml+2.8,y+5.5);
+    pdf.setTextColor(...cGray);pdf.setFontSize(7);
+    pdf.text('DEARCOMPANY',ml+12,y+3);
+    pdf.setTextColor(...cPrimary);pdf.setFontSize(14);
+    pdf.text(`광고 성과 리포트 - ${tabName}`,ml+12,y+8);
+    pdf.setTextColor(...cGray);pdf.setFontSize(9);
+    pdf.text(`${period}`,pw-mr,y+3,{align:'right'});
+    pdf.setFontSize(8);
+    pdf.text(`${clientName} / ${managerName}`,pw-mr,y+7,{align:'right'});
+    y+=12;
+    pdf.setDrawColor(226,232,240);pdf.line(ml,y,pw-mr,y);y+=6;
 
-      srcY+=thisH;
-      page++;
-      if(page>30)break;
+    // ── KPI ──
+    const kpiEls=document.querySelectorAll('.rpt-kpi-row .rpt-kpi');
+    if(kpiEls.length){
+      const perRow=Math.min(kpiEls.length,5);
+      const kpiW=cw/perRow;
+      kpiEls.forEach((el,i)=>{
+        const lbl=el.querySelector('.rpt-kpi-lbl')?.textContent||'';
+        const val=el.querySelector('.rpt-kpi-val')?.textContent||'';
+        const row=Math.floor(i/perRow);
+        const col=i%perRow;
+        const x=ml+col*kpiW;
+        const ky=y+row*18;
+        pdf.setFillColor(248,250,252);pdf.roundedRect(x,ky,kpiW-3,15,2,2,'F');
+        pdf.setTextColor(...cGray);pdf.setFontSize(7);pdf.text(lbl,x+3,ky+5);
+        pdf.setTextColor(...cPrimary);pdf.setFontSize(11);pdf.text(val,x+3,ky+12);
+      });
+      y+=Math.ceil(kpiEls.length/5)*18+4;
     }
 
-    const client=ACCOUNTS.find(a=>a.id===(activeClientId||currentUser?.id));
-    const fileName=`${client?.company||'report'}_${tabName}_${period.replace(/[\s~]/g,'_')}.pdf`;
-    pdf.save(fileName);
-    toast(`✅ ${tabName} PDF 다운로드 완료 (${page}페이지)`);
-  }catch(e){
-    console.error('PDF 생성 오류:',e);
-    toast('❌ PDF 생성 실패: '+e.message);
-  }
-}
+    // ── 테이블 추출 ──
+    const extractTable=(tableEl,title)=>{
+      if(!tableEl)return;
+      const ths=Array.from(tableEl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+      const trs=Array.from(tableEl.querySelectorAll('tbody tr'));
+      const rows=trs.map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim())).filter(r=>r.length&&!r.every(c=>!c));
+      if(!ths.length||!rows.length)return;
 
-async function downloadScreenPDF(){
-  const content = document.getElementById('appContent');
-  if(!content){ toast('⚠️ 내용이 없습니다'); return; }
-  toast('📥 PDF 생성 중... 잠시 기다려주세요');
-  try {
-    // 차트 애니메이션 완료 대기
-    await new Promise(r=>setTimeout(r,500));
-    const canvas = await html2canvas(content, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#f4f6fa',
-      logging: false,
-      windowWidth: content.scrollWidth,
-      windowHeight: content.scrollHeight,
-      scrollX: 0,
-      scrollY: -window.scrollY
+      checkPage(16);
+      pdf.setTextColor(...cPrimary);pdf.setFontSize(10);
+      pdf.text(title,ml,y);y+=5;
+
+      const colW=cw/ths.length;
+      pdf.setFillColor(28,37,53);pdf.rect(ml,y,cw,6,'F');
+      pdf.setTextColor(255,255,255);pdf.setFontSize(6.5);
+      ths.forEach((h,i)=>pdf.text(h,ml+i*colW+2,y+4));
+      y+=6;
+
+      rows.forEach((tds,ri)=>{
+        checkPage(5.5);
+        if(ri%2===0){pdf.setFillColor(248,250,252);pdf.rect(ml,y,cw,5.5,'F');}
+        tds.forEach((td,ci)=>{
+          if(ths[ci]&&(ths[ci].includes('ROAS')||ths[ci].includes('roas'))){
+            const v=parseFloat(td);
+            if(v>=500)pdf.setTextColor(...cGreen);
+            else if(v>=200)pdf.setTextColor(...cBlue);
+            else if(v>=100)pdf.setTextColor(...cGold);
+            else pdf.setTextColor(...cRed);
+          }else{pdf.setTextColor(80,80,80);}
+          pdf.setFontSize(6.5);
+          const txt=td.length>20?td.slice(0,19)+'..':td;
+          pdf.text(txt,ml+ci*colW+2,y+3.8);
+        });
+        y+=5.5;
+      });
+      y+=6;
+    };
+
+    // ── 차트 → 이미지 ──
+    const addChart=(canvasEl,title)=>{
+      if(!canvasEl)return;
+      try{
+        checkPage(55);
+        pdf.setTextColor(...cPrimary);pdf.setFontSize(10);
+        pdf.text(title,ml,y);y+=4;
+        const imgData=canvasEl.toDataURL('image/png');
+        const ratio=canvasEl.height/canvasEl.width;
+        const imgW=cw;
+        const imgH=Math.min(imgW*ratio,50);
+        pdf.addImage(imgData,'PNG',ml,y,imgW,imgH);
+        y+=imgH+6;
+      }catch(e){console.warn('차트 캡처 실패:',e);}
+    };
+
+    // ── 탭 내용 추출 ──
+    // 차트 먼저
+    const allCanvases=tabEl.querySelectorAll('canvas');
+    allCanvases.forEach(c=>{
+      const wrap=c.closest('.rpt-section')||c.closest('.rpt-compare>div')||c.parentElement;
+      const titleEl=wrap?.querySelector('.rpt-section-title');
+      const title=titleEl?.textContent?.trim()||'차트';
+      addChart(c,title);
     });
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
-    const {jsPDF} = window.jspdf;
-    const imgW = canvas.width;
-    const imgH = canvas.height;
-    // A4 가로 or 세로 자동 판단
-    const isLandscape = imgW > imgH * 1.2;
-    const pdf = new jsPDF({orientation: isLandscape?'landscape':'portrait', unit:'mm', format:'a4'});
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const contentW = pageW - margin*2;
-    const contentH = (imgH * contentW) / imgW;
-    // 여러 페이지 처리
-    let yOffset = 0;
-    const availH = pageH - margin*2;
-    let pageNum = 0;
-    while(yOffset < contentH){
-      if(pageNum > 0) pdf.addPage();
-      // 소스 이미지에서 잘라낼 영역 계산
-      const srcY = (yOffset / contentH) * imgH;
-      const srcH = Math.min((availH / contentH) * imgH, imgH - srcY);
-      const drawH = (srcH / imgH) * contentH;
-      // 잘린 영역을 캔버스로 추출
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = imgW;
-      sliceCanvas.height = srcH;
-      const ctx = sliceCanvas.getContext('2d');
-      ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
-      const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
-      pdf.addImage(sliceData, 'JPEG', margin, margin, contentW, drawH);
-      yOffset += availH;
-      pageNum++;
-      if(pageNum > 20) break; // 안전장치
+
+    // MoM KPI (월간)
+    const momRow=tabEl.querySelector('#moMomRow');
+    if(momRow&&momRow.children.length){
+      checkPage(20);
+      pdf.setTextColor(...cPrimary);pdf.setFontSize(10);
+      pdf.text('전월 대비 증감',ml,y);y+=5;
+      const items=Array.from(momRow.children);
+      const iw=cw/Math.min(items.length,5);
+      items.forEach((item,i)=>{
+        const lbl=item.querySelector('div:first-child')?.textContent?.trim()||'';
+        const val=item.querySelector('div:last-child')?.textContent?.trim()||'';
+        const x=ml+i*iw;
+        pdf.setFillColor(248,250,252);pdf.roundedRect(x,y,iw-3,14,2,2,'F');
+        pdf.setTextColor(...cGray);pdf.setFontSize(6.5);pdf.text(lbl,x+3,y+5);
+        pdf.setTextColor(...cPrimary);pdf.setFontSize(9);pdf.text(val,x+3,y+11);
+      });
+      y+=18;
     }
-    // 파일명 생성
-    const page = sessionStorage.getItem('currentPage')||'dashboard';
-    const range = document.getElementById('drangeLabel')?.textContent?.replace(/\s/g,'')||'';
-    const company = document.querySelector('.sb-name')?.textContent?.trim()||'report';
-    pdf.save(`${company}_${page}_${range}.pdf`);
-    toast('✅ PDF 다운로드 완료!');
-  } catch(err){
-    console.error('PDF 생성 실패:', err);
-    toast('❌ PDF 생성 실패: ' + err.message);
+
+    // 테이블들
+    const allTables=tabEl.querySelectorAll('table');
+    allTables.forEach(t=>{
+      const wrap=t.closest('.rpt-section')||t.closest('.rpt-compare>div')||t.parentElement;
+      const titleEl=wrap?.querySelector('.rpt-section-title');
+      const title=titleEl?.textContent?.trim()||'상세 데이터';
+      extractTable(t,title);
+    });
+
+    // 인사이트
+    const insightEl=tabEl.querySelector('#rptInsights');
+    if(insightEl&&insightEl.children.length){
+      checkPage(12);
+      pdf.setTextColor(...cPrimary);pdf.setFontSize(10);
+      pdf.text('핵심 인사이트',ml,y);y+=5;
+      Array.from(insightEl.children).forEach(ins=>{
+        const title=ins.querySelector('.ins-title,.rpt-ins-title,div:first-child')?.textContent?.trim()||'';
+        const desc=ins.querySelector('.ins-desc,.rpt-ins-desc,div:last-child')?.textContent?.trim()||'';
+        checkPage(10);
+        pdf.setFillColor(240,253,244);pdf.roundedRect(ml,y,cw,9,2,2,'F');
+        pdf.setTextColor(22,101,52);pdf.setFontSize(7);pdf.text(title,ml+3,y+4);
+        pdf.setTextColor(85,85,85);pdf.setFontSize(6.5);
+        const descShort=desc.length>80?desc.slice(0,79)+'..':desc;
+        pdf.text(descShort,ml+3,y+7.5);
+        y+=10;
+      });
+      y+=4;
+    }
+
+    // ── 푸터 (모든 페이지) ──
+    const totalPages=pdf.internal.getNumberOfPages();
+    for(let p=1;p<=totalPages;p++){
+      pdf.setPage(p);
+      pdf.setDrawColor(226,232,240);pdf.line(ml,ph-mb+2,pw-mr,ph-mb+2);
+      pdf.setTextColor(...cGray);pdf.setFontSize(7);
+      pdf.text('SiteDear by DearCompany',ml,ph-mb+6);
+      pdf.text(`${period} | ${p}/${totalPages}`,pw-mr,ph-mb+6,{align:'right'});
+    }
+
+    const fileName=`${clientName||'report'}_${tabName}_${period.replace(/[\s~]/g,'_')}.pdf`;
+    pdf.save(fileName);
+    toast(`✅ ${tabName} PDF (${totalPages}페이지)`);
+  }catch(e){
+    console.error('PDF 오류:',e);
+    toast('❌ PDF 실패: '+e.message);
   }
 }
 async function downloadExcelReport(){
