@@ -3852,23 +3852,34 @@ async function downloadReportTabPDF(){
   try{
     await new Promise(r=>setTimeout(r,300));
 
-    // 1) 모든 차트에 데이터 라벨 ON
+    // 1) 모든 차트에 데이터 라벨 ON (개수에 따라 스타일 조정)
     const allCharts=[];
     tabEl.querySelectorAll('canvas').forEach(c=>{
       const chart=Chart.getChart(c);
       if(!chart)return;
       allCharts.push(chart);
+      const totalPoints=(chart.data.labels||[]).length;
+      const dsCount=(chart.data.datasets||[]).length;
+      const isCrowded=totalPoints>10||(totalPoints>5&&dsCount>1);
+      const isVCrowded=totalPoints>20;
+
       chart.options.plugins.datalabels={
-        display:true,
+        display:isVCrowded?function(ctx){return ctx.dataIndex%3===0}:true,
         color:'#1c2535',
-        font:{size:10,weight:'bold',family:'IBM Plex Mono'},
-        anchor:'end',
-        align:'top',
-        offset:2,
-        formatter:(v)=>{
+        font:{size:isCrowded?8:11,weight:'bold',family:'IBM Plex Mono'},
+        anchor:isCrowded?'center':'end',
+        align:isCrowded?'top':'top',
+        offset:isCrowded?-2:4,
+        rotation:isCrowded?-45:0,
+        textAlign:'center',
+        padding:{top:2,bottom:2},
+        formatter:(v,ctx)=>{
           if(typeof v!=='number')return v;
-          if(v>=1000000)return '₩'+(v/10000).toFixed(0)+'만';
-          if(v>=1000)return v>=10000?'₩'+Math.round(v).toLocaleString():v.toLocaleString();
+          // 여러 데이터셋이면 첫번째만 표시 (겹침 방지)
+          if(dsCount>1&&!isCrowded&&ctx.datasetIndex>0)return '';
+          if(v>=100000000)return '₩'+(v/100000000).toFixed(1)+'억';
+          if(v>=10000)return '₩'+(v/10000).toFixed(0)+'만';
+          if(v>=1000)return v.toLocaleString();
           if(v%1!==0)return v.toFixed(1);
           return v.toString();
         }
@@ -3876,7 +3887,7 @@ async function downloadReportTabPDF(){
       chart.update('none');
     });
 
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,500));
 
     // 2) 래퍼 생성
     const wrapper=document.createElement('div');
@@ -3911,6 +3922,14 @@ async function downloadReportTabPDF(){
       if(el.style.overflowY==='auto'||el.style.overflowY==='scroll'){el.style.overflowY='visible';el.style.maxHeight='none';}
     });
     tabClone.querySelectorAll('canvas').forEach(c=>c.remove());
+    // 섹션별 짤림 방지
+    tabClone.querySelectorAll('.rpt-section,.rpt-compare,.card').forEach(el=>{
+      el.style.pageBreakInside='avoid';el.style.breakInside='avoid';
+    });
+    // 차트 이미지 사이즈 최적화
+    tabClone.querySelectorAll('._pdf_tmp_img').forEach(img=>{
+      img.style.maxHeight='280px';img.style.objectFit='contain';
+    });
     wrapper.appendChild(tabClone);
 
     // 푸터
@@ -3937,7 +3956,7 @@ async function downloadReportTabPDF(){
     origCanvases.forEach(c=>{if(c._wasHidden){c.style.display='';delete c._wasHidden;}});
     tabEl.querySelectorAll('._pdf_tmp_img').forEach(img=>img.remove());
 
-    // 6) PDF 슬라이스
+    // 6) PDF 슬라이스 — 흰색 행 감지로 최적 분할
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pageW=pdf.internal.pageSize.getWidth();
@@ -3950,10 +3969,31 @@ async function downloadReportTabPDF(){
     const pxPerMm=srcW/contentW;
     const sliceHpx=Math.floor(availH*pxPerMm);
 
+    // 최적 분할점 찾기 — 슬라이스 높이 근처에서 흰색 행 탐색
+    const fullCtx=fullCanvas.getContext('2d');
+    function findBreakPoint(targetY){
+      const searchRange=Math.floor(sliceHpx*0.15);
+      const startY=Math.min(targetY,srcTotalH-1);
+      for(let dy=0;dy<searchRange;dy++){
+        const checkY=startY-dy;
+        if(checkY<=0)return startY;
+        const row=fullCtx.getImageData(0,checkY,srcW,1).data;
+        let isWhite=true;
+        for(let x=0;x<srcW*4;x+=40){
+          if(row[x]<240||row[x+1]<240||row[x+2]<240){isWhite=false;break;}
+        }
+        if(isWhite)return checkY;
+      }
+      return targetY;
+    }
+
     let srcY=0,page=0;
     while(srcY<srcTotalH){
       if(page>0)pdf.addPage();
-      const thisH=Math.min(sliceHpx,srcTotalH-srcY);
+      let endY=srcY+sliceHpx;
+      if(endY<srcTotalH) endY=findBreakPoint(endY);
+      const thisH=Math.min(endY-srcY,srcTotalH-srcY);
+      if(thisH<=0)break;
       const sliceCanvas=document.createElement('canvas');
       sliceCanvas.width=srcW;sliceCanvas.height=thisH;
       const ctx=sliceCanvas.getContext('2d');
