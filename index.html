@@ -6248,18 +6248,48 @@ function startPolling(clientKey){
 function stopPolling(){ if(pollingTimer){clearInterval(pollingTimer);pollingTimer=null;} }
 
 /* ── 안읽은 메시지 뱃지 ── */
+let _unreadByClient={};
 async function updateMsgBadge(){
   try{
-    const clientKey = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
-    if(!clientKey) return;
-    let url = `${SUPABASE_URL}/rest/v1/messages?is_read=eq.false&sender_role=neq.${currentUser.role}&select=id`;
-    if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
-    const res = await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
-    const rows = await res.json();
-    const badge = document.getElementById('msgBadge');
+    const isAdmin=currentUser?.role==='admin';
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    let totalUnread=0;
+
+    if(isAdmin){
+      // 관리자: 모든 클라이언트의 미읽은 메시지 조회
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?is_read=eq.false&sender_role=eq.client&select=client_key`,{headers:h});
+      const rows=await res.json();
+      _unreadByClient={};
+      if(Array.isArray(rows)){
+        rows.forEach(r=>{
+          const ck=r.client_key||'';
+          _unreadByClient[ck]=(_unreadByClient[ck]||0)+1;
+        });
+        totalUnread=rows.length;
+      }
+      // 대화 목록 뱃지 업데이트
+      Object.entries(_unreadByClient).forEach(([ck,cnt])=>{
+        const badge=document.getElementById('unread-'+ck);
+        if(badge){badge.textContent=cnt;badge.style.display='inline-block';}
+      });
+      // 미읽은 없는 클라이언트 뱃지 숨기기
+      document.querySelectorAll('[id^="unread-"]').forEach(el=>{
+        const ck=el.id.replace('unread-','');
+        if(!_unreadByClient[ck]){el.style.display='none';}
+      });
+    } else {
+      // 클라이언트: 자기 메시지만
+      const ck=currentUser?.id||'';
+      if(!ck)return;
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?is_read=eq.false&sender_role=eq.admin&client_key=eq.${encodeURIComponent(ck)}&select=id`,{headers:h});
+      const rows=await res.json();
+      totalUnread=Array.isArray(rows)?rows.length:0;
+    }
+
+    const badge=document.getElementById('msgBadge');
     if(badge){
-      if(Array.isArray(rows)&&rows.length>0){
-        badge.textContent = rows.length>99?'99+':rows.length;
+      if(totalUnread>0){
+        badge.textContent=totalUnread>99?'99+':totalUnread;
         badge.style.display='inline-block';
       } else {
         badge.style.display='none';
@@ -6272,16 +6302,28 @@ function htmlMsg(){
   const clients = ACCOUNTS.filter(a=>a.role==='client');
 
   // 관리자: 클라이언트 목록 사이드바 / 광고주: 담당 매니저와 1:1
+  // 미읽은 메시지 있는 업체를 상단에 정렬
+  const sortedClients = isAdmin
+    ? [...clients].sort((a,b)=>{
+        const ua=_unreadByClient[a.id]||0;
+        const ub=_unreadByClient[b.id]||0;
+        if(ub!==ua) return ub-ua;
+        return a.company.localeCompare(b.company);
+      })
+    : clients;
+
   const threadList = isAdmin
-    ? clients.map(c=>`
-      <div class="msg-thread ${currentChatClient===c.id?'active':''}"
+    ? sortedClients.map(c=>{
+        const unread=_unreadByClient[c.id]||0;
+        return `
+      <div class="msg-thread ${currentChatClient===c.id?'active':''} ${unread?'unread':''}"
         onclick="openChat('${c.id}','${c.company}')">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div class="mt-name">${c.company}</div>
-          <div class="mt-time" id="lastTime-${c.id}"></div>
+          <span class="nbadge nb-b" id="unread-${c.id}" style="display:${unread?'inline-block':'none'};font-size:10px;padding:1px 6px">${unread}</span>
         </div>
-        <div class="mt-prev" id="lastMsg-${c.id}">클릭해서 대화 열기</div>
-      </div>`).join('')
+        <div class="mt-prev" id="lastMsg-${c.id}">${unread?`💬 새 메시지 ${unread}개`:'클릭해서 대화 열기'}</div>
+      </div>`;}).join('')
     : `<div class="msg-thread active" onclick="openChat('${currentUser.id}','디어컴퍼니 매니저')">
         <div style="display:flex;justify-content:space-between">
           <div class="mt-name">디어컴퍼니 매니저</div>
@@ -6824,6 +6866,15 @@ async function openChat(clientKey, clientName){
 
   // 메시지 로드
   await loadMessages(clientKey);
+
+  // 관리자가 열면 해당 업체 메시지 읽음 처리
+  if(currentUser?.role==='admin'){
+    fetch(`${SUPABASE_URL}/rest/v1/messages?client_key=eq.${encodeURIComponent(clientKey)}&is_read=eq.false&sender_role=eq.client`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({is_read:true})
+    }).then(()=>updateMsgBadge());
+  }
 
   // 실시간 구독
   subscribeMessages(clientKey);
