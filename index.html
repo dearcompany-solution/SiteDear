@@ -5074,7 +5074,7 @@ function saveOneFile(fileObj, client) {
 
         // 구글 광고 파일 처리
         if(hasGoogle){
-          // 월 추출 - 파일명 또는 CSV 2행 기간 텍스트에서
+          // 월 추출 - CSV 2행 기간 텍스트 우선, 파일명 보조
           let googleMonth=month;
           if(lines.length>1){
             const periodLine=lines[1]||'';
@@ -5097,23 +5097,98 @@ function saveOneFile(fileObj, client) {
               else cur+=line[c];
             }
             vals.push(cur.trim().replace(/^"+|"+$/g,''));
-            if(vals.every(v=>!v||v==='--'))continue;
+            if(vals.every(v=>!v||v==='--'||v==='')){continue;}
             const row={};
             cols.forEach((col,idx)=>{row[col]=(vals[idx]||'').trim().replace(/^"+|"+$/g,'');});
 
-            // 전체: 합계 행 건너뛰기
-            if((row['캠페인 상태']||'').includes('전체:')||(row['전환 액션']||'').trim()===''&&(row['캠페인 상태']||'').includes('전체'))continue;
-            // 캠페인명 없으면 건너뛰기
+            const campStatus=row['캠페인 상태']||'';
+            const convAction=(row['전환 액션']||'').trim();
             const campName=row['캠페인']||'';
-            if(!campName||campName==='--')continue;
+            const campType=row['캠페인 유형']||'';
 
+            // 전체: 유형별 합계 행 (전환 액션 비어있고, 캠페인 상태가 "전체: 디스플레이" 등)
+            if(campStatus.startsWith('전체:')&&(!convAction||convAction==='--')){
+              const typeName=campStatus.replace('전체:','').trim();
+              if(typeName==='계정') continue; // 전체 계정 합계는 건너뛰기
+              if(parseNum(row['비용'])>0||parseNum(row['노출수'])>0){
+                googleRows.push({
+                  client_key:client,
+                  month:googleMonth,
+                  campaign_name:typeName+' 전체',
+                  campaign_type:campType||typeName,
+                  campaign_status:'합계',
+                  conversion_action:'',
+                  cost:parseNum(row['비용']),
+                  imp:parseNum(row['노출수']),
+                  click:parseNum(row['클릭수']),
+                  ctr:parseNum(row['상호작용 발생률']),
+                  cpc:parseNum(row['평균 CPC']),
+                  cpm:parseNum(row['평균 CPM']),
+                  conv:parseNum(row['전환수']),
+                  conv_value:parseNum(row['전환 가치']),
+                  conv_rate:parseNum(row['전환율']),
+                  cost_per_conv:parseNum(row['전환당비용']),
+                  bid_strategy:''
+                });
+              }
+              continue;
+            }
+
+            // 전환 액션별 합계 행 (전체: 유형 + 전환 액션 있는 행) → 전환 데이터만 수집
+            if(campStatus.startsWith('전체:')&&convAction&&convAction!=='--'){
+              const typeName=campStatus.replace('전체:','').trim();
+              if(typeName==='계정') continue;
+              if(parseNum(row['전환수'])>0||parseNum(row['전환 가치'])>0){
+                googleRows.push({
+                  client_key:client,
+                  month:googleMonth,
+                  campaign_name:typeName+' 전체',
+                  campaign_type:campType||typeName,
+                  campaign_status:'전환상세',
+                  conversion_action:convAction,
+                  cost:0,imp:0,click:0,ctr:0,cpc:0,cpm:0,
+                  conv:parseNum(row['전환수']),
+                  conv_value:parseNum(row['전환 가치']),
+                  conv_rate:parseNum(row['전환율']),
+                  cost_per_conv:parseNum(row['전환당비용']),
+                  bid_strategy:''
+                });
+              }
+              continue;
+            }
+
+            // 개별 캠페인 행 (사용중/운영 가능 등)
+            if(!campName||campName==='--') continue;
+            if(campStatus.startsWith('전체:')) continue;
+            // 전환 액션이 있는 개별 행 → 전환 데이터만 수집
+            if(convAction&&convAction!=='--'){
+              if(parseNum(row['전환수'])>0||parseNum(row['전환 가치'])>0){
+                googleRows.push({
+                  client_key:client,
+                  month:googleMonth,
+                  campaign_name:campName,
+                  campaign_type:campType,
+                  campaign_status:campStatus,
+                  conversion_action:convAction,
+                  cost:0,imp:0,click:0,ctr:0,cpc:0,cpm:0,
+                  conv:parseNum(row['전환수']),
+                  conv_value:parseNum(row['전환 가치']),
+                  conv_rate:parseNum(row['전환율']),
+                  cost_per_conv:parseNum(row['전환당비용']),
+                  bid_strategy:row['입찰 전략 유형']||''
+                });
+              }
+              continue;
+            }
+
+            // 전환 액션 없는 개별 캠페인 행 → 비용/노출/클릭 데이터
             googleRows.push({
               client_key:client,
               month:googleMonth,
               campaign_name:campName,
-              campaign_type:row['캠페인 유형']||'',
-              campaign_status:row['캠페인 상태']||'',
-              conversion_action:row['전환 액션']||'',
+              campaign_type:campType,
+              campaign_status:campStatus,
+              conversion_action:'',
               cost:parseNum(row['비용']),
               imp:parseNum(row['노출수']),
               click:parseNum(row['클릭수']),
@@ -9333,19 +9408,16 @@ async function loadGoogleTab(tabId){
   const fmt=v=>'₩'+Math.round(+v||0).toLocaleString();
   const fmtn=v=>Math.round(+v||0).toLocaleString();
 
-  // 집계 (전환액션별 중복 제거 — 캠페인별로 첫 행만 사용하여 비용/노출/클릭 합산)
-  const seen={};
+  // 집계
   let totalCost=0,totalImp=0,totalClick=0,totalConv=0,totalConvValue=0;
   rows.forEach(r=>{
-    const key=r.campaign_name+'_'+r.month;
-    if(!seen[key]){
-      seen[key]=true;
-      totalCost+=+r.cost||0;
-      totalImp+=+r.imp||0;
-      totalClick+=+r.click||0;
+    totalCost+=+r.cost||0;
+    totalImp+=+r.imp||0;
+    totalClick+=+r.click||0;
+    if(r.campaign_status!=='전환상세'){
+      totalConv+=+r.conv||0;
+      totalConvValue+=+r.conv_value||0;
     }
-    totalConv+=+r.conv||0;
-    totalConvValue+=+r.conv_value||0;
   });
   const ctr=totalImp>0?(totalClick/totalImp*100):0;
   const cpc=totalClick>0?totalCost/totalClick:0;
@@ -9360,13 +9432,11 @@ async function loadGoogleTab(tabId){
   if(tabId==='summary'){
     // 캠페인 유형별 요약
     const typeMap={};
-    const typeSeen={};
     rows.forEach(r=>{
       const t=r.campaign_type||'기타';
       if(!typeMap[t])typeMap[t]={cost:0,imp:0,click:0,conv:0,convValue:0};
-      const key=r.campaign_name+'_'+r.month+'_'+t;
-      if(!typeSeen[key]){typeSeen[key]=true;typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;}
-      typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;
+      typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;
+      if(r.campaign_status!=='전환상세'){typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;}
     });
     const types=Object.entries(typeMap).sort((a,b)=>b[1].cost-a[1].cost);
     const typeCards=types.map(([name,d])=>{
@@ -9383,13 +9453,12 @@ async function loadGoogleTab(tabId){
   }
 
   if(tabId==='campaign'){
-    const campMap={};const campSeen={};
+    const campMap={};
     rows.forEach(r=>{
       const k=r.campaign_name||'기타';
       if(!campMap[k])campMap[k]={cost:0,imp:0,click:0,conv:0,convValue:0,type:r.campaign_type||''};
-      const key=k+'_'+r.month;
-      if(!campSeen[key]){campSeen[key]=true;campMap[k].cost+=+r.cost||0;campMap[k].imp+=+r.imp||0;campMap[k].click+=+r.click||0;}
-      campMap[k].conv+=+r.conv||0;campMap[k].convValue+=+r.conv_value||0;
+      campMap[k].cost+=+r.cost||0;campMap[k].imp+=+r.imp||0;campMap[k].click+=+r.click||0;
+      if(r.campaign_status!=='전환상세'){campMap[k].conv+=+r.conv||0;campMap[k].convValue+=+r.conv_value||0;}
     });
     const camps=Object.entries(campMap).sort((a,b)=>b[1].cost-a[1].cost);
     const trs=camps.map(([name,d],i)=>{
@@ -9410,13 +9479,12 @@ async function loadGoogleTab(tabId){
   }
 
   if(tabId==='type'){
-    const typeMap={};const typeSeen={};
+    const typeMap={};
     rows.forEach(r=>{
       const t=r.campaign_type||'기타';
       if(!typeMap[t])typeMap[t]={cost:0,imp:0,click:0,conv:0,convValue:0};
-      const key=r.campaign_name+'_'+r.month+'_'+t;
-      if(!typeSeen[key]){typeSeen[key]=true;typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;}
-      typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;
+      typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;
+      if(r.campaign_status!=='전환상세'){typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;}
     });
     const types=Object.entries(typeMap).sort((a,b)=>b[1].cost-a[1].cost);
     const trs=types.map(([name,d],i)=>{
