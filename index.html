@@ -1480,12 +1480,11 @@ function renderContent(id){
     // 클라이언트: 담당 매니저와 1:1 채팅
     setTimeout(()=>{ loadMessages(currentUser.id); subscribeMessages(currentUser.id); updateMsgBadge(); },100);
   } else {
-    // 관리자: 선택된 업체와 1:1 채팅으로 바로 진입
-    setTimeout(()=>{
-      if(activeClientId){
-        const c = ACCOUNTS.find(a=>a.id===activeClientId);
-        if(c) openChat(c.id, c.company);
-      }
+    // 관리자: 미읽은 메시지 업데이트 후 목록 표시 (업체 선택 불필요)
+    setTimeout(async()=>{
+      await updateMsgBadge();
+      const mc=document.getElementById('mainContent');
+      if(mc&&sessionStorage.getItem('currentPage')==='msg') mc.innerHTML=htmlMsg();
     },100);
   }
   break;
@@ -6277,6 +6276,8 @@ async function updateMsgBadge(){
         const ck=el.id.replace('unread-','');
         if(!_unreadByClient[ck]){el.style.display='none';}
       });
+      // 메시지 페이지면 목록 재정렬
+      reorderMsgThreads();
     } else {
       // 클라이언트: 자기 메시지만
       const ck=currentUser?.id||'';
@@ -6297,6 +6298,20 @@ async function updateMsgBadge(){
     }
   }catch(e){}
 }
+function reorderMsgThreads(){
+  const list=document.getElementById('msgThreadList');
+  if(!list)return;
+  const threads=Array.from(list.querySelectorAll('.msg-thread:not(.ai-thread)'));
+  threads.sort((a,b)=>{
+    const ckA=a.getAttribute('data-ck')||'';
+    const ckB=b.getAttribute('data-ck')||'';
+    const ua=_unreadByClient[ckA]||0;
+    const ub=_unreadByClient[ckB]||0;
+    return ub-ua;
+  });
+  threads.forEach(t=>list.appendChild(t));
+}
+
 function htmlMsg(){
   const isAdmin = currentUser?.role==='admin';
   const clients = ACCOUNTS.filter(a=>a.role==='client');
@@ -6316,10 +6331,10 @@ function htmlMsg(){
     ? sortedClients.map(c=>{
         const unread=_unreadByClient[c.id]||0;
         return `
-      <div class="msg-thread ${currentChatClient===c.id?'active':''} ${unread?'unread':''}"
+      <div class="msg-thread ${currentChatClient===c.id?'active':''} ${unread?'unread':''}" data-ck="${c.id}"
         onclick="openChat('${c.id}','${c.company}')">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="mt-name">${c.company}</div>
+          <div class="mt-name" style="${unread?'font-weight:700':''}">${c.company}</div>
           <span class="nbadge nb-b" id="unread-${c.id}" style="display:${unread?'inline-block':'none'};font-size:10px;padding:1px 6px">${unread}</span>
         </div>
         <div class="mt-prev" id="lastMsg-${c.id}">${unread?`💬 새 메시지 ${unread}개`:'클릭해서 대화 열기'}</div>
