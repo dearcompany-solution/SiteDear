@@ -9511,7 +9511,8 @@ async function loadGoogleTab(tabId){
     // 캠페인 유형별 요약
     const typeMap={};
     rows.forEach(r=>{
-      const t=r.campaign_type||'기타';
+      const t=r.campaign_type||'';
+      if(!t||t==='--'||t==='기타')return;
       if(!typeMap[t])typeMap[t]={cost:0,imp:0,click:0,conv:0,convValue:0};
       typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;
       if(r.campaign_status!=='전환상세'){typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;}
