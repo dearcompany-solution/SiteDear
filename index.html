@@ -694,6 +694,10 @@ canvas{max-height:210px}
 .dp-apply{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
 .dp-apply:hover{background:#2563eb}
 @keyframes spin{to{transform:rotate(360deg)}}
+.sd-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;gap:12px;color:var(--text3)}
+.sd-spinner-ring{width:32px;height:32px;border:3px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin .8s linear infinite}
+.sd-spinner-text{font-size:12.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+.sd-spinner-sm{width:20px;height:20px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
 @keyframes feedbackDot {
   0%   { opacity:1; transform:scale(1); box-shadow:0 0 0px rgba(59,130,246,0.8); }
   50%  { opacity:0.4; transform:scale(1.4); box-shadow:0 0 6px rgba(59,130,246,1); }
@@ -2009,7 +2013,7 @@ function htmlNaver(){
   </div>
   <div id="nt-tab-gfa" style="display:none">
     <div id="gfaContent">
-      <div class="empty"><div class="ei">📡</div><p>GFA 데이터 불러오는 중...</p></div>
+      ${loadingSpinner('GFA 데이터 불러오는 중...')}
     </div>
   </div>
   <div id="nt-tab-device" style="display:none">
@@ -2092,12 +2096,12 @@ function htmlNaver(){
   </div>
   <div id="nt-tab-keyword" style="display:none">
     <div id="keywordContent">
-      <div class="empty"><div class="ei">🔑</div><p>키워드 데이터 불러오는 중...</p></div>
+      ${loadingSpinner('키워드 데이터 불러오는 중...')}
     </div>
   </div>
   <div id="nt-tab-hourly" style="display:none">
     <div id="hourlyContent">
-      <div class="empty"><div class="ei">🕐</div><p>시간대별 데이터 불러오는 중...</p></div>
+      ${loadingSpinner('시간대별 데이터 불러오는 중...')}
     </div>
   </div>
   <div id="nt-tab-action" style="display:none">
@@ -2326,6 +2330,16 @@ function skeletonPage(){
   return skeletonSumBar()+skeletonKPI()+skeletonCharts();
 }
 
+function loadingSpinner(text='불러오는 중...'){
+  return `<div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">${text}</div></div>`;
+}
+function loadingSpinnerInline(){
+  return `<span class="sd-spinner-sm"></span>`;
+}
+function loadingRow(cols=7,text='불러오는 중...'){
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:24px">${loadingSpinner(text)}</td></tr>`;
+}
+
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
@@ -2459,7 +2473,7 @@ function htmlReport(){
       <div style="overflow-x:auto">
         <table class="tbl" id="rptChannelTable">
           <thead><tr><th>채널</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
-          <tbody><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">로딩 중...</td></tr></tbody>
+          <tbody><tr><td colspan="7" style="text-align:center;padding:20px"><div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">불러오는 중...</div></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2528,7 +2542,7 @@ function htmlReport(){
         <div style="overflow-x:auto">
           <table class="tbl" id="wkChannelTable">
             <thead><tr><th>채널</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
-            <tbody><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+            <tbody><tr><td colspan="7" style="text-align:center;padding:20px"><div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">불러오는 중...</div></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2539,7 +2553,7 @@ function htmlReport(){
             <thead style="position:sticky;top:0;background:var(--white);z-index:1"><tr>
               <th>날짜</th><th>요일</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
             </tr></thead>
-            <tbody id="rptWeeklyTbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+            <tbody id="rptWeeklyTbody"><tr><td colspan="8" style="text-align:center;padding:20px"><div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">불러오는 중...</div></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2551,7 +2565,7 @@ function htmlReport(){
       <div style="overflow-x:auto">
         <table class="tbl" id="wkKwTable">
           <thead><tr><th>키워드</th><th>광고비</th><th>클릭수</th><th>전환수</th><th>전환매출</th><th>ROAS</th></tr></thead>
-          <tbody><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">로딩 중...</td></tr></tbody>
+          <tbody><tr><td colspan="6" style="text-align:center;padding:16px"><div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">불러오는 중...</div></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2593,7 +2607,7 @@ function htmlReport(){
             <thead><tr>
               <th>주차</th><th>노출수</th><th>클릭수</th><th>광고비</th><th>전환수</th><th>전환매출</th><th>ROAS</th>
             </tr></thead>
-            <tbody id="rptMonthlyTbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+            <tbody id="rptMonthlyTbody"><tr><td colspan="7" style="text-align:center;padding:20px"><div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">불러오는 중...</div></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -4066,7 +4080,7 @@ function renderDataTab(){
         <div style="font-size:14px;font-weight:600">📋 업로드 이력</div>
       </div>
       <div id="uploadLogWrap" style="padding:14px 20px">
-        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">불러오는 중...</div>
+        ${loadingSpinner('데이터 불러오는 중...')}
       </div>
     </div>
   </div>`;
@@ -6093,7 +6107,7 @@ function htmlMsg(){
       <div class="chat" id="chatArea">
         <div style="text-align:center;padding:40px;color:var(--text3)">
           <div style="font-size:32px;margin-bottom:10px">💬</div>
-          <p style="font-size:13px">${isAdmin?'왼쪽에서 클라이언트를 선택하면<br>대화가 시작됩니다':'메시지를 불러오는 중...'}</p>
+          <p style="font-size:13px">${isAdmin?'왼쪽에서 클라이언트를 선택하면<br>대화가 시작됩니다':'<div class="sd-spinner"><div class="sd-spinner-ring"></div><div class="sd-spinner-text">메시지 불러오는 중...</div></div>'}</p>
         </div>
       </div>
       <div class="msg-inp">
