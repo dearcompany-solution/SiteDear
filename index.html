@@ -156,7 +156,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .kpi{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:box-shadow .2s}
 .kpi:hover{box-shadow:var(--shm)}
 .kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
-.kpi.kn::after{background:var(--naver)}.kpi.kb::after{background:var(--blue)}.kpi.kg::after{background:var(--gold)}.kpi.ks::after{background:var(--store)}.kpi.kr::after{background:var(--red)}.kpi.ki::after{background:var(--indigo)}
+.kpi.kn::after{background:var(--naver)}.kpi.kb::after{background:var(--blue)}.kpi.kg::after{background:var(--gold)}.kpi.ks::after{background:var(--store)}.kpi.kr::after{background:var(--red)}.kpi.ki::after{background:var(--indigo)}.kpi.kgl::after{background:#EA4335}
+.kic-gl{background:#FCECEA}.kc-gl{background:#FCECEA;color:#EA4335}
 .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .kpi-ic{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
 .kic-n{background:var(--naver-l)}.kic-b{background:var(--blue-l)}.kic-g{background:var(--gold-l)}.kic-s{background:var(--store-l)}.kic-r{background:var(--red-l)}.kic-i{background:var(--indigo-l)}
@@ -9423,10 +9424,17 @@ async function loadGoogleTab(tabId){
   const cpc=totalClick>0?totalCost/totalClick:0;
   const roas=totalCost>0?(totalConvValue/totalCost*100):0;
 
-  const kpiHtml=`<div class="kpi6" style="margin-bottom:18px">
-    ${[['💰','광고비',fmt(totalCost)],['👁️','노출',fmtn(totalImp)],['👆','클릭',fmtn(totalClick)],
-       ['📊','CTR',ctr.toFixed(2)+'%'],['💵','CPC',fmt(cpc)],['⚡','ROAS',roas.toFixed(1)+'%']]
-      .map(([ic,l,v])=>`<div class="kpi-card"><div class="kpi-ic">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('')}
+  const convRate=totalClick>0?(totalConv/totalClick*100):0;
+  const roasColor=roas>=200?'var(--naver)':roas>=100?'':'var(--red)';
+  const kpiHtml=`<div class="kpi6">
+    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">💰</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
+    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${ctr.toFixed(2)}%</div></div>
+    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">🎯</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">전환수</div><div class="kpi-val">${totalConv.toFixed(0)}건</div></div>
+    <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">전환가치</div><div class="kpi-val">${fmt(totalConvValue)}</div></div>
+    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">ROAS</div><div class="kpi-val" style="color:${roasColor}">${roas.toFixed(1)}%</div></div>
+    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">💸</div><span class="kpi-chip kc-gl">Google</span></div><div class="kpi-lbl">CPC</div><div class="kpi-val">${fmt(cpc)}</div></div>
   </div>`;
 
   if(tabId==='summary'){
