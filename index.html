@@ -1266,7 +1266,7 @@ async function loadClientsFromSupabase(){
 /* ════════════════════════════════════════
    NAV
 ════════════════════════════════════════ */
-let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true};
+let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true,has_google:true};
 
 async function loadClientDataFlags(clientKey){
   if(!clientKey)return;
@@ -1290,6 +1290,7 @@ function renderClientNav(){
     ${f.has_naver||f.has_gfa?'<div class="ni" id="ni-naver" onclick="go(\'naver\',this)"><span class="ic">🟢</span>네이버 검색광고</div>':''}
     ${f.has_store?'<div class="ni" id="ni-store" onclick="go(\'store\',this)"><span class="ic">🟠</span>스마트스토어</div>':''}
     ${f.has_meta?'<div class="ni" id="ni-meta" onclick="go(\'meta\',this)"><span class="ic">🔵</span>META 광고</div>':''}
+    ${f.has_google?'<div class="ni" id="ni-google" onclick="go(\'google\',this)"><span class="ic">🔴</span>구글 광고</div>':''}
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서 확인
@@ -1316,6 +1317,7 @@ function renderAdminNav(){
     <div class="ni" id="ni-naver"    onclick="go('naver',this)"><span class="ic">🟢</span>네이버 검색광고</div>
     <div class="ni" id="ni-store"    onclick="go('store',this)"><span class="ic">🟠</span>스마트스토어</div>
     <div class="ni" id="ni-meta"     onclick="go('meta',this)"><span class="ic">🔵</span>META 광고</div>
+    <div class="ni" id="ni-google"   onclick="go('google',this)"><span class="ic">🔴</span>구글 광고</div>
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서 확인
@@ -1339,6 +1341,7 @@ const pageTitles={
   naver:   ['성과 대시보드 (네이버 광고)',''],
   store:   ['스마트스토어 대시보드',''],
   meta:    ['META 광고 대시보드','Facebook · Instagram'],
+  google:  ['구글 광고 대시보드','Google Ads · 디스플레이 · 디맨드젠'],
   report:  ['보고서 확인','광고 성과 리포트 · PDF 다운로드'],
   input:   ['데이터 입력',''],
   msg:     ['메시지',''],
@@ -1351,7 +1354,7 @@ const pageTitles={
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','req','msg','cal','input','report','alerts','kpi-target','work-log'];
+  const needsClient=['naver','store','combined','meta','google','req','msg','cal','input','report','alerts','kpi-target','work-log'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
@@ -1423,7 +1426,17 @@ function renderContent(id){
         switchStoreTab('summary', document.querySelector(".nav-tab[onclick*=\"'summary'\"]"));
       }, 50);
       break;
-    case 'meta':
+    case 'google':
+      c.innerHTML=skeletonKPI(6)+skeletonCharts();
+      setTimeout(async()=>{
+        c.innerHTML=htmlGoogle();
+        const savedGTab=sessionStorage.getItem('currentGoogleTab')||'summary';
+        setTimeout(()=>{
+          const tabEl=document.querySelector(`.nav-tab[onclick*="switchGoogleTab('${savedGTab}'"]`);
+          switchGoogleTab(savedGTab,tabEl);
+        },50);
+      },50);
+      break;
       c.innerHTML=skeletonKPI(8)+skeletonCharts();
       setTimeout(async()=>{
         c.innerHTML=htmlMeta();
@@ -2681,8 +2694,12 @@ async function refreshAllPages(){
   } else if(activePage==='store'){
     c.innerHTML=htmlStore();
     setTimeout(renderCharts,50);
+  } else if(activePage==='google'){
+    Object.keys(window).filter(k=>k.startsWith('_google_')).forEach(k=>delete window[k]);
+    c.innerHTML=htmlGoogle();
+    const savedGTab=sessionStorage.getItem('currentGoogleTab')||'summary';
+    setTimeout(()=>{switchGoogleTab(savedGTab,document.querySelector(`.nav-tab[onclick*="switchGoogleTab('${savedGTab}'"]`));},50);
   } else if(activePage==='meta'){
-    // META 캐시 클리어 (기간 변경 시 새 데이터 fetch)
     Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
     c.innerHTML=htmlMeta();
     const savedMetaTab = sessionStorage.getItem('currentMetaTab') || 'summary';
@@ -4556,6 +4573,7 @@ function saveOneFile(fileObj, client) {
         const isStoreProduct  = cols.includes('상품카테고리(대)') && cols.includes('상품명');
         const hasGFA      = cols.includes('게재 위치') || (cols.includes('기간') && cols.includes('광고 계정 이름'));
         const hasMeta     = cols.includes('캠페인 이름') && cols.includes('광고 세트 이름') && cols.includes('지출 금액 (KRW)');
+        const hasGoogle   = cols.includes('캠페인') && cols.includes('캠페인 유형') && cols.includes('비용') && cols.includes('전환수');
         const hasHourly   = cols.includes('시간대별');
         const hasKeyword  = cols.some(c => ['검색어','키워드명','키워드'].includes(c));
         const hasCampaign = cols.includes('캠페인유형') && cols.includes('캠페인');
@@ -5054,7 +5072,81 @@ function saveOneFile(fileObj, client) {
           return;
         }
 
-        // ── META 광고 파싱 + 저장 ──
+        // 구글 광고 파일 처리
+        if(hasGoogle){
+          // 월 추출 - 파일명 또는 CSV 2행 기간 텍스트에서
+          let googleMonth=month;
+          if(lines.length>1){
+            const periodLine=lines[1]||'';
+            const pm=periodLine.match(/(\d{4})년\s*(\d{1,2})월/);
+            if(pm) googleMonth=`${pm[1]}-${String(pm[2]).padStart(2,'0')}`;
+          }
+          const fnM=fileObj.name.match(/(\d{4})[.\-_](\d{1,2})/);
+          if(fnM) googleMonth=`${fnM[1]}-${String(fnM[2]).padStart(2,'0')}`;
+
+          const googleRows=[];
+          for(let i=headerIdx+1;i<lines.length;i++){
+            const line=lines[i];
+            if(!line.trim())continue;
+            // 따옴표 안 쉼표 처리
+            const vals=[];
+            let cur='',inQ=false;
+            for(let c=0;c<line.length;c++){
+              if(line[c]==='"')inQ=!inQ;
+              else if(line[c]===','&&!inQ){vals.push(cur.trim().replace(/^"+|"+$/g,''));cur='';}
+              else cur+=line[c];
+            }
+            vals.push(cur.trim().replace(/^"+|"+$/g,''));
+            if(vals.every(v=>!v||v==='--'))continue;
+            const row={};
+            cols.forEach((col,idx)=>{row[col]=(vals[idx]||'').trim().replace(/^"+|"+$/g,'');});
+
+            // 전체: 합계 행 건너뛰기
+            if((row['캠페인 상태']||'').includes('전체:')||(row['전환 액션']||'').trim()===''&&(row['캠페인 상태']||'').includes('전체'))continue;
+            // 캠페인명 없으면 건너뛰기
+            const campName=row['캠페인']||'';
+            if(!campName||campName==='--')continue;
+
+            googleRows.push({
+              client_key:client,
+              month:googleMonth,
+              campaign_name:campName,
+              campaign_type:row['캠페인 유형']||'',
+              campaign_status:row['캠페인 상태']||'',
+              conversion_action:row['전환 액션']||'',
+              cost:parseNum(row['비용']),
+              imp:parseNum(row['노출수']),
+              click:parseNum(row['클릭수']),
+              ctr:parseNum(row['상호작용 발생률']),
+              cpc:parseNum(row['평균 CPC']),
+              cpm:parseNum(row['평균 CPM']),
+              conv:parseNum(row['전환수']),
+              conv_value:parseNum(row['전환 가치']),
+              conv_rate:parseNum(row['전환율']),
+              cost_per_conv:parseNum(row['전환당비용']),
+              bid_strategy:row['입찰 전략 유형']||''
+            });
+          }
+
+          if(!googleRows.length){fileObj.status='데이터없음';renderUploadTab();toast('⚠️ 유효한 구글 광고 데이터가 없습니다');return;}
+
+          fileObj.status='저장중';renderUploadTab();
+          (async()=>{
+            try{
+              const h2={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+              await fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${googleMonth}`,{method:'DELETE',headers:h2});
+              for(let b=0;b<googleRows.length;b+=100){
+                await fetch(`${SUPABASE_URL}/rest/v1/google_reports`,{method:'POST',headers:h2,body:JSON.stringify(googleRows.slice(b,b+100))});
+              }
+              Object.keys(window).filter(k=>k.startsWith('_google_')).forEach(k=>delete window[k]);
+              fileObj.status='저장완료';fileObj.savedCount=googleRows.length;
+              renderUploadTab();toast(`✅ ${fileObj.name} — ${googleRows.length}개 저장 완료!`);
+            }catch(err){fileObj.status='저장실패';renderUploadTab();toast('❌ 구글 광고 저장 실패: '+err.message);}
+          })();
+          return;
+        }
+
+        // META 파일 처리
         if(hasMeta){
           const metaRows = [];
           for(let i = headerIdx + 1; i < lines.length; i++){
@@ -7531,7 +7623,7 @@ function selClient(id){
 
   // ▼ 추가: 현재 열린 페이지가 데이터 페이지면 자동 갱신
   const curPage = sessionStorage.getItem('currentPage') || '';
-  if(['combined','naver','store','report','meta'].includes(curPage)){
+  if(['combined','naver','store','meta','google'].includes(id))
     REPORT_DATA[currentReportMonth] = null;
     Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
     refreshAllPages();
@@ -9188,6 +9280,161 @@ async function renderCharts(){
   // KPI 목표 달성률 미니 표시
   if(document.getElementById('kpiMiniProgress')) renderKpiMiniProgress();
 }
+/* ════════════════════════════════════════
+   구글 광고 대시보드
+════════════════════════════════════════ */
+function htmlGoogle(){
+  return `<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+    <button class="nav-tab active" onclick="switchGoogleTab('summary',this)">🚀 요약</button>
+    <button class="nav-tab" onclick="switchGoogleTab('campaign',this)">📋 캠페인별</button>
+    <button class="nav-tab" onclick="switchGoogleTab('type',this)">📊 유형별</button>
+  </div>
+  <div id="g-tab-summary" style="display:block"></div>
+  <div id="g-tab-campaign" style="display:none"></div>
+  <div id="g-tab-type" style="display:none"></div>`;
+}
+
+function switchGoogleTab(id,el){
+  sessionStorage.setItem('currentGoogleTab',id);
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  ['summary','campaign','type'].forEach(t=>{
+    const p=document.getElementById('g-tab-'+t);
+    if(p)p.style.display=t===id?'block':'none';
+  });
+  loadGoogleTab(id);
+}
+
+async function loadGoogleTab(tabId){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+
+  const cacheKey=`_google_${ck}_${fromMonth}_${toMonth}`;
+  if(!window[cacheKey]){
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(ck)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h});
+    const data=await res.json();
+    window[cacheKey]=Array.isArray(data)?data:[];
+  }
+  const rows=window[cacheKey];
+
+  if(!rows.length){
+    const el=document.getElementById('g-tab-'+tabId);
+    if(el)el.innerHTML=`<div class="empty"><div class="ei">🔴</div><p>구글 광고 데이터가 없습니다.<br><span style="font-size:12px;color:var(--blue)">파일관리 → 구글 광고 파일을 업로드해주세요</span></p></div>`;
+    return;
+  }
+
+  const fmt=v=>'₩'+Math.round(+v||0).toLocaleString();
+  const fmtn=v=>Math.round(+v||0).toLocaleString();
+
+  // 집계 (전환액션별 중복 제거 — 캠페인별로 첫 행만 사용하여 비용/노출/클릭 합산)
+  const seen={};
+  let totalCost=0,totalImp=0,totalClick=0,totalConv=0,totalConvValue=0;
+  rows.forEach(r=>{
+    const key=r.campaign_name+'_'+r.month;
+    if(!seen[key]){
+      seen[key]=true;
+      totalCost+=+r.cost||0;
+      totalImp+=+r.imp||0;
+      totalClick+=+r.click||0;
+    }
+    totalConv+=+r.conv||0;
+    totalConvValue+=+r.conv_value||0;
+  });
+  const ctr=totalImp>0?(totalClick/totalImp*100):0;
+  const cpc=totalClick>0?totalCost/totalClick:0;
+  const roas=totalCost>0?(totalConvValue/totalCost*100):0;
+
+  const kpiHtml=`<div class="kpi6" style="margin-bottom:18px">
+    ${[['💰','광고비',fmt(totalCost)],['👁️','노출',fmtn(totalImp)],['👆','클릭',fmtn(totalClick)],
+       ['📊','CTR',ctr.toFixed(2)+'%'],['💵','CPC',fmt(cpc)],['⚡','ROAS',roas.toFixed(1)+'%']]
+      .map(([ic,l,v])=>`<div class="kpi-card"><div class="kpi-ic">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('')}
+  </div>`;
+
+  if(tabId==='summary'){
+    // 캠페인 유형별 요약
+    const typeMap={};
+    const typeSeen={};
+    rows.forEach(r=>{
+      const t=r.campaign_type||'기타';
+      if(!typeMap[t])typeMap[t]={cost:0,imp:0,click:0,conv:0,convValue:0};
+      const key=r.campaign_name+'_'+r.month+'_'+t;
+      if(!typeSeen[key]){typeSeen[key]=true;typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;}
+      typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;
+    });
+    const types=Object.entries(typeMap).sort((a,b)=>b[1].cost-a[1].cost);
+    const typeCards=types.map(([name,d])=>{
+      const r2=d.cost>0?(d.convValue/d.cost*100):0;
+      const rc=r2>=200?'var(--naver)':r2>=100?'var(--blue)':'var(--red)';
+      return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:700">${name}</div><div style="font-size:12px;font-weight:700;color:${rc}">ROAS ${r2.toFixed(0)}%</div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+          <div><div style="font-size:10px;color:var(--text3)">광고비</div><div style="font-weight:600">${fmt(d.cost)}</div></div>
+          <div><div style="font-size:10px;color:var(--text3)">클릭</div><div style="font-weight:600">${fmtn(d.click)}</div></div>
+          <div><div style="font-size:10px;color:var(--text3)">전환</div><div style="font-weight:600">${d.conv.toFixed(0)}건</div></div>
+        </div></div>`;
+    }).join('');
+    document.getElementById('g-tab-summary').innerHTML=kpiHtml+`<div class="row2b">${typeCards}</div>`;
+  }
+
+  if(tabId==='campaign'){
+    const campMap={};const campSeen={};
+    rows.forEach(r=>{
+      const k=r.campaign_name||'기타';
+      if(!campMap[k])campMap[k]={cost:0,imp:0,click:0,conv:0,convValue:0,type:r.campaign_type||''};
+      const key=k+'_'+r.month;
+      if(!campSeen[key]){campSeen[key]=true;campMap[k].cost+=+r.cost||0;campMap[k].imp+=+r.imp||0;campMap[k].click+=+r.click||0;}
+      campMap[k].conv+=+r.conv||0;campMap[k].convValue+=+r.conv_value||0;
+    });
+    const camps=Object.entries(campMap).sort((a,b)=>b[1].cost-a[1].cost);
+    const trs=camps.map(([name,d],i)=>{
+      const r2=d.cost>0?(d.convValue/d.cost*100):0;
+      const rc=r2>=200?'var(--naver)':r2>=100?'':'var(--red)';
+      return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+        <td style="font-size:12px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</td>
+        <td style="font-size:11px;color:var(--text3)">${d.type}</td>
+        <td style="font-family:monospace;font-size:12px">${fmt(d.cost)}</td>
+        <td style="font-family:monospace;font-size:12px">${fmtn(d.imp)}</td>
+        <td style="font-family:monospace;font-size:12px">${fmtn(d.click)}</td>
+        <td style="font-family:monospace;font-size:12px">${d.imp>0?(d.click/d.imp*100).toFixed(2):'0'}%</td>
+        <td style="font-family:monospace;font-size:12px">${d.conv.toFixed(0)}건</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc}">${r2.toFixed(0)}%</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('g-tab-campaign').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📋 캠페인별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>캠페인</th><th>유형</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>전환</th><th>ROAS</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+  }
+
+  if(tabId==='type'){
+    const typeMap={};const typeSeen={};
+    rows.forEach(r=>{
+      const t=r.campaign_type||'기타';
+      if(!typeMap[t])typeMap[t]={cost:0,imp:0,click:0,conv:0,convValue:0};
+      const key=r.campaign_name+'_'+r.month+'_'+t;
+      if(!typeSeen[key]){typeSeen[key]=true;typeMap[t].cost+=+r.cost||0;typeMap[t].imp+=+r.imp||0;typeMap[t].click+=+r.click||0;}
+      typeMap[t].conv+=+r.conv||0;typeMap[t].convValue+=+r.conv_value||0;
+    });
+    const types=Object.entries(typeMap).sort((a,b)=>b[1].cost-a[1].cost);
+    const trs=types.map(([name,d],i)=>{
+      const r2=d.cost>0?(d.convValue/d.cost*100):0;
+      return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+        <td style="font-size:12px;font-weight:600">${name}</td>
+        <td style="font-family:monospace;font-size:12px">${fmt(d.cost)}</td>
+        <td style="font-family:monospace;font-size:12px">${fmtn(d.imp)}</td>
+        <td style="font-family:monospace;font-size:12px">${fmtn(d.click)}</td>
+        <td style="font-family:monospace;font-size:12px">${d.imp>0?(d.click/d.imp*100).toFixed(2):'0'}%</td>
+        <td style="font-family:monospace;font-size:12px">${d.conv.toFixed(0)}건</td>
+        <td style="font-family:monospace;font-size:12px">${fmt(d.convValue)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${r2.toFixed(0)}%</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('g-tab-type').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📊 캠페인 유형별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>유형</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>전환</th><th>전환가치</th><th>ROAS</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+  }
+}
+
 /* ════ META 광고 ════ */
 function htmlMeta(){
   return `<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
