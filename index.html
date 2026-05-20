@@ -1381,10 +1381,10 @@ function go(id,el){
     const rpb=document.getElementById('reportPdfBtn');
     if(rpb) rpb.style.display=(id==='report')?'block':'none';
     const sp=document.getElementById('screenPdfBtn');
-    if(sp) sp.style.display=['combined','naver','store','meta'].includes(id)?'inline-flex':'none';
+    if(sp) sp.style.display=['combined','naver','store','meta','google'].includes(id)?'inline-flex':'none';
   }
   renderContent(id);
-  if(['naver','store','combined','meta'].includes(id))setTimeout(renderCharts,100);
+  if(['naver','store','combined','meta','google'].includes(id))setTimeout(renderCharts,100);
   // 모든 페이지 전환 시 피드백 글로우 적용
   setTimeout(applyFeedbackGlow, 1000);
   setTimeout(applyFeedbackGlow, 2500);
@@ -7623,9 +7623,10 @@ function selClient(id){
 
   // ▼ 추가: 현재 열린 페이지가 데이터 페이지면 자동 갱신
   const curPage = sessionStorage.getItem('currentPage') || '';
-  if(['combined','naver','store','meta','google'].includes(id))
+  if(['combined','naver','store','report','meta','google'].includes(curPage)){
     REPORT_DATA[currentReportMonth] = null;
     Object.keys(window).filter(k=>k.startsWith('_meta_')).forEach(k=>delete window[k]);
+    Object.keys(window).filter(k=>k.startsWith('_google_')).forEach(k=>delete window[k]);
     refreshAllPages();
   }
 
