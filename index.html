@@ -2474,27 +2474,47 @@ ${ (()=>{
   const naverImp   = kpi.totalImp||0;
   const naverClick = kpi.totalClick||0;
   const naverRev   = kpi.totalPurchaseRev||0;
-  const roasVal    = naverCost>0?(naverRev/naverCost*100):0;
-  // 스마트스토어 캐시
+  // GFA
+  const gfa = d?.gfa||{};
+  const gfaCost = gfa.totalCost||0;
+  const gfaRev  = gfa.totalRev||0;
+  // 스마트스토어
   const isAdmin = currentUser?.role==='admin';
   const ck = isAdmin?(activeClientId||''):(currentUser?.id||'');
-  const stCache = window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
   const from = currentDateRange?.from||'';
   const to   = currentDateRange?.to||'';
+  const fromMonth = from.slice(0,7);
+  const toMonth = to.slice(0,7);
+  const stCache = window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
   const stF  = from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
   const stRev    = stF.reduce((s,r)=>s+(+r.revenue||0),0);
   const stRefund = stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
   const stOrders = stF.reduce((s,r)=>s+(+r.orders||0),0);
   const stNetRev = stRev-stRefund;
+  // META
+  const metaCache = window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+  const metaF = metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+  const metaCost = metaF.reduce((s,r)=>s+(+r.cost||0),0);
+  const metaRev  = metaF.reduce((s,r)=>s+(+r.purchase_rev||0),0);
+  // 구글
+  const googleCache = window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+  let googleCost=0,googleConvValue=0;
+  googleCache.forEach(r=>{googleCost+=+r.cost||0;if(r.campaign_status!=='전환상세')googleConvValue+=+r.conv_value||0;});
+  // 통합 합산
+  const totalAdCost = naverCost+gfaCost+metaCost+googleCost;
+  const totalRev    = naverRev+gfaRev+metaRev+googleConvValue;
+  const totalRoas   = totalAdCost>0?(totalRev/totalAdCost*100):0;
+  const totalImp    = naverImp+metaF.reduce((s,r)=>s+(+r.imp||0),0)+googleCache.reduce((s,r)=>s+(+r.imp||0),0);
+  const totalClick  = naverClick+metaF.reduce((s,r)=>s+(+r.click||0),0)+googleCache.reduce((s,r)=>s+(+r.click||0),0);
   return `<div class="sum-bar">
-  <div class="sum-item"><div class="sum-lbl">📢 광고비</div><div class="sum-val" style="color:var(--naver)">${fmt(naverCost)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">👁️ 노출수</div><div class="sum-val">${fmtn(naverImp)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">👆 클릭수</div><div class="sum-val">${fmtn(naverClick)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">⚡ ROAS</div><div class="sum-val" style="color:var(--gold)">${roasVal?roasVal.toFixed(2)+'%':'0%'}</div></div>
-  <div class="sum-item"><div class="sum-lbl">🛒 결제금액</div><div class="sum-val" style="color:var(--store)">${fmt(stRev)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">↩️ 환불금액</div><div class="sum-val" style="color:var(--red)">${fmt(stRefund)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">💵 실매출</div><div class="sum-val" style="color:var(--naver)">${fmt(stNetRev)}</div></div>
-  <div class="sum-item"><div class="sum-lbl">📦 결제수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
+  <div class="sum-item"><div class="sum-lbl">📢 총 광고비</div><div class="sum-val" style="color:var(--indigo)">${fmt(totalAdCost)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">👁️ 총 노출</div><div class="sum-val">${fmtn(totalImp)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">👆 총 클릭</div><div class="sum-val">${fmtn(totalClick)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">⚡ 통합 ROAS</div><div class="sum-val" style="color:${totalRoas>=300?'var(--naver)':totalRoas>=100?'var(--gold)':'var(--red)'}">${totalRoas?totalRoas.toFixed(1)+'%':'0%'}</div></div>
+  <div class="sum-item"><div class="sum-lbl">💵 광고 매출</div><div class="sum-val" style="color:var(--naver)">${fmt(totalRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">🛒 스토어 매출</div><div class="sum-val" style="color:var(--store)">${fmt(stRev)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">↩️ 환불</div><div class="sum-val" style="color:var(--red)">${fmt(stRefund)}</div></div>
+  <div class="sum-item"><div class="sum-lbl">📦 주문수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
 </div>`;
 })() }
 
@@ -9675,26 +9695,48 @@ async function renderCharts(){
 
   mk('storePie',{type:'doughnut',data:{labels:['아이소파','유아체육교구','층간소음매트','기타'],datasets:[{data:[45,22,18,15],backgroundColor:['#03C75A','#3B82F6','#F59E0B','#c5c9d6'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
 
-  // 실제 데이터 기반 채널별 광고비 vs 전환매출
+  // 실제 데이터 기반 채널별 광고비 vs 전환매출 (전매체 통합)
   const d2 = REPORT_DATA[currentReportMonth];
   const kpi2 = d2?.kpi||{};
   const gfa2 = d2?.gfa||{};
   const isAdmin2 = currentUser?.role==='admin';
   const ck2 = isAdmin2?(activeClientId||''):(currentUser?.id||'');
+  const from2 = currentDateRange?.from||'';
+  const to2 = currentDateRange?.to||'';
+  const fromM2 = from2.slice(0,7);
+  const toM2 = to2.slice(0,7);
+  // 스토어
   const stCache2 = window[`_store_store_sales_${ck2}_${currentReportMonth}`]||[];
   const stRev2 = stCache2.reduce((s,r)=>s+(+r.revenue||0),0);
   const stRefund2 = stCache2.reduce((s,r)=>s+(+r.refund_amount||0),0);
   const stNetRev2 = stRev2-stRefund2;
+  // 네이버/GFA
   const naverCost2 = kpi2.totalCost||0;
   const gfaCost2   = gfa2.totalCost||0;
   const naverRev2  = kpi2.totalPurchaseRev||0;
   const gfaRev2    = gfa2.totalRev||0;
+  // META
+  const metaC2 = window[`_meta_${ck2}_${fromM2}_${toM2}`]||[];
+  const metaCost2 = metaC2.filter(r=>!r.date||(r.date>=from2&&r.date<=to2)).reduce((s,r)=>s+(+r.cost||0),0);
+  const metaRev2  = metaC2.filter(r=>!r.date||(r.date>=from2&&r.date<=to2)).reduce((s,r)=>s+(+r.purchase_rev||0),0);
+  // 구글
+  const googleC2 = window[`_google_${ck2}_${fromM2}_${toM2}`]||[];
+  let googleCost2=0,googleRev2=0;
+  googleC2.forEach(r=>{googleCost2+=+r.cost||0;if(r.campaign_status!=='전환상세')googleRev2+=+r.conv_value||0;});
+
+  // 데이터 있는 채널만 표시
+  const channels=[];
+  if(naverCost2||naverRev2) channels.push({name:'네이버',cost:naverCost2,rev:naverRev2});
+  if(gfaCost2||gfaRev2) channels.push({name:'GFA',cost:gfaCost2,rev:gfaRev2});
+  if(metaCost2||metaRev2) channels.push({name:'META',cost:metaCost2,rev:metaRev2});
+  if(googleCost2||googleRev2) channels.push({name:'구글',cost:googleCost2,rev:googleRev2});
+  if(stNetRev2) channels.push({name:'스토어',cost:0,rev:stNetRev2});
 
   mk('combinedBar',{type:'bar',data:{
-    labels:['네이버 검색광고','GFA','스마트스토어'],
+    labels:channels.map(c=>c.name),
     datasets:[
-      {label:'광고비',data:[naverCost2,gfaCost2,0],backgroundColor:'rgba(79,70,229,.75)',borderRadius:6},
-      {label:'전환매출',data:[naverRev2,gfaRev2,stNetRev2],backgroundColor:'rgba(3,199,90,.75)',borderRadius:6}
+      {label:'광고비',data:channels.map(c=>c.cost),backgroundColor:'rgba(79,70,229,.75)',borderRadius:6},
+      {label:'매출',data:channels.map(c=>c.rev),backgroundColor:'rgba(3,199,90,.75)',borderRadius:6}
     ]
   },options:{responsive:true,scales:{x:{...ax},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{position:'bottom',labels:lg}}}});
 
