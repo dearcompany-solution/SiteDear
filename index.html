@@ -2164,19 +2164,31 @@ function htmlStore(){
 
   <!-- 요약 탭 -->
   <div id="st-tab-summary">
-    <div class="kpi6">
-      <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💰</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제금액</div><div class="kpi-val" id="st-kpi-rev">—</div></div>
-      <div class="kpi kr"><div class="kpi-top"><div class="kpi-ic kic-r">↩️</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불금액</div><div class="kpi-val" id="st-kpi-refund">—</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💵</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">실매출</div><div class="kpi-val" id="st-kpi-netrev">—</div></div>
-      <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">💳</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">평균 주문금액</div><div class="kpi-val" id="st-kpi-avg">—</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">📦</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">총 결제수</div><div class="kpi-val" id="st-kpi-orders">—</div></div>
-      <div class="kpi kn"><div class="kpi-top"><div class="kpi-ic kic-n">🔄</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">환불건수</div><div class="kpi-val" id="st-kpi-refundcnt">—</div></div>
-      <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👤</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">결제자수</div><div class="kpi-val" id="st-kpi-buyers">—</div></div>
-      <div class="kpi ki"><div class="kpi-top"><div class="kpi-ic kic-b">📱</div><span class="kpi-chip kc-s">스토어</span></div><div class="kpi-lbl">모바일/PC</div><div class="kpi-val" id="st-kpi-mobile">—</div></div>
+    <div class="sum-bar" style="margin-bottom:16px">
+      <div class="sum-item" style="border-bottom:2px solid #FF6B35;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💰 결제금액</div><div class="sum-val" style="font-size:16px" id="st-kpi-rev">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #EF4444;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">↩️ 환불</div><div class="sum-val" style="font-size:16px" id="st-kpi-refund">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #03C75A;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 실매출</div><div class="sum-val" style="font-size:16px" id="st-kpi-netrev">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #F59E0B;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💳 평균주문</div><div class="sum-val" style="font-size:16px" id="st-kpi-avg">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #3B82F6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📦 결제수</div><div class="sum-val" style="font-size:16px" id="st-kpi-orders">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #EF4444;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🔄 환불건</div><div class="sum-val" style="font-size:16px" id="st-kpi-refundcnt">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #6366F1;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👤 결제자</div><div class="sum-val" style="font-size:16px" id="st-kpi-buyers">—</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #8B5CF6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📱 모바일</div><div class="sum-val" style="font-size:16px" id="st-kpi-mobile">—</div></div>
     </div>
-    <div class="row2b" style="margin-top:16px">
+    <div class="row2b" style="margin-bottom:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
       <div class="card"><div class="card-hd"><div><div class="card-title">📱 모바일 vs PC</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stMobilePie" height="120"></canvas></div>
+    </div>
+    <div class="mgr-fb-card" id="storeInsightCard" style="margin-bottom:16px">
+      <div class="mgr-fb-header">
+        <div class="mgr-fb-avatar" id="storeInsAvatar">담</div>
+        <div class="mgr-fb-info"><div class="mgr-fb-name" id="storeInsName">담당자 인사이트</div><div class="mgr-fb-date" id="storeInsDate">스마트스토어 전용</div></div>
+        ${currentUser?.role==='admin'?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'store\')" style="font-size:11px">✏️ 작성</button>':''}
+      </div>
+      <div id="storeInsFormArea" style="display:none;margin-bottom:14px">
+        <div class="mgr-fb-form"><textarea id="storeInsInput" placeholder="스마트스토어 운영 인사이트를 작성하세요."></textarea>
+        <div class="mgr-fb-form-row"><input type="text" id="storeInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('store','스토어')">💾 저장</button></div></div>
+      </div>
+      <div id="storeInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
     </div>
     <div class="row2b" style="margin-top:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📅 요일별 결제금액</div><div class="card-sub">요일별 합산</div></div></div><canvas id="stDowBar" height="120"></canvas></div>
@@ -2389,6 +2401,64 @@ function toggleMgrFbForm(){
   const area=document.getElementById('mgrFbFormArea');
   if(!area)return;
   area.style.display=area.style.display==='none'?'block':'none';
+}
+
+/* ════ 페이지별 인사이트 (공통) ════ */
+function togglePageInsForm(page){
+  const area=document.getElementById(page+'InsFormArea');
+  if(area)area.style.display=area.style.display==='none'?'block':'none';
+}
+
+async function loadPageInsight(page,tagKeyword){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&order=created_at.desc&limit=5`,{headers:h});
+    const allRows=await res.json();
+    if(!Array.isArray(allRows))return;
+    // 태그에 해당 키워드 포함된 것 우선, 없으면 최신 1개
+    let rows=allRows.filter(r=>(r.tags||'').includes(tagKeyword));
+    if(!rows.length) rows=allRows.slice(0,1);
+    const content=document.getElementById(page+'InsContent');
+    if(!content)return;
+    if(!rows.length){content.innerHTML='<div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div>';return;}
+    const latest=rows[0];
+    const dt=new Date(latest.created_at);
+    const dateStr=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 작성`;
+    const avatar=document.getElementById(page+'InsAvatar');
+    const name=document.getElementById(page+'InsName');
+    const date=document.getElementById(page+'InsDate');
+    if(avatar)avatar.textContent=(latest.author||'담').charAt(0);
+    if(name)name.textContent=(latest.author||'담당자')+' 매니저';
+    if(date)date.textContent=dateStr;
+    const tags=(latest.tags||'').split(',').filter(t=>t.trim());
+    const tagColors=['var(--naver-m);color:var(--naver)','var(--blue-l);color:var(--blue)','var(--gold-l);color:#b45309','var(--red-l);color:var(--red)'];
+    const tagsHtml=tags.length?`<div class="mgr-fb-tags">${tags.map((t,i)=>`<span class="mgr-fb-tag" style="background:${tagColors[i%tagColors.length]}">${t.trim()}</span>`).join('')}</div>`:'';
+    content.innerHTML=`<div class="mgr-fb-body">${latest.content}</div>${tagsHtml}`;
+  }catch(e){}
+}
+
+async function savePageInsight(page,tagKeyword){
+  if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
+  const ck=activeClientId||'';
+  if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
+  const content=document.getElementById(page+'InsInput')?.value?.trim()||'';
+  if(!content){toast('⚠️ 내용을 입력해주세요');return;}
+  let tags=document.getElementById(page+'InsTags')?.value?.trim()||'';
+  if(!tags.includes(tagKeyword))tags=tags?tagKeyword+','+tags:tagKeyword;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
+      client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tags
+    })});
+    toast('✅ 인사이트가 저장되었습니다');
+    document.getElementById(page+'InsInput').value='';
+    document.getElementById(page+'InsTags').value='';
+    togglePageInsForm(page);
+    loadPageInsight(page,tagKeyword);
+  }catch(e){toast('❌ 저장 실패');}
 }
 
 /* ════ 네이버 인사이트 ════ */
@@ -9921,6 +9991,8 @@ async function renderCharts(){
   if(document.getElementById('mgrFeedbackCard')) loadMgrFeedback();
   // 네이버 인사이트 로드
   if(document.getElementById('naverInsightCard')) loadNaverInsight();
+  // 스토어 인사이트 로드
+  if(document.getElementById('storeInsightCard')) loadPageInsight('store','스토어');
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
@@ -10023,7 +10095,21 @@ async function loadGoogleTab(tabId){
           <div><div style="font-size:10px;color:var(--text3)">전환</div><div style="font-weight:600">${d.conv.toFixed(0)}건</div></div>
         </div></div>`;
     }).join('');
-    document.getElementById('g-tab-summary').innerHTML=kpiHtml+`<div class="row2b">${typeCards}</div>`;
+    const isAdm2=currentUser?.role==='admin';
+    document.getElementById('g-tab-summary').innerHTML=kpiHtml+`<div class="row2b" style="margin-bottom:16px">${typeCards}</div>
+      <div class="mgr-fb-card" id="googleInsightCard">
+        <div class="mgr-fb-header">
+          <div class="mgr-fb-avatar" id="googleInsAvatar">담</div>
+          <div class="mgr-fb-info"><div class="mgr-fb-name" id="googleInsName">담당자 인사이트</div><div class="mgr-fb-date" id="googleInsDate">구글 광고 전용</div></div>
+          ${isAdm2?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'google\')" style="font-size:11px">✏️ 작성</button>':''}
+        </div>
+        <div id="googleInsFormArea" style="display:none;margin-bottom:14px">
+          <div class="mgr-fb-form"><textarea id="googleInsInput" placeholder="구글 광고 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form-row"><input type="text" id="googleInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('google','구글')">💾 저장</button></div></div>
+        </div>
+        <div id="googleInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+      </div>`;
+    loadPageInsight('google','구글');
   }
 
   if(tabId==='campaign'){
@@ -10182,15 +10268,29 @@ async function loadMetaTab(tabId){
 
     const el=document.getElementById('mt-tab-summary');
     if(!el)return;
+    const isAdm=currentUser?.role==='admin';
     el.innerHTML=kpiHtml+`
       <div class="row2b" style="margin-bottom:16px">
         <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div></div></div><canvas id="metaDailyCost" height="120"></canvas></div>
         <div class="card"><div class="card-hd"><div><div class="card-title">👁️ 일별 노출 · 클릭</div></div></div><canvas id="metaDailyImpClick" height="120"></canvas></div>
       </div>
+      <div class="mgr-fb-card" id="metaInsightCard" style="margin-bottom:16px">
+        <div class="mgr-fb-header">
+          <div class="mgr-fb-avatar" id="metaInsAvatar">담</div>
+          <div class="mgr-fb-info"><div class="mgr-fb-name" id="metaInsName">담당자 인사이트</div><div class="mgr-fb-date" id="metaInsDate">META 광고 전용</div></div>
+          ${isAdm?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'meta\')" style="font-size:11px">✏️ 작성</button>':''}
+        </div>
+        <div id="metaInsFormArea" style="display:none;margin-bottom:14px">
+          <div class="mgr-fb-form"><textarea id="metaInsInput" placeholder="META 광고 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form-row"><input type="text" id="metaInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('meta','META')">💾 저장</button></div></div>
+        </div>
+        <div id="metaInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+      </div>
       <div class="row2b" style="margin-bottom:16px">
         <div class="card"><div class="card-hd"><div><div class="card-title">👥 일별 도달수 추이</div></div></div><canvas id="metaDailyReach" height="120"></canvas></div>
         <div class="card"><div class="card-hd"><div><div class="card-title">📊 캠페인 비용 비중</div></div></div><canvas id="metaCampPie" height="120"></canvas></div>
       </div>`;
+    loadPageInsight('meta','META');
     setTimeout(()=>{
       mk('metaDailyCost',{type:'bar',data:{labels:lbls,datasets:[{label:'광고비',data:dailyList.map(d=>d.cost),backgroundColor:'rgba(24,119,242,.7)',borderRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false}}}});
       mk('metaDailyImpClick',{type:'line',data:{labels:lbls,datasets:[{label:'노출',data:dailyList.map(d=>d.imp),borderColor:'#1877F2',backgroundColor:'rgba(24,119,242,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y'},{label:'클릭',data:dailyList.map(d=>d.click),borderColor:'#E1306C',backgroundColor:'rgba(225,48,108,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y1'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,position:'left',ticks:{...ax.ticks,color:'#1877F2'}},y1:{grid:{display:false},position:'right',ticks:{color:'#E1306C',font:{size:10,family:'IBM Plex Mono'}}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
