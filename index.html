@@ -1455,10 +1455,15 @@ function renderContent(id){
         },50);
       },50);
       break;
+    case 'meta':
       c.innerHTML=skeletonKPI(8)+skeletonCharts();
       setTimeout(async()=>{
         c.innerHTML=htmlMeta();
-        await loadMetaTab('summary');
+        const savedMetaTab=sessionStorage.getItem('currentMetaTab')||'summary';
+        setTimeout(()=>{
+          const tabEl=document.querySelector(`.nav-tab[onclick*="switchMetaTab('${savedMetaTab}'"]`);
+          switchMetaTab(savedMetaTab,tabEl);
+        },50);
       },50);
       break;
     case 'combined':
