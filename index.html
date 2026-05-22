@@ -10072,15 +10072,15 @@ async function loadGoogleTab(tabId){
 
   const convRate=totalClick>0?(totalConv/totalClick*100):0;
   const roasColor=roas>=200?'var(--naver)':roas>=100?'':'var(--red)';
-  const kpiHtml=`<div class="kpi6">
-    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">💰</div></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(totalCost)}</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div></div><div class="kpi-lbl">총 노출수</div><div class="kpi-val">${fmtn(totalImp)}</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div></div><div class="kpi-lbl">총 클릭수</div><div class="kpi-val">${fmtn(totalClick)}</div></div>
-    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📊</div></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${ctr.toFixed(2)}%</div></div>
-    <div class="kpi kgl"><div class="kpi-top"><div class="kpi-ic kic-gl">🎯</div></div><div class="kpi-lbl">전환수</div><div class="kpi-val">${totalConv.toFixed(0)}건</div></div>
-    <div class="kpi ks"><div class="kpi-top"><div class="kpi-ic kic-s">💵</div></div><div class="kpi-lbl">전환가치</div><div class="kpi-val">${fmt(totalConvValue)}</div></div>
-    <div class="kpi kg"><div class="kpi-top"><div class="kpi-ic kic-g">📈</div></div><div class="kpi-lbl">ROAS</div><div class="kpi-val" style="color:${roasColor}">${roas.toFixed(1)}%</div></div>
-    <div class="kpi kb"><div class="kpi-top"><div class="kpi-ic kic-b">💸</div></div><div class="kpi-lbl">CPC</div><div class="kpi-val">${fmt(cpc)}</div></div>
+  const kpiHtml=`<div class="sum-bar" style="margin-bottom:16px">
+    <div class="sum-item" style="border-bottom:2px solid #EA4335;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💰 광고비</div><div class="sum-val" style="font-size:16px">${fmt(totalCost)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #FBBC04;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👁️ 노출</div><div class="sum-val" style="font-size:16px">${fmtn(totalImp)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #4285F4;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👆 클릭</div><div class="sum-val" style="font-size:16px">${fmtn(totalClick)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #34A853;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📊 CTR</div><div class="sum-val" style="font-size:16px">${ctr.toFixed(2)}%</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #EA4335;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🎯 전환</div><div class="sum-val" style="font-size:16px">${totalConv.toFixed(0)}건</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #FBBC04;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 전환가치</div><div class="sum-val" style="font-size:16px">${fmt(totalConvValue)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #34A853;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📈 ROAS</div><div class="sum-val" style="font-size:16px;color:${roasColor}">${roas.toFixed(1)}%</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #4285F4;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💸 CPC</div><div class="sum-val" style="font-size:16px">${fmt(cpc)}</div></div>
   </div>`;
 
   if(tabId==='summary'){
