@@ -1284,7 +1284,7 @@ async function loadClientsFromSupabase(){
 /* ════════════════════════════════════════
    NAV
 ════════════════════════════════════════ */
-let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true,has_google:true};
+let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true,has_google:true,has_ebay:true};
 
 async function loadClientDataFlags(clientKey){
   if(!clientKey)return;
@@ -1309,6 +1309,7 @@ function renderClientNav(){
     ${f.has_store?'<div class="ni" id="ni-store" onclick="go(\'store\',this)"><span class="ic">🟠</span>스마트스토어</div>':''}
     ${f.has_meta?'<div class="ni" id="ni-meta" onclick="go(\'meta\',this)"><span class="ic">🔵</span>META 광고</div>':''}
     ${f.has_google?'<div class="ni" id="ni-google" onclick="go(\'google\',this)"><span class="ic">🔴</span>구글 광고</div>':''}
+    ${f.has_ebay?'<div class="ni" id="ni-ebay" onclick="go(\'ebay\',this)"><span class="ic">🟤</span>이베이 (ESM)</div>':''}
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서 확인
@@ -1336,6 +1337,7 @@ function renderAdminNav(){
     <div class="ni" id="ni-store"    onclick="go('store',this)"><span class="ic">🟠</span>스마트스토어</div>
     <div class="ni" id="ni-meta"     onclick="go('meta',this)"><span class="ic">🔵</span>META 광고</div>
     <div class="ni" id="ni-google"   onclick="go('google',this)"><span class="ic">🔴</span>구글 광고</div>
+    <div class="ni" id="ni-ebay"     onclick="go('ebay',this)"><span class="ic">🟤</span>이베이 (ESM)</div>
     <div class="nsec">보고서</div>
     <div class="ni rpt" id="ni-report" onclick="go('report',this)">
       <span class="ic">📑</span>보고서 확인
@@ -1360,6 +1362,7 @@ const pageTitles={
   store:   ['스마트스토어 대시보드',''],
   meta:    ['META 광고 대시보드',''],
   google:  ['구글 광고 대시보드',''],
+  ebay:    ['이베이 대시보드',''],
   report:  ['보고서 확인','광고 성과 리포트 · PDF 다운로드'],
   input:   ['데이터 입력',''],
   msg:     ['메시지',''],
@@ -1372,7 +1375,7 @@ const pageTitles={
   register:['계정 등록',''],
 };
 function go(id,el){
-  const needsClient=['naver','store','combined','meta','google','req','cal','input','report','alerts','kpi-target','work-log'];
+  const needsClient=['naver','store','combined','meta','google','ebay','req','cal','input','report','alerts','kpi-target','work-log'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
     go('admin',null); setActive('admin');
@@ -1399,10 +1402,10 @@ function go(id,el){
     const rpb=document.getElementById('reportPdfBtn');
     if(rpb) rpb.style.display=(id==='report')?'block':'none';
     const sp=document.getElementById('screenPdfBtn');
-    if(sp) sp.style.display=['combined','naver','store','meta','google'].includes(id)?'inline-flex':'none';
+    if(sp) sp.style.display=['combined','naver','store','meta','google','ebay'].includes(id)?'inline-flex':'none';
   }
   renderContent(id);
-  if(['naver','store','combined','meta','google'].includes(id))setTimeout(renderCharts,100);
+  if(['naver','store','combined','meta','google','ebay'].includes(id))setTimeout(renderCharts,100);
   // 모든 페이지 전환 시 피드백 글로우 적용
   setTimeout(applyFeedbackGlow, 1000);
   setTimeout(applyFeedbackGlow, 2500);
@@ -1463,6 +1466,17 @@ function renderContent(id){
         setTimeout(()=>{
           const tabEl=document.querySelector(`.nav-tab[onclick*="switchMetaTab('${savedMetaTab}'"]`);
           switchMetaTab(savedMetaTab,tabEl);
+        },50);
+      },50);
+      break;
+    case 'ebay':
+      c.innerHTML=skeletonKPI(6)+skeletonCharts();
+      setTimeout(async()=>{
+        c.innerHTML=htmlEbay();
+        const savedEbayTab=sessionStorage.getItem('currentEbayTab')||'summary';
+        setTimeout(()=>{
+          const tabEl=document.querySelector(`.nav-tab[onclick*="switchEbayTab('${savedEbayTab}'"]`);
+          switchEbayTab(savedEbayTab,tabEl);
         },50);
       },50);
       break;
@@ -3007,6 +3021,14 @@ async function refreshAllPages(){
     setTimeout(()=>{
       const tabEl = document.querySelector(`.nav-tab[onclick*="switchMetaTab('${savedMetaTab}'"]`);
       switchMetaTab(savedMetaTab, tabEl);
+    },50);
+  } else if(activePage==='ebay'){
+    Object.keys(window).filter(k=>k.startsWith('_ebay_')).forEach(k=>delete window[k]);
+    c.innerHTML=htmlEbay();
+    const savedEbayTab = sessionStorage.getItem('currentEbayTab') || 'summary';
+    setTimeout(()=>{
+      const tabEl = document.querySelector(`.nav-tab[onclick*="switchEbayTab('${savedEbayTab}'"]`);
+      switchEbayTab(savedEbayTab, tabEl);
     },50);
   }
 }
@@ -10182,6 +10204,173 @@ async function loadGoogleTab(tabId){
       </tr>`;
     }).join('');
     document.getElementById('g-tab-adgroup').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📂 광고그룹별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>광고그룹</th><th>캠페인</th><th>유형</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>전환</th><th>CPC</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+  }
+}
+
+/* ════ 이베이 (ESM) ════ */
+function htmlEbay(){
+  return `<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+    <button class="nav-tab active" onclick="switchEbayTab('summary',this)">🚀 요약</button>
+    <button class="nav-tab" onclick="switchEbayTab('gmarket',this)">🟢 G마켓</button>
+    <button class="nav-tab" onclick="switchEbayTab('auction',this)">🔴 옥션</button>
+    <button class="nav-tab" onclick="switchEbayTab('product',this)">📦 상품별</button>
+  </div>
+  <div id="eb-tab-summary"><div class="empty"><div class="ei">🟤</div><p>불러오는 중...</p></div></div>
+  <div id="eb-tab-gmarket" style="display:none"></div>
+  <div id="eb-tab-auction" style="display:none"></div>
+  <div id="eb-tab-product" style="display:none"></div>`;
+}
+function switchEbayTab(id,el){
+  sessionStorage.setItem('currentEbayTab',id);
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  ['summary','gmarket','auction','product'].forEach(t=>{
+    const p=document.getElementById('eb-tab-'+t);
+    if(p)p.style.display=t===id?'block':'none';
+  });
+  loadEbayTab(id);
+}
+async function loadEbayTab(tabId){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const fmt=v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
+  const fmtn=v=>Math.round(+v||0).toLocaleString('ko-KR');
+
+  const cacheKey=`_ebay_${ck}_${fromMonth}_${toMonth}`;
+  if(!window[cacheKey]){
+    if(!window[cacheKey+'_loading']){
+      window[cacheKey+'_loading']=fetch(`${SUPABASE_URL}/rest/v1/ebay_reports?client_key=eq.${encodeURIComponent(ck)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}).then(r=>r.json()).then(data=>{
+        window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=from&&r.date<=to)):[];
+        delete window[cacheKey+'_loading'];
+      });
+    }
+    await window[cacheKey+'_loading'];
+  }
+  const rows=window[cacheKey];
+
+  if(!rows.length){
+    const el=document.getElementById('eb-tab-'+tabId);
+    if(el)el.innerHTML=`<div class="empty"><div class="ei">🟤</div><p>이베이 데이터가 없습니다.<br><span style="font-size:12px;color:var(--blue)">파일관리 → 이베이(ESM) 파일을 업로드해주세요</span></p></div>`;
+    return;
+  }
+
+  // 집계 함수
+  const agg=(arr)=>{
+    const o={orders:0,quantity:0,revenue:0,cancel_count:0,cancel_amount:0,return_count:0,return_amount:0,net_revenue:0,commission:0};
+    arr.forEach(r=>{o.orders+=+r.orders||0;o.quantity+=+r.quantity||0;o.revenue+=+r.revenue||0;o.cancel_count+=+r.cancel_count||0;o.cancel_amount+=+r.cancel_amount||0;o.return_count+=+r.return_count||0;o.return_amount+=+r.return_amount||0;o.net_revenue+=+r.net_revenue||0;o.commission+=+r.commission||0;});
+    return o;
+  };
+
+  const total=agg(rows);
+  const gmRows=rows.filter(r=>r.platform==='gmarket');
+  const acRows=rows.filter(r=>r.platform==='auction');
+  const gmTotal=agg(gmRows);
+  const acTotal=agg(acRows);
+
+  const kpiHtml=`<div class="sum-bar" style="margin-bottom:16px">
+    <div class="sum-item" style="border-bottom:2px solid #FF6B35;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💰 총 매출</div><div class="sum-val" style="font-size:16px">${fmt(total.revenue)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #03C75A;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 실매출</div><div class="sum-val" style="font-size:16px">${fmt(total.net_revenue)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #3B82F6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📦 주문수</div><div class="sum-val" style="font-size:16px">${fmtn(total.orders)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #F59E0B;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💳 객단가</div><div class="sum-val" style="font-size:16px">${total.orders>0?fmt(total.revenue/total.orders):'₩0'}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #EF4444;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">↩️ 취소</div><div class="sum-val" style="font-size:16px">${fmtn(total.cancel_count)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #8B5CF6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🔄 반품</div><div class="sum-val" style="font-size:16px">${fmtn(total.return_count)}</div></div>
+  </div>`;
+
+  const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
+  const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
+
+  if(tabId==='summary'){
+    const platCard=(name,icon,color,d)=>`<div class="card" style="flex:1">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:18px">${icon}</span><span style="font-size:14px;font-weight:700">${name}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+        <div><div style="font-size:10px;color:var(--text3)">매출</div><div style="font-weight:600">${fmt(d.revenue)}</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">실매출</div><div style="font-weight:600">${fmt(d.net_revenue)}</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">주문</div><div style="font-weight:600">${fmtn(d.orders)}건</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">취소</div><div style="font-weight:600;color:var(--red)">${fmtn(d.cancel_count)}건</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">반품</div><div style="font-weight:600;color:var(--red)">${fmtn(d.return_count)}건</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">수수료</div><div style="font-weight:600">${fmt(d.commission)}</div></div>
+      </div>
+    </div>`;
+    const isAdm=currentUser?.role==='admin';
+    const el=document.getElementById('eb-tab-summary');
+    if(!el)return;
+    el.innerHTML=kpiHtml+`
+      <div class="row2b" style="margin-bottom:16px">
+        ${platCard('G마켓','🟢','#03C75A',gmTotal)}
+        ${platCard('옥션','🔴','#EF4444',acTotal)}
+      </div>
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 매출 추이</div></div></div><canvas id="ebayDailyRev" height="120"></canvas></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">🏪 플랫폼 비교</div></div></div><canvas id="ebayPlatPie" height="120"></canvas></div>
+      </div>
+      <div class="mgr-fb-card" id="ebayInsightCard" style="margin-bottom:16px">
+        <div class="mgr-fb-header">
+          <div class="mgr-fb-avatar" id="ebayInsAvatar">담</div>
+          <div class="mgr-fb-info"><div class="mgr-fb-name" id="ebayInsName">담당자 인사이트</div><div class="mgr-fb-date" id="ebayInsDate">이베이 전용</div></div>
+          ${isAdm?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'ebay\')" style="font-size:11px">✏️ 작성</button>':''}
+        </div>
+        <div id="ebayInsFormArea" style="display:none;margin-bottom:14px">
+          <div class="mgr-fb-form"><textarea id="ebayInsInput" placeholder="이베이 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form-row"><input type="text" id="ebayInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('ebay','이베이')">💾 저장</button></div></div>
+        </div>
+        <div id="ebayInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+      </div>`;
+    loadPageInsight('ebay','이베이');
+    setTimeout(()=>{
+      // 일별 매출 차트
+      const dailyMap={};
+      rows.forEach(r=>{const d=r.date||'';if(!d)return;if(!dailyMap[d])dailyMap[d]={date:d,gm:0,ac:0};if(r.platform==='gmarket')dailyMap[d].gm+=+r.revenue||0;else dailyMap[d].ac+=+r.revenue||0;});
+      const dailyList=Object.values(dailyMap).sort((a,b)=>a.date.localeCompare(b.date));
+      const lbls=dailyList.map(d=>d.date.slice(5));
+      mk('ebayDailyRev',{type:'bar',data:{labels:lbls,datasets:[
+        {label:'G마켓',data:dailyList.map(d=>d.gm),backgroundColor:'rgba(3,199,90,.7)',borderRadius:3},
+        {label:'옥션',data:dailyList.map(d=>d.ac),backgroundColor:'rgba(239,68,68,.7)',borderRadius:3}
+      ]},options:{responsive:true,scales:{x:{...ax,stacked:true,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,stacked:true,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
+      // 플랫폼 비교 도넛
+      mk('ebayPlatPie',{type:'doughnut',data:{labels:['G마켓','옥션'],datasets:[{data:[gmTotal.revenue,acTotal.revenue],backgroundColor:['#03C75A','#EF4444'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
+    },100);
+  }
+
+  if(tabId==='gmarket'||tabId==='auction'){
+    const platRows=tabId==='gmarket'?gmRows:acRows;
+    const platTotal=agg(platRows);
+    const platName=tabId==='gmarket'?'G마켓':'옥션';
+    // 카테고리별 집계
+    const catMap={};
+    platRows.forEach(r=>{const c=r.category||'기타';if(!catMap[c])catMap[c]=[];catMap[c].push(r);});
+    const cats=Object.keys(catMap).sort((a,b)=>agg(catMap[b]).revenue-agg(catMap[a]).revenue);
+    const trs=cats.map((c,i)=>{const a=agg(catMap[c]);return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+      <td style="font-size:12.5px;font-weight:600">${c}</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(a.revenue)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(a.net_revenue)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.orders)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.quantity)}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--red)">${fmtn(a.cancel_count)}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--red)">${fmtn(a.return_count)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(a.commission)}</td>
+    </tr>`;}).join('');
+    document.getElementById('eb-tab-'+tabId).innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">${tabId==='gmarket'?'🟢':'🔴'} ${platName} 카테고리별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>카테고리</th><th>매출</th><th>실매출</th><th>주문</th><th>수량</th><th>취소</th><th>반품</th><th>수수료</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+  }
+
+  if(tabId==='product'){
+    const prodMap={};
+    rows.forEach(r=>{const k=(r.platform==='gmarket'?'[G] ':'[옥] ')+(r.product_name||'기타');if(!prodMap[k])prodMap[k]=[];prodMap[k].push(r);});
+    const prods=Object.keys(prodMap).sort((a,b)=>agg(prodMap[b]).revenue-agg(prodMap[a]).revenue);
+    const trs=prods.slice(0,50).map((k,i)=>{const a=agg(prodMap[k]);return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+      <td style="font-size:12px;font-weight:600;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${k}">${k}</td>
+      <td style="font-family:monospace;font-size:12px">${fmt(a.revenue)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.orders)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.quantity)}</td>
+      <td style="font-family:monospace;font-size:12px">${total.orders>0?fmt(a.revenue/a.orders):'₩0'}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--red)">${fmtn(a.cancel_count+a.return_count)}</td>
+    </tr>`;}).join('');
+    document.getElementById('eb-tab-product').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📦 상품별 성과 (상위 50개)</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>상품명</th><th>매출</th><th>주문</th><th>수량</th><th>객단가</th><th>취소+반품</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
   }
 }
 
