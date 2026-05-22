@@ -10255,16 +10255,16 @@ async function loadMetaTab(tabId){
   const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
   const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
 
-  // KPI HTML 공통
-  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
-    <div class="kpi kn" id="meta_${tabId}_cost"><div class="kpi-top"><div class="kpi-ic kic-n">💰</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">총 광고비</div><div class="kpi-val">${fmt(total.cost)}</div></div>
-    <div class="kpi kb" id="meta_${tabId}_imp"><div class="kpi-top"><div class="kpi-ic kic-b">👁️</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">노출수</div><div class="kpi-val">${fmtn(total.imp)}</div></div>
-    <div class="kpi kb" id="meta_${tabId}_click"><div class="kpi-top"><div class="kpi-ic kic-b">👆</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">클릭수</div><div class="kpi-val">${fmtn(total.click)}</div></div>
-    <div class="kpi kg" id="meta_${tabId}_reach"><div class="kpi-top"><div class="kpi-ic kic-g">👥</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">도달수</div><div class="kpi-val">${fmtn(total.reach)}</div></div>
-    <div class="kpi ks" id="meta_${tabId}_ctr"><div class="kpi-top"><div class="kpi-ic kic-s">📊</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CTR</div><div class="kpi-val">${total.ctr.toFixed(2)}%</div></div>
-    <div class="kpi kn" id="meta_${tabId}_cpc"><div class="kpi-top"><div class="kpi-ic kic-n">💵</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">평균 CPC</div><div class="kpi-val">${fmt(total.cpc)}</div></div>
-    <div class="kpi ki" id="meta_${tabId}_cpm"><div class="kpi-top"><div class="kpi-ic kic-i">📡</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">CPM</div><div class="kpi-val">${fmt(total.cpm)}</div></div>
-    <div class="kpi ks" id="meta_${tabId}_freq"><div class="kpi-top"><div class="kpi-ic kic-s">🔄</div><span class="kpi-chip" style="background:#1877F2;color:#fff">META</span></div><div class="kpi-lbl">빈도</div><div class="kpi-val">${total.frequency.toFixed(2)}</div></div>
+  // KPI HTML 공통 (sum-bar 한줄 컴팩트)
+  const kpiHtml=`<div class="sum-bar" style="margin-bottom:16px">
+    <div class="sum-item" style="border-bottom:2px solid #1877F2;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💰 광고비</div><div class="sum-val" style="font-size:16px">${fmt(total.cost)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #E1306C;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👁️ 노출</div><div class="sum-val" style="font-size:16px">${fmtn(total.imp)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #8B5CF6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👆 클릭</div><div class="sum-val" style="font-size:16px">${fmtn(total.click)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #03C75A;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👥 도달</div><div class="sum-val" style="font-size:16px">${fmtn(total.reach)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #F59E0B;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📊 CTR</div><div class="sum-val" style="font-size:16px">${total.ctr.toFixed(2)}%</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #EF4444;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 CPC</div><div class="sum-val" style="font-size:16px">${fmt(total.cpc)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #3B82F6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📡 CPM</div><div class="sum-val" style="font-size:16px">${fmt(total.cpm)}</div></div>
+    <div class="sum-item" style="border-bottom:2px solid #FF6B35;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🔄 빈도</div><div class="sum-val" style="font-size:16px">${total.frequency.toFixed(2)}</div></div>
   </div>`;
 
   if(tabId==='summary'){
