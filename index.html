@@ -9695,6 +9695,67 @@ async function renderCharts(){
 
   mk('storePie',{type:'doughnut',data:{labels:['아이소파','유아체육교구','층간소음매트','기타'],datasets:[{data:[45,22,18,15],backgroundColor:['#03C75A','#3B82F6','#F59E0B','#c5c9d6'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
 
+  // META/구글 데이터 자동 로드 (통합 대시보드용)
+  const _ckComb = (currentUser?.role==='admin')?(activeClientId||''):(currentUser?.id||'');
+  const _fromComb = currentDateRange?.from||'';
+  const _toComb = currentDateRange?.to||'';
+  const _fmComb = _fromComb.slice(0,7);
+  const _tmComb = _toComb.slice(0,7);
+  const _hComb = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  if(_ckComb){
+    // META 캐시 없으면 fetch
+    if(!window[`_meta_${_ckComb}_${_fmComb}_${_tmComb}`]){
+      try{
+        const mr=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(_ckComb)}&month=gte.${_fmComb}&month=lte.${_tmComb}&select=*`,{headers:_hComb});
+        const md=await mr.json();
+        window[`_meta_${_ckComb}_${_fmComb}_${_tmComb}`]=Array.isArray(md)?md.filter(r=>!r.date||(r.date>=_fromComb&&r.date<=_toComb)):[];
+      }catch(e){}
+    }
+    // 구글 캐시 없으면 fetch
+    if(!window[`_google_${_ckComb}_${_fmComb}_${_tmComb}`]){
+      try{
+        const gr=await fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(_ckComb)}&month=gte.${_fmComb}&month=lte.${_tmComb}&select=*`,{headers:_hComb});
+        const gd=await gr.json();
+        window[`_google_${_ckComb}_${_fmComb}_${_tmComb}`]=Array.isArray(gd)?gd:[];
+      }catch(e){}
+    }
+  }
+
+  // 통합 KPI 업데이트 (데이터 로드 후)
+  if(document.querySelector('.sum-bar')){
+    const mc=document.getElementById('mainContent');
+    if(mc&&sessionStorage.getItem('currentPage')==='combined'){
+      const sumBar=mc.querySelector('.sum-bar');
+      if(sumBar){
+        const fmt3=v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
+        const fmtn3=v=>Math.round(+v||0).toLocaleString('ko-KR');
+        const d3=REPORT_DATA[currentReportMonth];
+        const kpi3=d3?.kpi||{};
+        const gfa3=d3?.gfa||{};
+        const metaC3=window[`_meta_${_ckComb}_${_fmComb}_${_tmComb}`]||[];
+        const metaF3=metaC3.filter(r=>!r.date||(r.date>=_fromComb&&r.date<=_toComb));
+        const googleC3=window[`_google_${_ckComb}_${_fmComb}_${_tmComb}`]||[];
+        const nCost=kpi3.totalCost||0,gCost=gfa3.totalCost||0;
+        const mCost=metaF3.reduce((s,r)=>s+(+r.cost||0),0);
+        const glCost=googleC3.reduce((s,r)=>s+(+r.cost||0),0);
+        const nRev=kpi3.totalPurchaseRev||0,gRev=gfa3.totalRev||0;
+        const mRev=metaF3.reduce((s,r)=>s+(+r.purchase_rev||0),0);
+        let glRev=0;googleC3.forEach(r=>{if(r.campaign_status!=='전환상세')glRev+=+r.conv_value||0;});
+        const tCost=nCost+gCost+mCost+glCost;
+        const tRev=nRev+gRev+mRev+glRev;
+        const tRoas=tCost>0?(tRev/tCost*100):0;
+        const tImp=(kpi3.totalImp||0)+metaF3.reduce((s,r)=>s+(+r.imp||0),0)+googleC3.reduce((s,r)=>s+(+r.imp||0),0);
+        const tClick=(kpi3.totalClick||0)+metaF3.reduce((s,r)=>s+(+r.click||0),0)+googleC3.reduce((s,r)=>s+(+r.click||0),0);
+        const items=sumBar.querySelectorAll('.sum-val');
+        if(items[0])items[0].textContent=fmt3(tCost);
+        if(items[1])items[1].textContent=fmtn3(tImp);
+        if(items[2])items[2].textContent=fmtn3(tClick);
+        if(items[3]){items[3].textContent=tRoas?tRoas.toFixed(1)+'%':'0%';items[3].style.color=tRoas>=300?'var(--naver)':tRoas>=100?'var(--gold)':'var(--red)';}
+        if(items[4])items[4].textContent=fmt3(tRev);
+      }
+    }
+  }
+
   // 실제 데이터 기반 채널별 광고비 vs 전환매출 (전매체 통합)
   const d2 = REPORT_DATA[currentReportMonth];
   const kpi2 = d2?.kpi||{};
