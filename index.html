@@ -10031,9 +10031,13 @@ async function loadGoogleTab(tabId){
 
   const cacheKey=`_google_${ck}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(ck)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h});
-    const data=await res.json();
-    window[cacheKey]=Array.isArray(data)?data:[];
+    if(!window[cacheKey+'_loading']){
+      window[cacheKey+'_loading']=fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(ck)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`,{headers:h}).then(r=>r.json()).then(data=>{
+        window[cacheKey]=Array.isArray(data)?data:[];
+        delete window[cacheKey+'_loading'];
+      });
+    }
+    await window[cacheKey+'_loading'];
   }
   const rows=window[cacheKey];
 
@@ -10219,9 +10223,13 @@ async function loadMetaTab(tabId){
   // 캐시 키
   const cacheKey=`_meta_${targetClient}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
-    const data=await res.json();
-    window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+    if(!window[cacheKey+'_loading']){
+      window[cacheKey+'_loading']=fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}).then(r=>r.json()).then(data=>{
+        window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+        delete window[cacheKey+'_loading'];
+      });
+    }
+    await window[cacheKey+'_loading'];
   }
   const rows=window[cacheKey];
 
