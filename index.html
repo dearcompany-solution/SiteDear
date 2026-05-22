@@ -701,6 +701,21 @@ canvas{max-height:210px}
 .sd-spinner-ring{width:32px;height:32px;border:3px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin .8s linear infinite}
 .sd-spinner-text{font-size:12.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
 .sd-spinner-sm{width:20px;height:20px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+
+/* ════ MANAGER FEEDBACK ════ */
+.mgr-fb-card{background:var(--white);border:1.5px solid var(--border);border-left:4px solid #F59E0B;border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;min-height:120px}
+.mgr-fb-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.mgr-fb-avatar{width:36px;height:36px;border-radius:50%;background:#F59E0B;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+.mgr-fb-info{flex:1}
+.mgr-fb-name{font-size:13.5px;font-weight:700}
+.mgr-fb-date{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.mgr-fb-body{font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap;margin-bottom:12px}
+.mgr-fb-tags{display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)}
+.mgr-fb-tag{font-size:10.5px;padding:2px 10px;border-radius:12px;font-weight:600}
+.mgr-fb-empty{text-align:center;padding:24px;color:var(--text3);font-size:13px}
+.mgr-fb-form textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:10px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:vertical;outline:none;min-height:80px;transition:border-color .15s;background:var(--surface)}
+.mgr-fb-form textarea:focus{border-color:#F59E0B;background:var(--white)}
+.mgr-fb-form-row{display:flex;gap:8px;margin-top:8px;align-items:center}
 @keyframes feedbackDot {
   0%   { opacity:1; transform:scale(1); box-shadow:0 0 0px rgba(59,130,246,0.8); }
   50%  { opacity:0.4; transform:scale(1.4); box-shadow:0 0 6px rgba(59,130,246,1); }
@@ -2355,6 +2370,97 @@ function loadingRow(cols=7,text='불러오는 중...'){
   return `<tr><td colspan="${cols}" style="text-align:center;padding:24px">${loadingSpinner(text)}</td></tr>`;
 }
 
+/* ════ 담당자 피드백 ════ */
+function toggleMgrFbForm(){
+  const area=document.getElementById('mgrFbFormArea');
+  if(!area)return;
+  area.style.display=area.style.display==='none'?'block':'none';
+}
+
+async function loadMgrFeedback(){
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&order=created_at.desc&limit=3`,{headers:h});
+    const rows=await res.json();
+    const content=document.getElementById('mgrFbContent');
+    if(!content)return;
+    if(!Array.isArray(rows)||!rows.length){
+      content.innerHTML='<div class="mgr-fb-empty">📭 등록된 담당자 피드백이 없습니다</div>';
+      return;
+    }
+    const latest=rows[0];
+    const dt=new Date(latest.created_at);
+    const dateStr=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 작성`;
+
+    // 헤더 업데이트
+    const avatar=document.getElementById('mgrFbAvatar');
+    const name=document.getElementById('mgrFbName');
+    const date=document.getElementById('mgrFbDate');
+    if(avatar)avatar.textContent=(latest.author||'담').charAt(0);
+    if(name)name.textContent=(latest.author||'담당자')+' 매니저';
+    if(date)date.textContent=dateStr;
+
+    // 피드백 내용
+    const tags=(latest.tags||'').split(',').filter(t=>t.trim());
+    const tagColors=['var(--blue-l);color:var(--blue)','var(--gold-l);color:#b45309','var(--naver-m);color:var(--naver)','var(--red-l);color:var(--red)','var(--surface);color:var(--text3)'];
+    const tagsHtml=tags.length?`<div class="mgr-fb-tags">${tags.map((t,i)=>`<span class="mgr-fb-tag" style="background:${tagColors[i%tagColors.length]}">${t.trim()}</span>`).join('')}</div>`:'';
+
+    let html=`<div class="mgr-fb-body">${latest.content}</div>${tagsHtml}`;
+
+    // 이전 피드백
+    if(rows.length>1){
+      html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">이전 피드백</div>`;
+      rows.slice(1).forEach(r=>{
+        const d2=new Date(r.created_at);
+        const ds2=`${d2.getFullYear()}.${String(d2.getMonth()+1).padStart(2,'0')}.${String(d2.getDate()).padStart(2,'0')}`;
+        html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:600">${r.author||'담당자'}</span><span style="color:var(--text3);font-size:10px;font-family:'IBM Plex Mono',monospace">${ds2}</span></div>
+          <div style="color:var(--text2);line-height:1.6;white-space:pre-wrap;max-height:48px;overflow:hidden;text-overflow:ellipsis">${r.content}</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+
+    // 관리자: 삭제 버튼
+    if(isAdmin){
+      html+=`<div style="margin-top:8px;text-align:right"><button class="btn btn-sm btn-rd" onclick="deleteMgrFeedback('${latest.id}')" style="font-size:10px;padding:2px 8px">최신 삭제</button></div>`;
+    }
+
+    content.innerHTML=html;
+  }catch(e){console.error('담당자 피드백 로드 오류:',e);}
+}
+
+async function saveMgrFeedback(){
+  if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
+  const ck=activeClientId||'';
+  if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
+  const content=document.getElementById('mgrFbInput')?.value?.trim()||'';
+  if(!content){toast('⚠️ 내용을 입력해주세요');return;}
+  const tags=document.getElementById('mgrFbTags')?.value?.trim()||'';
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
+      client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tags
+    })});
+    toast('✅ 피드백이 저장되었습니다');
+    document.getElementById('mgrFbInput').value='';
+    document.getElementById('mgrFbTags').value='';
+    toggleMgrFbForm();
+    loadMgrFeedback();
+  }catch(e){toast('❌ 저장 실패');console.error(e);}
+}
+
+async function deleteMgrFeedback(id){
+  if(!confirm('최신 피드백을 삭제하시겠습니까?'))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'DELETE',headers:h});
+  toast('🗑 삭제되었습니다');
+  loadMgrFeedback();
+}
+
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
@@ -2395,29 +2501,54 @@ ${ (()=>{
 <!-- KPI 목표 달성률 미니 -->
 <div id="kpiMiniProgress"></div>
 
-<!-- AI 운영 브리핑 -->
-<div class="card" id="aiBriefingCard" style="margin-bottom:18px;border-left:4px solid #6366F1;position:relative;min-height:80px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">AI</div>
-      <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text1)">AI 운영 브리핑</div>
-        <div style="font-size:11px;color:var(--text3)" id="aiBriefingDate">데이터 분석 중...</div>
-      </div>
-    </div>
-    <button class="btn btn-sm" onclick="generateAIBriefing(true)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
-  </div>
-  <div id="aiBriefingContent" style="font-size:13px;line-height:1.7;color:var(--text2)">
-    <div style="display:flex;align-items:center;gap:8px;color:var(--text3)">
-      <div class="spinner" style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>
-      브리핑을 준비하고 있습니다...
-    </div>
-  </div>
-</div>
-
+<!-- 차트 -->
 <div class="row2b">
   <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
   <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
+</div>
+
+<!-- 담당자 피드백 -->
+<div class="mgr-fb-card" id="mgrFeedbackCard">
+  <div class="mgr-fb-header">
+    <div class="mgr-fb-avatar" id="mgrFbAvatar">담</div>
+    <div class="mgr-fb-info">
+      <div class="mgr-fb-name" id="mgrFbName">담당자 피드백</div>
+      <div class="mgr-fb-date" id="mgrFbDate">불러오는 중...</div>
+    </div>
+    ${currentUser?.role==='admin'?'<button class="btn btn-sm btn-ol" onclick="toggleMgrFbForm()" id="mgrFbWriteBtn" style="font-size:11px">✏️ 작성</button>':''}
+  </div>
+  <div id="mgrFbFormArea" style="display:none;margin-bottom:14px">
+    <div class="mgr-fb-form">
+      <textarea id="mgrFbInput" placeholder="광고주에게 전달할 운영 피드백을 작성하세요.\n예: 이번 주 키워드 성과 분석, 소재 교체 계획, 예산 조정 사항 등"></textarea>
+      <div class="mgr-fb-form-row">
+        <input type="text" id="mgrFbTags" placeholder="태그 (쉼표 구분: 네이버, 소재교체, 스토어)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)">
+        <button class="btn btn-bl btn-sm" onclick="saveMgrFeedback()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+  <div id="mgrFbContent">
+    <div class="mgr-fb-empty">📭 등록된 담당자 피드백이 없습니다</div>
+  </div>
+</div>
+
+<!-- AI 운영 브리핑 -->
+<div id="aiBriefingCard" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #6366F1;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text1)">AI 운영 브리핑</div>
+        <div style="font-size:10px;color:var(--text3)" id="aiBriefingDate">데이터 분석 중...</div>
+      </div>
+    </div>
+    <button class="btn btn-sm" onclick="generateAIBriefing(true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+  </div>
+  <div id="aiBriefingContent" style="font-size:12.5px;line-height:1.7;color:var(--text2)">
+    <div style="display:flex;align-items:center;gap:8px;color:var(--text3)">
+      <div class="sd-spinner-sm"></div>
+      브리핑을 준비하고 있습니다...
+    </div>
+  </div>
 </div>
 ${!d ? `<div class="empty" style="margin-top:16px;cursor:pointer" onclick="showDataGuide([
   {icon:'📊',title:'${currentReportMonth} 캠페인별 성과',desc:'파일관리 → 네이버 일별 캠페인 파일 업로드'},
@@ -9609,6 +9740,9 @@ async function renderCharts(){
 
   // KPI 목표 달성률 미니 표시
   if(document.getElementById('kpiMiniProgress')) renderKpiMiniProgress();
+
+  // 담당자 피드백 로드
+  if(document.getElementById('mgrFeedbackCard')) loadMgrFeedback();
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
