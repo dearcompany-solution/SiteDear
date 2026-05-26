@@ -703,7 +703,10 @@ canvas{max-height:210px}
 .sd-spinner-sm{width:20px;height:20px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
 
 /* ════ MANAGER FEEDBACK ════ */
-.mgr-fb-card{background:var(--white);border:1.5px solid var(--border);border-left:4px solid #F59E0B;border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;min-height:120px}
+.mgr-fb-card{background:var(--white);border:1.5px solid var(--border);border-left:4px solid #F59E0B;border-radius:var(--radius);padding:24px 26px;margin-bottom:18px;min-height:280px}
+.mgr-fb-section{margin-bottom:16px}
+.mgr-fb-section-title{font-size:12px;font-weight:700;color:#F59E0B;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.mgr-fb-section-body{font-size:13px;color:var(--text2);line-height:1.8;white-space:pre-wrap;padding:10px 14px;background:var(--surface);border-radius:var(--rsm);border:1px solid var(--border)}
 .mgr-fb-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .mgr-fb-avatar{width:36px;height:36px;border-radius:50%;background:#F59E0B;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
 .mgr-fb-info{flex:1}
@@ -1958,7 +1961,14 @@ function htmlNaver(){
       </div>
       <div id="naverInsFormArea" style="display:none;margin-bottom:14px">
         <div class="mgr-fb-form">
-          <textarea id="naverInsInput" placeholder="네이버 검색광고 운영 인사이트를 작성하세요.\n예: 키워드 성과 분석, 입찰가 조정 내역, 소재 변경 사항 등"></textarea>
+          <div style="margin-bottom:10px">
+            <label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label>
+            <textarea id="naverInsOpinion" placeholder="네이버 검색광고 운영 의견을 작성하세요.&#10;예: 키워드 성과 분석, 소재 방향 제안 등" style="min-height:100px"></textarea>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label>
+            <textarea id="naverInsChanges" placeholder="반영된 변경 사항을 작성하세요.&#10;예: 입찰가 조정, 소재 교체 등" style="min-height:100px"></textarea>
+          </div>
           <div class="mgr-fb-form-row">
             <input type="text" id="naverInsTags" placeholder="태그 (쉼표 구분: 키워드, 입찰가, GFA)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)">
             <button class="btn btn-bl btn-sm" onclick="saveNaverInsight()">💾 저장</button>
@@ -2204,7 +2214,8 @@ function htmlStore(){
         ${currentUser?.role==='admin'?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'store\')" style="font-size:11px">✏️ 작성</button>':''}
       </div>
       <div id="storeInsFormArea" style="display:none;margin-bottom:14px">
-        <div class="mgr-fb-form"><textarea id="storeInsInput" placeholder="스마트스토어 운영 인사이트를 작성하세요."></textarea>
+        <div class="mgr-fb-form"><div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label><textarea id="storeInsOpinion" placeholder="스마트스토어 운영 의견을 작성하세요." style="min-height:100px"></textarea></div>
+        <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label><textarea id="storeInsChanges" placeholder="반영된 변경 사항을 작성하세요." style="min-height:100px"></textarea></div>
         <div class="mgr-fb-form-row"><input type="text" id="storeInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('store','스토어')">💾 저장</button></div></div>
       </div>
       <div id="storeInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
@@ -2450,12 +2461,12 @@ async function loadPageInsight(page,tagKeyword){
     const name=document.getElementById(page+'InsName');
     const date=document.getElementById(page+'InsDate');
     if(avatar)avatar.textContent=(latest.author||'담').charAt(0);
-    if(name)name.textContent=(latest.author||'담당자')+' 매니저';
+    if(name)name.textContent='담당자 인사이트';
     if(date)date.textContent=dateStr;
     const tags=(latest.tags||'').split(',').filter(t=>t.trim());
     const tagColors=['var(--naver-m);color:var(--naver)','var(--blue-l);color:var(--blue)','var(--gold-l);color:#b45309','var(--red-l);color:var(--red)'];
     const tagsHtml=tags.length?`<div class="mgr-fb-tags">${tags.map((t,i)=>`<span class="mgr-fb-tag" style="background:${tagColors[i%tagColors.length]}">${t.trim()}</span>`).join('')}</div>`:'';
-    content.innerHTML=`<div class="mgr-fb-body">${latest.content}</div>${tagsHtml}`;
+    content.innerHTML=renderFbSections(latest.content)+tagsHtml;
   }catch(e){}
 }
 
@@ -2463,8 +2474,12 @@ async function savePageInsight(page,tagKeyword){
   if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
   const ck=activeClientId||'';
   if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
-  const content=document.getElementById(page+'InsInput')?.value?.trim()||'';
-  if(!content){toast('⚠️ 내용을 입력해주세요');return;}
+  const opinion=document.getElementById(page+'InsOpinion')?.value?.trim()||'';
+  const changes=document.getElementById(page+'InsChanges')?.value?.trim()||'';
+  if(!opinion&&!changes){toast('⚠️ 의견 또는 변경 사항을 입력해주세요');return;}
+  let content='';
+  if(opinion)content+='===의견===\n'+opinion;
+  if(changes)content+=(content?'\n\n':'')+('===변경사항===\n'+changes);
   let tags=document.getElementById(page+'InsTags')?.value?.trim()||'';
   if(!tags.includes(tagKeyword))tags=tags?tagKeyword+','+tags:tagKeyword;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
@@ -2473,7 +2488,8 @@ async function savePageInsight(page,tagKeyword){
       client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tags
     })});
     toast('✅ 인사이트가 저장되었습니다');
-    document.getElementById(page+'InsInput').value='';
+    document.getElementById(page+'InsOpinion').value='';
+    document.getElementById(page+'InsChanges').value='';
     document.getElementById(page+'InsTags').value='';
     togglePageInsForm(page);
     loadPageInsight(page,tagKeyword);
@@ -2509,12 +2525,12 @@ async function loadNaverInsight(){
     const name=document.getElementById('naverInsName');
     const date=document.getElementById('naverInsDate');
     if(avatar)avatar.textContent=(latest.author||'담').charAt(0);
-    if(name)name.textContent=(latest.author||'담당자')+' 매니저';
+    if(name)name.textContent='담당자 인사이트';
     if(date)date.textContent=dateStr;
     const tags=(latest.tags||'').split(',').filter(t=>t.trim());
     const tagColors=['var(--naver-m);color:var(--naver)','var(--blue-l);color:var(--blue)','var(--gold-l);color:#b45309','var(--red-l);color:var(--red)'];
     const tagsHtml=tags.length?`<div class="mgr-fb-tags">${tags.map((t,i)=>`<span class="mgr-fb-tag" style="background:${tagColors[i%tagColors.length]}">${t.trim()}</span>`).join('')}</div>`:'';
-    content.innerHTML=`<div class="mgr-fb-body">${latest.content}</div>${tagsHtml}`;
+    content.innerHTML=renderFbSections(latest.content)+tagsHtml;
   }catch(e){}
 }
 
@@ -2522,8 +2538,12 @@ async function saveNaverInsight(){
   if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
   const ck=activeClientId||'';
   if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
-  const content=document.getElementById('naverInsInput')?.value?.trim()||'';
-  if(!content){toast('⚠️ 내용을 입력해주세요');return;}
+  const opinion=document.getElementById('naverInsOpinion')?.value?.trim()||'';
+  const changes=document.getElementById('naverInsChanges')?.value?.trim()||'';
+  if(!opinion&&!changes){toast('⚠️ 의견 또는 변경 사항을 입력해주세요');return;}
+  let content='';
+  if(opinion)content+='===의견===\n'+opinion;
+  if(changes)content+=(content?'\n\n':'')+('===변경사항===\n'+changes);
   let tags=document.getElementById('naverInsTags')?.value?.trim()||'';
   if(!tags.includes('네이버'))tags=tags?'네이버,'+tags:'네이버';
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
@@ -2532,13 +2552,29 @@ async function saveNaverInsight(){
       client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tags
     })});
     toast('✅ 인사이트가 저장되었습니다');
-    document.getElementById('naverInsInput').value='';
+    document.getElementById('naverInsOpinion').value='';
+    document.getElementById('naverInsChanges').value='';
     document.getElementById('naverInsTags').value='';
     toggleNaverInsForm();
     loadNaverInsight();
   }catch(e){toast('❌ 저장 실패');}
 }
 
+function renderFbSections(text){
+  if(text.includes('===의견===')||text.includes('===변경사항===')){
+    let opMatch=text.match(/===의견===\n?([\s\S]*?)(?=\n?===변경사항===|$)/);
+    let chMatch=text.match(/===변경사항===\n?([\s\S]*?)$/);
+    let out='';
+    if(opMatch&&opMatch[1].trim()){
+      out+=`<div class="mgr-fb-section"><div class="mgr-fb-section-title">💬 의견</div><div class="mgr-fb-section-body">${opMatch[1].trim()}</div></div>`;
+    }
+    if(chMatch&&chMatch[1].trim()){
+      out+=`<div class="mgr-fb-section"><div class="mgr-fb-section-title" style="color:#8B5CF6">🔄 변경 사항</div><div class="mgr-fb-section-body">${chMatch[1].trim()}</div></div>`;
+    }
+    return out||`<div class="mgr-fb-body" style="white-space:pre-wrap;line-height:1.8">${text}</div>`;
+  }
+  return `<div class="mgr-fb-body" style="white-space:pre-wrap;line-height:1.8">${text}</div>`;
+}
 async function loadMgrFeedback(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
@@ -2562,7 +2598,7 @@ async function loadMgrFeedback(){
     const name=document.getElementById('mgrFbName');
     const date=document.getElementById('mgrFbDate');
     if(avatar)avatar.textContent=(latest.author||'담').charAt(0);
-    if(name)name.textContent=(latest.author||'담당자')+' 매니저';
+    if(name)name.textContent='담당자 인사이트';
     if(date)date.textContent=dateStr;
 
     // 피드백 내용
@@ -2570,17 +2606,17 @@ async function loadMgrFeedback(){
     const tagColors=['var(--blue-l);color:var(--blue)','var(--gold-l);color:#b45309','var(--naver-m);color:var(--naver)','var(--red-l);color:var(--red)','var(--surface);color:var(--text3)'];
     const tagsHtml=tags.length?`<div class="mgr-fb-tags">${tags.map((t,i)=>`<span class="mgr-fb-tag" style="background:${tagColors[i%tagColors.length]}">${t.trim()}</span>`).join('')}</div>`:'';
 
-    let html=`<div class="mgr-fb-body">${latest.content}</div>${tagsHtml}`;
+    let html=renderFbSections(latest.content)+tagsHtml;
 
     // 이전 피드백
     if(rows.length>1){
-      html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">이전 피드백</div>`;
+      html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">이전 인사이트</div>`;
       rows.slice(1).forEach(r=>{
         const d2=new Date(r.created_at);
         const ds2=`${d2.getFullYear()}.${String(d2.getMonth()+1).padStart(2,'0')}.${String(d2.getDate()).padStart(2,'0')}`;
-        html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:600">${r.author||'담당자'}</span><span style="color:var(--text3);font-size:10px;font-family:'IBM Plex Mono',monospace">${ds2}</span></div>
-          <div style="color:var(--text2);line-height:1.6;white-space:pre-wrap;max-height:48px;overflow:hidden;text-overflow:ellipsis">${r.content}</div>
+        html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:600">${r.author||'담당자'}</span><span style="color:var(--text3);font-size:10px;font-family:'IBM Plex Mono',monospace">${ds2}</span></div>
+          ${renderFbSections(r.content)}
         </div>`;
       });
       html+=`</div>`;
@@ -2599,16 +2635,21 @@ async function saveMgrFeedback(){
   if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
   const ck=activeClientId||'';
   if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
-  const content=document.getElementById('mgrFbInput')?.value?.trim()||'';
-  if(!content){toast('⚠️ 내용을 입력해주세요');return;}
+  const opinion=document.getElementById('mgrFbOpinion')?.value?.trim()||'';
+  const changes=document.getElementById('mgrFbChanges')?.value?.trim()||'';
+  if(!opinion&&!changes){toast('⚠️ 의견 또는 변경 사항을 입력해주세요');return;}
+  let content='';
+  if(opinion)content+='===의견===\n'+opinion;
+  if(changes)content+=(content?'\n\n':'')+('===변경사항===\n'+changes);
   const tags=document.getElementById('mgrFbTags')?.value?.trim()||'';
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
       client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tags
     })});
-    toast('✅ 피드백이 저장되었습니다');
-    document.getElementById('mgrFbInput').value='';
+    toast('✅ 인사이트가 저장되었습니다');
+    document.getElementById('mgrFbOpinion').value='';
+    document.getElementById('mgrFbChanges').value='';
     document.getElementById('mgrFbTags').value='';
     toggleMgrFbForm();
     loadMgrFeedback();
@@ -2694,14 +2735,21 @@ ${ (()=>{
   <div class="mgr-fb-header">
     <div class="mgr-fb-avatar" id="mgrFbAvatar">담</div>
     <div class="mgr-fb-info">
-      <div class="mgr-fb-name" id="mgrFbName">담당자 피드백</div>
+      <div class="mgr-fb-name" id="mgrFbName">담당자 인사이트</div>
       <div class="mgr-fb-date" id="mgrFbDate">불러오는 중...</div>
     </div>
     ${currentUser?.role==='admin'?'<button class="btn btn-sm btn-ol" onclick="toggleMgrFbForm()" id="mgrFbWriteBtn" style="font-size:11px">✏️ 작성</button>':''}
   </div>
   <div id="mgrFbFormArea" style="display:none;margin-bottom:14px">
     <div class="mgr-fb-form">
-      <textarea id="mgrFbInput" placeholder="광고주에게 전달할 운영 피드백을 작성하세요.\n예: 이번 주 키워드 성과 분석, 소재 교체 계획, 예산 조정 사항 등"></textarea>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label>
+        <textarea id="mgrFbOpinion" placeholder="운영 의견을 작성하세요.&#10;예: 이번 주 키워드 성과 분석, 소재 방향 제안 등" style="min-height:100px"></textarea>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label>
+        <textarea id="mgrFbChanges" placeholder="반영된 변경 사항을 작성하세요.&#10;예: 소재 A→B 교체, 예산 50만→70만 증액 등" style="min-height:100px"></textarea>
+      </div>
       <div class="mgr-fb-form-row">
         <input type="text" id="mgrFbTags" placeholder="태그 (쉼표 구분: 네이버, 소재교체, 스토어)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)">
         <button class="btn btn-bl btn-sm" onclick="saveMgrFeedback()">💾 저장</button>
@@ -10256,7 +10304,8 @@ async function loadGoogleTab(tabId){
           ${isAdm2?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'google\')" style="font-size:11px">✏️ 작성</button>':''}
         </div>
         <div id="googleInsFormArea" style="display:none;margin-bottom:14px">
-          <div class="mgr-fb-form"><textarea id="googleInsInput" placeholder="구글 광고 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form"><div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label><textarea id="googleInsOpinion" placeholder="구글 광고 운영 의견을 작성하세요." style="min-height:100px"></textarea></div>
+          <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label><textarea id="googleInsChanges" placeholder="반영된 변경 사항을 작성하세요." style="min-height:100px"></textarea></div>
           <div class="mgr-fb-form-row"><input type="text" id="googleInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('google','구글')">💾 저장</button></div></div>
         </div>
         <div id="googleInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
@@ -10500,7 +10549,8 @@ async function loadEbayTab(tabId){
           ${isAdm?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'ebay\')" style="font-size:11px">✏️ 작성</button>':''}
         </div>
         <div id="ebayInsFormArea" style="display:none;margin-bottom:14px">
-          <div class="mgr-fb-form"><textarea id="ebayInsInput" placeholder="이베이 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form"><div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label><textarea id="ebayInsOpinion" placeholder="이베이 운영 의견을 작성하세요." style="min-height:100px"></textarea></div>
+          <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label><textarea id="ebayInsChanges" placeholder="반영된 변경 사항을 작성하세요." style="min-height:100px"></textarea></div>
           <div class="mgr-fb-form-row"><input type="text" id="ebayInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('ebay','이베이')">💾 저장</button></div></div>
         </div>
         <div id="ebayInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
@@ -10682,7 +10732,8 @@ async function loadMetaTab(tabId){
           ${isAdm?'<button class="btn btn-sm btn-ol" onclick="togglePageInsForm(\'meta\')" style="font-size:11px">✏️ 작성</button>':''}
         </div>
         <div id="metaInsFormArea" style="display:none;margin-bottom:14px">
-          <div class="mgr-fb-form"><textarea id="metaInsInput" placeholder="META 광고 운영 인사이트를 작성하세요."></textarea>
+          <div class="mgr-fb-form"><div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label><textarea id="metaInsOpinion" placeholder="META 광고 운영 의견을 작성하세요." style="min-height:100px"></textarea></div>
+          <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label><textarea id="metaInsChanges" placeholder="반영된 변경 사항을 작성하세요." style="min-height:100px"></textarea></div>
           <div class="mgr-fb-form-row"><input type="text" id="metaInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('meta','META')">💾 저장</button></div></div>
         </div>
         <div id="metaInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
