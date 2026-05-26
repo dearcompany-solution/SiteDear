@@ -10297,7 +10297,7 @@ async function loadGoogleTab(tabId){
         </div></div>`;
     }).join('');
     const isAdm2=currentUser?.role==='admin';
-    document.getElementById('g-tab-summary').innerHTML=kpiHtml+`<div class="row2b" style="margin-bottom:16px">${typeCards}</div>
+    document.getElementById('g-tab-summary').innerHTML=kpiHtml+`
       <div class="mgr-fb-card" id="googleInsightCard">
         <div class="mgr-fb-header">
           <div class="mgr-fb-avatar" id="googleInsAvatar">담</div>
@@ -10310,7 +10310,8 @@ async function loadGoogleTab(tabId){
           <div class="mgr-fb-form-row"><input type="text" id="googleInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('google','구글')">💾 저장</button></div></div>
         </div>
         <div id="googleInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
-      </div>`;
+      </div>
+      <div class="row2b" style="margin-bottom:16px">${typeCards}</div>`;
     loadPageInsight('google','구글');
   }
 
