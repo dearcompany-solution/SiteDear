@@ -2519,6 +2519,7 @@ async function deleteInsight2(id, page, tagKeyword, opElId, chElId){
 
 function reloadInsights2(page, tagKeyword){
   const map={
+    combined:['combinedOpinionList','combinedChangeList'],
     naver:['naverOpinionList','naverChangeList'],
     store:['storeOpinionList','storeChangeList'],
     meta:['metaOpinionList','metaChangeList'],
@@ -2589,34 +2590,29 @@ ${ (()=>{
 <!-- KPI 목표 달성률 미니 -->
 <div id="kpiMiniProgress"></div>
 
-<!-- 담당자 피드백 -->
-<div class="mgr-fb-card" id="mgrFeedbackCard">
-  <div class="mgr-fb-header">
-    <div class="mgr-fb-avatar" id="mgrFbAvatar">담</div>
-    <div class="mgr-fb-info">
-      <div class="mgr-fb-name" id="mgrFbName">담당자 인사이트</div>
-      <div class="mgr-fb-date" id="mgrFbDate">불러오는 중...</div>
-    </div>
-    ${currentUser?.role==='admin'?'<button class="btn btn-sm btn-ol" onclick="toggleMgrFbForm()" id="mgrFbWriteBtn" style="font-size:11px">✏️ 작성</button>':''}
-  </div>
-  <div id="mgrFbFormArea" style="display:none;margin-bottom:14px">
-    <div class="mgr-fb-form">
-      <div style="margin-bottom:10px">
-        <label style="font-size:12px;font-weight:700;color:#F59E0B;display:block;margin-bottom:4px">💬 의견</label>
-        <textarea id="mgrFbOpinion" placeholder="운영 의견을 작성하세요.&#10;예: 이번 주 키워드 성과 분석, 소재 방향 제안 등" style="min-height:100px"></textarea>
-      </div>
-      <div style="margin-bottom:10px">
-        <label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label>
-        <textarea id="mgrFbChanges" placeholder="반영된 변경 사항을 작성하세요.&#10;예: 소재 A→B 교체, 예산 50만→70만 증액 등" style="min-height:100px"></textarea>
-      </div>
-      <div class="mgr-fb-form-row">
-        <input type="text" id="mgrFbTags" placeholder="태그 (쉼표 구분: 네이버, 소재교체, 스토어)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)">
-        <button class="btn btn-bl btn-sm" onclick="saveMgrFeedback()">💾 저장</button>
-      </div>
+<!-- 담당자 인사이트 (통합) -->
+<div class="mgr-ins-card" id="mgrFeedbackCard">
+  <div class="mgr-ins-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="mgr-ins-avatar">담</div>
+      <div><div style="font-size:14px;font-weight:700">담당자 인사이트</div><div style="font-size:11px;color:var(--text3)">통합 대시보드</div></div>
     </div>
   </div>
-  <div id="mgrFbContent">
-    <div class="mgr-fb-empty">📭 등록된 담당자 피드백이 없습니다</div>
+  <div class="mgr-ins-grid">
+    <div class="mgr-ins-col">
+      <div class="mgr-ins-col-hd">
+        <div style="display:flex;align-items:center;gap:6px"><span style="color:#6366F1">💬</span><span style="font-size:13px;font-weight:600">의견</span></div>
+        ${currentUser?.role==='admin'?'<button class="mgr-ins-write-btn" onclick="openInsightModal2(\'combined\',\'opinion\',\'통합\')">✏️ 작성</button>':''}
+      </div>
+      <div id="combinedOpinionList"><div class="mgr-ins-empty">📝 등록된 의견이 없습니다</div></div>
+    </div>
+    <div class="mgr-ins-col">
+      <div class="mgr-ins-col-hd">
+        <div style="display:flex;align-items:center;gap:6px"><span style="color:#F59E0B">🔄</span><span style="font-size:13px;font-weight:600">변경사항</span></div>
+        ${currentUser?.role==='admin'?'<button class="mgr-ins-write-btn" onclick="openInsightModal2(\'combined\',\'change\',\'통합\')">✏️ 작성</button>':''}
+      </div>
+      <div id="combinedChangeList"><div class="mgr-ins-empty">📝 등록된 변경사항이 없습니다</div></div>
+    </div>
   </div>
 </div>
 
@@ -10049,7 +10045,7 @@ async function renderCharts(){
   if(document.getElementById('kpiMiniProgress')) renderKpiMiniProgress();
 
   // 담당자 피드백 로드
-  if(document.getElementById('mgrFeedbackCard')) loadMgrFeedback();
+  if(document.getElementById('mgrFeedbackCard')) loadInsights2('combined','통합','combinedOpinionList','combinedChangeList');
   // 네이버 인사이트 로드
   if(document.getElementById('naverInsightCard')) loadNaverInsight();
   // 스토어 인사이트 로드
