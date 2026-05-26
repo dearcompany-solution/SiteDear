@@ -2432,11 +2432,7 @@ function loadingRow(cols=7,text='불러오는 중...'){
 }
 
 /* ════ 담당자 피드백 ════ */
-function toggleMgrFbForm(){
-  const area=document.getElementById('mgrFbFormArea');
-  if(!area)return;
-  area.style.display=area.style.display==='none'?'block':'none';
-}
+
 
 /* ════ 페이지별 인사이트 (공통) ════ */
 /* ════ 담당자 인사이트 v2 — 의견/변경사항 2컬럼 고정 ════ */
@@ -10044,12 +10040,10 @@ async function renderCharts(){
   // KPI 목표 달성률 미니 표시
   if(document.getElementById('kpiMiniProgress')) renderKpiMiniProgress();
 
-  // 담당자 피드백 로드
+  // 담당자 인사이트 로드
   if(document.getElementById('mgrFeedbackCard')) loadInsights2('combined','통합','combinedOpinionList','combinedChangeList');
-  // 네이버 인사이트 로드
-  if(document.getElementById('naverInsightCard')) loadNaverInsight();
-  // 스토어 인사이트 로드
-  if(document.getElementById('storeInsightCard')) loadPageInsight('store','스토어');
+  if(document.getElementById('naverInsightCard')) loadInsights2('naver','네이버','naverOpinionList','naverChangeList');
+  if(document.getElementById('storeInsightCard')) loadInsights2('store','스토어','storeOpinionList','storeChangeList');
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
