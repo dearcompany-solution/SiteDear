@@ -1943,12 +1943,6 @@ function htmlNaver(){
         </div>`;
     })() }
 
-    <!-- 채널별 차트 -->
-    <div class="row2b" style="margin-bottom:16px">
-      <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">📈 채널별 ROAS</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverRoasBar"></canvas></div>
-    </div>
-
     <!-- 담당자 인사이트 (네이버 전용) -->
     <div class="mgr-fb-card" id="naverInsightCard" style="margin-bottom:16px">
       <div class="mgr-fb-header">
@@ -1977,6 +1971,13 @@ function htmlNaver(){
       </div>
       <div id="naverInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
     </div>
+
+    <!-- 채널별 차트 -->
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📈 채널별 ROAS</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverRoasBar"></canvas></div>
+    </div>
+
 
     <!-- 월별 비교 카드 -->
     <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden" id="monthlyCompareCard">
@@ -2203,11 +2204,7 @@ function htmlStore(){
       <div class="sum-item" style="border-bottom:2px solid #6366F1;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👤 결제자</div><div class="sum-val" style="font-size:16px" id="st-kpi-buyers">—</div></div>
       <div class="sum-item" style="border-bottom:2px solid #8B5CF6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📱 모바일</div><div class="sum-val" style="font-size:16px" id="st-kpi-mobile">—</div></div>
     </div>
-    <div class="row2b" style="margin-bottom:16px">
-      <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
-      <div class="card"><div class="card-hd"><div><div class="card-title">📱 모바일 vs PC</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stMobilePie" height="120"></canvas></div>
-    </div>
-    <div class="mgr-fb-card" id="storeInsightCard" style="margin-bottom:16px">
+   <div class="mgr-fb-card" id="storeInsightCard" style="margin-bottom:16px">
       <div class="mgr-fb-header">
         <div class="mgr-fb-avatar" id="storeInsAvatar">담</div>
         <div class="mgr-fb-info"><div class="mgr-fb-name" id="storeInsName">담당자 인사이트</div><div class="mgr-fb-date" id="storeInsDate">스마트스토어 전용</div></div>
@@ -2218,7 +2215,11 @@ function htmlStore(){
         <div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#8B5CF6;display:block;margin-bottom:4px">🔄 변경 사항</label><textarea id="storeInsChanges" placeholder="반영된 변경 사항을 작성하세요." style="min-height:100px"></textarea></div>
         <div class="mgr-fb-form-row"><input type="text" id="storeInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('store','스토어')">💾 저장</button></div></div>
       </div>
-      <div id="storeInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+     <div id="storeInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+    </div>
+    <div class="row2b" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
+      <div class="card"><div class="card-hd"><div><div class="card-title">📱 모바일 vs PC</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stMobilePie" height="120"></canvas></div>
     </div>
     <div class="row2b" style="margin-top:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📅 요일별 결제금액</div><div class="card-sub">요일별 합산</div></div></div><canvas id="stDowBar" height="120"></canvas></div>
@@ -2724,12 +2725,6 @@ ${ (()=>{
 <!-- KPI 목표 달성률 미니 -->
 <div id="kpiMiniProgress"></div>
 
-<!-- 차트 -->
-<div class="row2b">
-  <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
-  <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
-</div>
-
 <!-- 담당자 피드백 -->
 <div class="mgr-fb-card" id="mgrFeedbackCard">
   <div class="mgr-fb-header">
@@ -2759,6 +2754,12 @@ ${ (()=>{
   <div id="mgrFbContent">
     <div class="mgr-fb-empty">📭 등록된 담당자 피드백이 없습니다</div>
   </div>
+</div>
+
+<!-- 차트 -->
+<div class="row2b">
+  <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
+  <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
 </div>
 
 <!-- AI 운영 브리핑 -->
@@ -10536,12 +10537,6 @@ async function loadEbayTab(tabId){
     const el=document.getElementById('eb-tab-summary');
     if(!el)return;
     el.innerHTML=kpiHtml+`
-      <div class="row2b" style="margin-bottom:16px">${platCard('G마켓','🟢',gmP)}${platCard('옥션','🔴',acP)}</div>
-      <div class="row2b" style="margin-bottom:16px">
-        <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 매출 추이</div></div></div><canvas id="ebayDailyRev" height="120"></canvas></div>
-        <div class="card"><div class="card-hd"><div><div class="card-title">🏪 플랫폼 비교</div></div></div><canvas id="ebayPlatPie" height="120"></canvas></div>
-      </div>
-      ${adTableHtml}${prodTableHtml}
       <div class="mgr-fb-card" id="ebayInsightCard" style="margin-bottom:16px">
         <div class="mgr-fb-header">
           <div class="mgr-fb-avatar" id="ebayInsAvatar">담</div>
@@ -10554,7 +10549,13 @@ async function loadEbayTab(tabId){
           <div class="mgr-fb-form-row"><input type="text" id="ebayInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('ebay','이베이')">💾 저장</button></div></div>
         </div>
         <div id="ebayInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
-      </div>`;
+      </div>
+      <div class="row2b" style="margin-bottom:16px">${platCard('G마켓','🟢',gmP)}${platCard('옥션','🔴',acP)}</div>
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 매출 추이</div></div></div><canvas id="ebayDailyRev" height="120"></canvas></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">🏪 플랫폼 비교</div></div></div><canvas id="ebayPlatPie" height="120"></canvas></div>
+      </div>
+      ${adTableHtml}${prodTableHtml}`;
     loadPageInsight('ebay','이베이');
     setTimeout(()=>{
       const dailyMap={};
@@ -10720,11 +10721,7 @@ async function loadMetaTab(tabId){
     const el=document.getElementById('mt-tab-summary');
     if(!el)return;
     const isAdm=currentUser?.role==='admin';
-    el.innerHTML=kpiHtml+`
-      <div class="row2b" style="margin-bottom:16px">
-        <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div></div></div><canvas id="metaDailyCost" height="120"></canvas></div>
-        <div class="card"><div class="card-hd"><div><div class="card-title">👁️ 일별 노출 · 클릭</div></div></div><canvas id="metaDailyImpClick" height="120"></canvas></div>
-      </div>
+   el.innerHTML=kpiHtml+`
       <div class="mgr-fb-card" id="metaInsightCard" style="margin-bottom:16px">
         <div class="mgr-fb-header">
           <div class="mgr-fb-avatar" id="metaInsAvatar">담</div>
@@ -10737,6 +10734,10 @@ async function loadMetaTab(tabId){
           <div class="mgr-fb-form-row"><input type="text" id="metaInsTags" placeholder="태그 (쉼표 구분)" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:6px 10px;font-size:12px;outline:none;background:var(--surface)"><button class="btn btn-bl btn-sm" onclick="savePageInsight('meta','META')">💾 저장</button></div></div>
         </div>
         <div id="metaInsContent"><div class="mgr-fb-empty">📭 등록된 인사이트가 없습니다</div></div>
+      </div>
+      <div class="row2b" style="margin-bottom:16px">
+        <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div></div></div><canvas id="metaDailyCost" height="120"></canvas></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">👁️ 일별 노출 · 클릭</div></div></div><canvas id="metaDailyImpClick" height="120"></canvas></div>
       </div>
       <div class="row2b" style="margin-bottom:16px">
         <div class="card"><div class="card-hd"><div><div class="card-title">👥 일별 도달수 추이</div></div></div><canvas id="metaDailyReach" height="120"></canvas></div>
