@@ -10130,7 +10130,8 @@ async function renderCharts(){
       }).join('');
     }
   }
-    labels:channels.map(c=>c.name),
+    mk('combinedBar',{type:'bar',data:{  
+  labels:channels.map(c=>c.name),
     datasets:[
       {label:'광고비',data:channels.map(c=>c.cost),backgroundColor:'rgba(79,70,229,.75)',borderRadius:6},
       {label:'매출',data:channels.map(c=>c.rev),backgroundColor:'rgba(3,199,90,.75)',borderRadius:6}
