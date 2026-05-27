@@ -2618,12 +2618,6 @@ ${ (()=>{
   </div>
 </div>
 
-<!-- 차트 -->
-<div class="row2b">
-  <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
-  <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
-</div>
-
 <!-- AI 운영 브리핑 -->
 <div id="aiBriefingCard" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #6366F1;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -2642,6 +2636,18 @@ ${ (()=>{
       브리핑을 준비하고 있습니다...
     </div>
   </div>
+</div>
+
+<!-- 광고비 배분 + 채널 효율 순위 -->
+<div class="row2b">
+  <div class="card"><div class="card-hd"><div><div class="card-title">광고비 배분 현황</div></div></div><canvas id="costPieChart" height="140"></canvas></div>
+  <div class="card"><div class="card-hd"><div><div class="card-title">채널 효율 순위</div><div class="card-sub">ROAS 기준</div></div></div><div id="channelRoasRank" style="padding:10px 0"><div style="text-align:center;color:var(--text3);font-size:12px;padding:20px">로딩 중...</div></div></div>
+</div>
+
+<!-- 차트 -->
+<div class="row2b">
+  <div class="card"><div class="card-hd"><div><div class="card-title">채널별 광고비 vs 전환매출</div></div></div><canvas id="combinedBar"></canvas></div>
+  <div class="card"><div class="card-hd"><div><div class="card-title">월별 ROAS 추이</div></div></div><canvas id="roasLine"></canvas></div>
 </div>
 
 <!-- 채널별 성과 비교 -->
@@ -10080,7 +10086,50 @@ async function renderCharts(){
       </tr>`;
     }
   }
-  mk('combinedBar',{type:'bar',data:{
+  // 광고비 배분 도넛
+  const pieChannels=[];
+  if(naverCost2) pieChannels.push({name:'네이버',cost:naverCost2,color:'rgba(79,70,229,.8)'});
+  if(gfaCost2) pieChannels.push({name:'GFA',cost:gfaCost2,color:'rgba(59,130,246,.8)'});
+  if(metaCost2) pieChannels.push({name:'META',cost:metaCost2,color:'rgba(24,119,242,.8)'});
+  if(googleCost2) pieChannels.push({name:'구글',cost:googleCost2,color:'rgba(234,67,53,.8)'});
+  if(ebayCost2) pieChannels.push({name:'이베이',cost:ebayCost2,color:'rgba(136,135,128,.8)'});
+  if(pieChannels.length){
+    mk('costPieChart',{type:'doughnut',data:{labels:pieChannels.map(c=>c.name),datasets:[{data:pieChannels.map(c=>c.cost),backgroundColor:pieChannels.map(c=>c.color),borderWidth:2,borderColor:'#fff',hoverOffset:6}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10},padding:8}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;const total=pieChannels.reduce((s,c)=>s+c.cost,0);return ctx.label+': ₩'+Math.round(v).toLocaleString()+' ('+((v/total)*100).toFixed(1)+'%)'}}}}}});
+  } else {
+    const pieEl=document.getElementById('costPieChart');
+    if(pieEl){const ctx=pieEl.getContext('2d');ctx.font='13px Noto Sans KR';ctx.fillStyle='#8a96ae';ctx.textAlign='center';ctx.fillText('광고 데이터 없음',pieEl.width/2,pieEl.height/2);}
+  }
+
+  // 채널 효율 순위 (ROAS 바)
+  const rankEl=document.getElementById('channelRoasRank');
+  if(rankEl){
+    const rankCh=[];
+    if(naverCost2>0) rankCh.push({name:'🟢 네이버',roas:naverRev2/naverCost2*100});
+    if(gfaCost2>0) rankCh.push({name:'📡 GFA',roas:gfaRev2/gfaCost2*100});
+    if(metaCost2>0) rankCh.push({name:'🔵 META',roas:metaRev2/metaCost2*100});
+    if(googleCost2>0) rankCh.push({name:'🔴 구글',roas:googleRev2/googleCost2*100});
+    if(ebayCost2>0) rankCh.push({name:'🟤 이베이',roas:ebayRev2/ebayCost2*100});
+    if(!rankCh.length){
+      rankEl.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px">광고 데이터 없음</div>';
+    } else {
+      rankCh.sort((a,b)=>b.roas-a.roas);
+      const maxR=Math.max(...rankCh.map(c=>c.roas),100);
+      rankEl.innerHTML=rankCh.map(c=>{
+        const pct=Math.min(c.roas/maxR*100,100);
+        const barColor=c.roas>=300?'#03C75A':c.roas>=100?'#F59E0B':'#E24B4A';
+        const txtColor=c.roas>=300?'var(--naver)':c.roas>=100?'var(--gold)':'var(--red)';
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:600">${c.name}</span>
+            <span style="font-weight:700;color:${txtColor}">${c.roas.toFixed(1)}%</span>
+          </div>
+          <div style="height:8px;background:var(--surface);border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;transition:width .5s"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
     labels:channels.map(c=>c.name),
     datasets:[
       {label:'광고비',data:channels.map(c=>c.cost),backgroundColor:'rgba(79,70,229,.75)',borderRadius:6},
