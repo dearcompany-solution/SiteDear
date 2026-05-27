@@ -2693,7 +2693,6 @@ function htmlReport(){
   rptTabs.push({id:'weekly',icon:'📅',label:'주간 데이터'});
   rptTabs.push({id:'monthly',icon:'📆',label:'월간 데이터'});
   if(hasGFA) rptTabs.push({id:'gfa',icon:'📡',label:'GFA'});
-  if(hasMeta) rptTabs.push({id:'meta',icon:'🔵',label:'META'});
 
   const firstTab = rptTabs[0].id;
   const tabBtns = rptTabs.map((t,i)=>`<button class="nav-tab${i===0?' active':''}" onclick="switchRptTab('${t.id}',this)">${t.icon} ${t.label}</button>`).join('\n    ');
