@@ -2441,7 +2441,7 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   if(!ck)return;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=cs.${encodeURIComponent(tagKeyword)}&order=created_at.desc&limit=20`,{headers:h});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=20`,{headers:h});
     const rows=await res.json();
     if(!Array.isArray(rows))return;
     const opinions=rows.filter(r=>(r.content||'').includes('===의견==='));
