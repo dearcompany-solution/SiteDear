@@ -8070,7 +8070,7 @@ async function submitFeedback(page){
   loadRptFeedbacks();
 }
   function htmlReq(){
-  return `<div style="max-width:1000px" id="reqWrap">
+  return `<div style="width:100%" id="reqWrap">
     <div style="text-align:center;padding:30px;color:var(--text3)">
       <div style="font-size:24px;margin-bottom:8px">⏳</div>
       <p>요청 목록 불러오는 중...</p>
@@ -8134,7 +8134,19 @@ function openAddReq(){
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">플랫폼</label>
           <select id="rq-platform" class="fi">
-            <option>Naver</option><option>Kakao</option><option>Google</option><option>Meta</option><option>기타</option>
+            ${(()=>{
+              const ck2=currentUser?.role==='admin'?(activeClientId||''):(currentUser?.id||'');
+              const fm=currentDateRange?.from?.slice(0,7)||currentReportMonth;
+              const tm=currentDateRange?.to?.slice(0,7)||currentReportMonth;
+              const opts=[];
+              if(REPORT_DATA[currentReportMonth]?.kpi?.totalCost>0||REPORT_DATA[currentReportMonth]?.kpi?.totalImp>0) opts.push('네이버');
+              if(REPORT_DATA[currentReportMonth]?.gfa?.totalCost>0) opts.push('GFA');
+              if((window['_meta_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('Meta');
+              if((window['_google_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('Google');
+              if((window['_ebay_ads_'+ck2+'_'+fm+'_'+tm]||[]).length>0||(window['_ebay_prod_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('이베이');
+              opts.push('기타');
+              return opts.map(o=>'<option>'+o+'</option>').join('');
+            })()}
           </select>
         </div>
         <div>
@@ -8154,7 +8166,17 @@ function openAddReq(){
     <button class="btn btn-bl" onclick="saveReq()">저장</button>`;
   document.getElementById('modalOverlay').classList.add('open');
 }
-
+async function saveReq(){
+  const req=document.getElementById('rq-req')?.value?.trim();
+  if(!req){toast('⚠️ 요청 내용을 입력해주세요');return;}
+  const platform=document.getElementById('rq-platform')?.value||'기타';
+  const status=document.getElementById('rq-status')?.value||'대기';
+  const content=document.getElementById('rq-content')?.value?.trim()||'';
+  await saveRequestToSupabase({req,platform,status,content});
+  closeModal();
+  toast('✅ 요청이 등록되었습니다');
+  await loadRequests();
+}
 async function updateReqStatus(id,status){
   try{
     const doneDate=status==='완료'?new Date().toISOString().slice(0,10).replace(/-/g,'.'):'-';
@@ -9379,8 +9401,9 @@ function htmlKpiTarget(){
     </div>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
-    <label style="font-size:12px;color:var(--text2);font-weight:600">월 선택</label>
-    <input type="month" id="ktMonthPicker" value="${month}" style="border:1.5px solid var(--border);border-radius:var(--rsm);padding:5px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer;outline:none" onchange="changeKpiMonth(this.value)">
+    <button onclick="changeKpiMonth(prevMonth(document.getElementById('ktMonthInfo').textContent))" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--surface);cursor:pointer;font-size:12px">◀</button>
+    <div style="border:1.5px solid var(--border);border-radius:8px;padding:6px 16px;font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;min-width:100px;text-align:center;background:var(--white)" id="ktMonthDisplay">${month.replace('-','년 ')}월</div>
+    <button onclick="changeKpiMonth(nextMonth(document.getElementById('ktMonthInfo').textContent))" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--surface);cursor:pointer;font-size:12px">▶</button>
   </div>
 </div>
 
@@ -9419,8 +9442,12 @@ function changeKpiMonth(v){
   const el=document.getElementById('ktFormMonth');
   if(el) el.textContent=v;
   document.getElementById('ktMonthInfo').textContent=v;
+  const disp=document.getElementById('ktMonthDisplay');
+  if(disp) disp.textContent=v.replace('-','년 ')+'월';
   loadKpiTargets(v);
 }
+function prevMonth(m){const [y,mo]=m.split('-').map(Number);const nm=mo-1;return nm<1?(y-1)+'-12':y+'-'+String(nm).padStart(2,'0');}
+function nextMonth(m){const [y,mo]=m.split('-').map(Number);const nm=mo+1;return nm>12?(y+1)+'-01':y+'-'+String(nm).padStart(2,'0');}
 
 async function loadKpiTargets(overrideMonth){
   const isAdmin=currentUser?.role==='admin';
