@@ -1401,7 +1401,7 @@ function go(id,el){
     const rpb=document.getElementById('reportPdfBtn');
     if(rpb) rpb.style.display=(id==='report')?'block':'none';
     const sp=document.getElementById('screenPdfBtn');
-    if(sp) sp.style.display=['combined','naver','store','meta','google','ebay'].includes(id)?'inline-flex':'none';
+    if(sp) sp.style.display='none';
   }
   renderContent(id);
   if(['naver','store','combined','meta','google','ebay'].includes(id))setTimeout(renderCharts,100);
