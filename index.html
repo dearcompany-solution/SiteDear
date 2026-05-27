@@ -2643,6 +2643,22 @@ ${ (()=>{
     </div>
   </div>
 </div>
+
+<!-- 채널별 성과 비교 -->
+<div class="card" style="margin-bottom:18px;padding:0;overflow:hidden" id="channelCompareCard">
+  <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+    <div style="font-size:14px;font-weight:700">📊 채널별 성과 비교</div>
+    <div style="font-size:11px;color:var(--text3)">데이터가 있는 매체만 표시</div>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="tbl" id="channelCompareTable">
+      <thead><tr><th>채널</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>CPC</th><th>전환매출</th><th>ROAS</th></tr></thead>
+      <tbody id="channelCompareBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">로딩 중...</td></tr></tbody>
+      <tfoot id="channelCompareFoot"></tfoot>
+    </table>
+  </div>
+</div>
+
 ${!d ? `<div class="empty" style="margin-top:16px;cursor:pointer" onclick="showDataGuide([
   {icon:'📊',title:'${currentReportMonth} 캠페인별 성과',desc:'파일관리 → 네이버 일별 캠페인 파일 업로드'},
   {icon:'🔑',title:'${currentReportMonth} 키워드 성과',desc:'파일관리 → 네이버 일별 키워드 파일 업로드'},
@@ -10008,6 +10024,62 @@ async function renderCharts(){
   if(ebayCost2||ebayRev2) channels.push({name:'이베이',cost:ebayCost2,rev:ebayRev2});
   if(stNetRev2) channels.push({name:'스토어',cost:0,rev:stNetRev2});
 
+  // 채널별 성과 비교 테이블
+  const fmt3=v=>'₩'+Math.round(v||0).toLocaleString('ko-KR');
+  const fmtn3=v=>Math.round(v||0).toLocaleString('ko-KR');
+  const metaF2=metaC2.filter(r=>!r.date||(r.date>=from2&&r.date<=to2));
+  const metaImp2=metaF2.reduce((s,r)=>s+(+r.imp||0),0);
+  const metaClick2=metaF2.reduce((s,r)=>s+(+r.click||0),0);
+  let googleImp2=0,googleClick2=0;
+  googleC2.forEach(r=>{googleImp2+=+r.imp||0;googleClick2+=+r.click||0;});
+  const ebayAd3=window[`_ebay_ads_${ck2}_${fromM2}_${toM2}`]||[];
+  let ebayCost3=0,ebayImp3=0,ebayClick3=0,ebayRev3=0;
+  ebayAd3.forEach(r=>{ebayCost3+=+r.cost||0;ebayImp3+=+r.imp||0;ebayClick3+=+r.click||0;ebayRev3+=+r.purchase_amount||0;});
+  const allCh=[];
+  if(naverCost2||naverRev2) allCh.push({name:'🟢 네이버 검색광고',cost:naverCost2,imp:kpi2.totalImp||0,click:kpi2.totalClick||0,rev:naverRev2});
+  if(gfaCost2||gfaRev2) allCh.push({name:'📡 GFA',cost:gfaCost2,imp:0,click:0,rev:gfaRev2});
+  if(metaCost2||metaRev2||metaImp2) allCh.push({name:'🔵 META',cost:metaCost2,imp:metaImp2,click:metaClick2,rev:metaRev2});
+  if(googleCost2||googleRev2) allCh.push({name:'🔴 구글',cost:googleCost2,imp:googleImp2,click:googleClick2,rev:googleRev2});
+  if(ebayCost3||ebayRev3) allCh.push({name:'🟤 이베이',cost:ebayCost3,imp:ebayImp3,click:ebayClick3,rev:ebayRev3});
+  const tbody=document.getElementById('channelCompareBody');
+  const tfoot=document.getElementById('channelCompareFoot');
+  if(tbody){
+    if(!allCh.length){
+      tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">광고 데이터가 없습니다</td></tr>';
+    } else {
+      const rc3=(cost,rev)=>cost>0&&rev/cost>=3?'var(--naver)':cost>0&&rev/cost>=1?'var(--gold)':'var(--red)';
+      tbody.innerHTML=allCh.map((c,i)=>{
+        const ctr=c.imp>0?(c.click/c.imp*100).toFixed(2)+'%':'—';
+        const cpc=c.click>0?fmt3(Math.round(c.cost/c.click)):'—';
+        const roas=c.cost>0?(c.rev/c.cost*100).toFixed(1)+'%':'—';
+        return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
+          <td style="font-size:13px;font-weight:600">${c.name}</td>
+          <td style="font-family:monospace;font-size:12px">${fmt3(c.cost)}</td>
+          <td style="font-family:monospace;font-size:12px">${c.imp?fmtn3(c.imp):'—'}</td>
+          <td style="font-family:monospace;font-size:12px">${c.click?fmtn3(c.click):'—'}</td>
+          <td style="font-family:monospace;font-size:12px">${ctr}</td>
+          <td style="font-family:monospace;font-size:12px">${cpc}</td>
+          <td style="font-family:monospace;font-size:12px">${fmt3(c.rev)}</td>
+          <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc3(c.cost,c.rev)}">${roas}</td>
+        </tr>`;
+      }).join('');
+      // 합계 행
+      const totC=allCh.reduce((s,c)=>s+c.cost,0);
+      const totI=allCh.reduce((s,c)=>s+c.imp,0);
+      const totK=allCh.reduce((s,c)=>s+c.click,0);
+      const totR=allCh.reduce((s,c)=>s+c.rev,0);
+      if(tfoot) tfoot.innerHTML=`<tr style="background:var(--white);border-top:2px solid var(--border)">
+        <td style="font-size:13px;font-weight:700">합계</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${fmt3(totC)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${fmtn3(totI)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${fmtn3(totK)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${totI>0?(totK/totI*100).toFixed(2)+'%':'—'}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${totK>0?fmt3(Math.round(totC/totK)):'—'}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700;color:var(--naver)">${fmt3(totR)}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700;color:${totC>0&&totR/totC>=3?'var(--naver)':'var(--gold)'}">${totC>0?(totR/totC*100).toFixed(1)+'%':'—'}</td>
+      </tr>`;
+    }
+  }
   mk('combinedBar',{type:'bar',data:{
     labels:channels.map(c=>c.name),
     datasets:[
