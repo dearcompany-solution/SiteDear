@@ -2563,14 +2563,20 @@ ${ (()=>{
   const metaRev  = metaF.reduce((s,r)=>s+(+r.purchase_rev||0),0);
   // 구글
   const googleCache = window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
-  let googleCost=0,googleConvValue=0;
-  googleCache.forEach(r=>{googleCost+=+r.cost||0;if(r.campaign_status!=='전환상세')googleConvValue+=+r.conv_value||0;});
+  let googleCost=0,googleConvValue=0,googleImp=0,googleClick=0;
+  googleCache.forEach(r=>{googleCost+=+r.cost||0;googleImp+=+r.imp||0;googleClick+=+r.click||0;if(r.campaign_status!=='전환상세')googleConvValue+=+r.conv_value||0;});
+  // 이베이
+  const ebayAdCache = window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+  const ebayProdCache = window[`_ebay_prod_${ck}_${fromMonth}_${toMonth}`]||[];
+  let ebayCost=0,ebayImp=0,ebayClick=0,ebayPurchaseAmt=0;
+  ebayAdCache.forEach(r=>{ebayCost+=+r.cost||0;ebayImp+=+r.imp||0;ebayClick+=+r.click||0;ebayPurchaseAmt+=+r.purchase_amount||0;});
+  const ebayProdRev = ebayProdCache.reduce((s,r)=>s+(+r.sales_amount||0),0);
   // 통합 합산
-  const totalAdCost = naverCost+gfaCost+metaCost+googleCost;
-  const totalRev    = naverRev+gfaRev+metaRev+googleConvValue;
+  const totalAdCost = naverCost+gfaCost+metaCost+googleCost+ebayCost;
+  const totalRev    = naverRev+gfaRev+metaRev+googleConvValue+ebayPurchaseAmt;
   const totalRoas   = totalAdCost>0?(totalRev/totalAdCost*100):0;
-  const totalImp    = naverImp+metaF.reduce((s,r)=>s+(+r.imp||0),0)+googleCache.reduce((s,r)=>s+(+r.imp||0),0);
-  const totalClick  = naverClick+metaF.reduce((s,r)=>s+(+r.click||0),0)+googleCache.reduce((s,r)=>s+(+r.click||0),0);
+  const totalImp    = naverImp+metaF.reduce((s,r)=>s+(+r.imp||0),0)+googleImp+ebayImp;
+  const totalClick  = naverClick+metaF.reduce((s,r)=>s+(+r.click||0),0)+googleClick+ebayClick;
   return `<div class="sum-bar">
   <div class="sum-item"><div class="sum-lbl">📢 총 광고비</div><div class="sum-val" style="color:var(--indigo)">${fmt(totalAdCost)}</div></div>
   <div class="sum-item"><div class="sum-lbl">👁️ 총 노출</div><div class="sum-val">${fmtn(totalImp)}</div></div>
@@ -9809,12 +9815,20 @@ async function generateAIBriefing(forceNew=false){
   const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
   const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
   const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+  // 이베이
+  const ebayAdBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+  let ebayCostBr=0,ebayRevBr=0;
+  ebayAdBr.forEach(r=>{ebayCostBr+=+r.cost||0;ebayRevBr+=+r.purchase_amount||0;});
+  // 구글
+  const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+  let googleCostBr=0,googleRevBr=0;
+  googleBr.forEach(r=>{googleCostBr+=+r.cost||0;if(r.campaign_status!=='전환상세')googleRevBr+=+r.conv_value||0;});
 
   try{
     // 데이터 기반 자동 브리핑 생성
     const lines=[];
-    const totalCostAll=naverCost+metaCost+gfaCost;
-    const totalRev=naverRev+gfaRev+stNetRev;
+    const totalCostAll=naverCost+metaCost+gfaCost+ebayCostBr+googleCostBr;
+    const totalRev=naverRev+gfaRev+stNetRev+ebayRevBr+googleRevBr;
     const overallRoas=totalCostAll>0?((totalRev/totalCostAll)*100).toFixed(1):'0';
 
     // 1. 성과 요약
@@ -9980,6 +9994,10 @@ async function renderCharts(){
   const googleC2 = window[`_google_${ck2}_${fromM2}_${toM2}`]||[];
   let googleCost2=0,googleRev2=0;
   googleC2.forEach(r=>{googleCost2+=+r.cost||0;if(r.campaign_status!=='전환상세')googleRev2+=+r.conv_value||0;});
+  // 이베이
+  const ebayAd2 = window[`_ebay_ads_${ck2}_${fromM2}_${toM2}`]||[];
+  let ebayCost2=0,ebayRev2=0;
+  ebayAd2.forEach(r=>{ebayCost2+=+r.cost||0;ebayRev2+=+r.purchase_amount||0;});
 
   // 데이터 있는 채널만 표시
   const channels=[];
@@ -9987,6 +10005,7 @@ async function renderCharts(){
   if(gfaCost2||gfaRev2) channels.push({name:'GFA',cost:gfaCost2,rev:gfaRev2});
   if(metaCost2||metaRev2) channels.push({name:'META',cost:metaCost2,rev:metaRev2});
   if(googleCost2||googleRev2) channels.push({name:'구글',cost:googleCost2,rev:googleRev2});
+  if(ebayCost2||ebayRev2) channels.push({name:'이베이',cost:ebayCost2,rev:ebayRev2});
   if(stNetRev2) channels.push({name:'스토어',cost:0,rev:stNetRev2});
 
   mk('combinedBar',{type:'bar',data:{
