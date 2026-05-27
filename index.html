@@ -1232,6 +1232,8 @@ function initApp(restorePage){
   // 알림 뱃지 초기화 + 주기적 업데이트 (60초마다)
   setTimeout(updateAlertBadge, 3000);
   setInterval(updateAlertBadge, 60000);
+  setTimeout(updateKpiBadge, 3500);
+  setTimeout(updateWorkLogBadge, 4000);
 }
 /* ── Supabase 계정 목록 로드 ── */
 async function loadClientsFromSupabase(){
@@ -1318,13 +1320,13 @@ function renderClientNav(){
     <div class="ni" id="ni-input" onclick="go('input',this)"><span class="ic">📥</span>파일 관리</div>
     <div class="nsec">모니터링</div>
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
-    <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
-    <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
+    <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표<span class="nbadge nb-g" id="kpiBadge" style="display:none">0</span></div>
+    <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그<span class="nbadge nb-g" id="workLogBadge" style="display:none">0</span></div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
     <div class="ni" id="ni-req" onclick="go('req',this)"><span class="ic">📋</span>요청 관리</div>`;
-} 
+}
 function renderAdminNav(){
   document.getElementById('navMenu').innerHTML=`
     <div class="nsec">관리자</div>
@@ -1348,7 +1350,8 @@ function renderAdminNav(){
     <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
-    <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>`;
+    <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
+    <div class="ni" id="ni-req" onclick="go('req',this)"><span class="ic">📋</span>요청 관리</div>`;
 }
 function setActive(id){
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -9143,8 +9146,52 @@ async function updateAlertBadge(){
     badge.style.display=cnt>0?'inline-block':'none';
   }catch(e){}
 }
+async function updateKpiBadge(){
+  if(currentUser?.role==='admin')return;
+  const ck=currentUser?.id||'';
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false&select=id`,{headers:h});
+    const rows=await res.json();
+    const badge=document.getElementById('kpiBadge');
+    if(!badge)return;
+    const cnt=Array.isArray(rows)?rows.length:0;
+    badge.textContent=cnt;
+    badge.style.display=cnt>0?'inline-block':'none';
+  }catch(e){
+    // is_read 컬럼 없으면 전체 카운트
+    try{
+      const res2=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&select=id`,{headers:h});
+      const rows2=await res2.json();
+      const badge2=document.getElementById('kpiBadge');
+      if(!badge2)return;
+      const cnt2=Array.isArray(rows2)?rows2.length:0;
+      badge2.textContent=cnt2;
+      badge2.style.display=cnt2>0?'inline-block':'none';
+    }catch(e2){}
+  }
+}
 
+async function updateWorkLogBadge(){
+  if(currentUser?.role==='admin')return;
+  const ck=currentUser?.id||'';
+  if(!ck)return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    // 최근 7일 이내 작업 로그 카운트
+    const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/work_logs?client_key=eq.${encodeURIComponent(ck)}&created_at=gte.${weekAgo}&select=id`,{headers:h});
+    const rows=await res.json();
+    const badge=document.getElementById('workLogBadge');
+    if(!badge)return;
+    const cnt=Array.isArray(rows)?rows.length:0;
+    badge.textContent=cnt;
+    badge.style.display=cnt>0?'inline-block':'none';
+  }catch(e){}
+}
 /* ════════════════════════════════════════
+   
    작업 로그
 ════════════════════════════════════════ */
 const WL_CATEGORIES=[
