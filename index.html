@@ -8138,15 +8138,14 @@ function openAddReq(){
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">플랫폼</label>
           <select id="rq-platform" class="fi">
             ${(()=>{
-              const ck2=currentUser?.role==='admin'?(activeClientId||''):(currentUser?.id||'');
-              const fm=currentDateRange?.from?.slice(0,7)||currentReportMonth;
-              const tm=currentDateRange?.to?.slice(0,7)||currentReportMonth;
+              const f=_clientDataFlags||{};
               const opts=[];
-              if(REPORT_DATA[currentReportMonth]?.kpi?.totalCost>0||REPORT_DATA[currentReportMonth]?.kpi?.totalImp>0) opts.push('네이버');
-              if(REPORT_DATA[currentReportMonth]?.gfa?.totalCost>0) opts.push('GFA');
-              if((window['_meta_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('Meta');
-              if((window['_google_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('Google');
-              if((window['_ebay_ads_'+ck2+'_'+fm+'_'+tm]||[]).length>0||(window['_ebay_prod_'+ck2+'_'+fm+'_'+tm]||[]).length>0) opts.push('이베이');
+              if(f.has_naver) opts.push('네이버');
+              if(f.has_gfa) opts.push('GFA');
+              if(f.has_meta) opts.push('Meta');
+              if(f.has_google) opts.push('Google');
+              if(f.has_store) opts.push('스마트스토어');
+              if(f.has_ebay) opts.push('이베이');
               opts.push('기타');
               return opts.map(o=>'<option>'+o+'</option>').join('');
             })()}
