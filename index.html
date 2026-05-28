@@ -10110,110 +10110,85 @@ async function generateAIBriefing(forceNew=false){
     const totalRev=naverRev+gfaRev+stNetRev+ebayRevBr+googleRevBr;
     const overallRoas=totalCostAll>0?((totalRev/totalCostAll)*100).toFixed(1):'0';
 
-    // 1. 성과 요약
-    lines.push(`<p><b>📊 이번 기간 성과 요약</b><br>`);
+    // 채널별 한줄 요약 데이터
+    const _s=v=>'₩'+Math.round(v).toLocaleString();
+    const _r=(rev,cost)=>cost>0?(rev/cost*100).toFixed(1):'0';
+
+    lines.push(`<div style="margin-bottom:10px"><b>📊 채널별 성과 요약</b></div>`);
     if(totalCostAll>0){
-      lines.push(`이번 기간 전체 광고비 ${Math.round(totalCostAll).toLocaleString()}원을 집행했습니다. `);
-      if(totalRev>0) lines.push(`전체 매출은 ${Math.round(totalRev).toLocaleString()}원이며, 통합 ROAS는 ${overallRoas}%입니다. `);
-      else lines.push(`아직 전환 매출이 발생하지 않았습니다. `);
-      // 채널별 상세
-      const chDetail=[];
+      lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">`);
+      lines.push(`<span style="background:#EEF2FF;color:#4F46E5;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">총 광고비 ${_s(totalCostAll)}</span>`);
+      lines.push(`<span style="background:#F0FDF4;color:#16A34A;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">총 매출 ${_s(totalRev)}</span>`);
+      lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">통합 ROAS ${overallRoas}%</span>`);
+      lines.push(`</div>`);
+      lines.push(`<table style="width:100%;font-size:12px;border-collapse:collapse">`);
+      lines.push(`<tr style="background:var(--surface);font-weight:600;color:var(--text2)"><td style="padding:6px 10px;border-bottom:1px solid var(--border)">채널</td><td style="padding:6px 10px;border-bottom:1px solid var(--border)">광고비</td><td style="padding:6px 10px;border-bottom:1px solid var(--border)">매출</td><td style="padding:6px 10px;border-bottom:1px solid var(--border)">ROAS</td><td style="padding:6px 10px;border-bottom:1px solid var(--border)">핵심 지표</td></tr>`);
       if(naverCost>0){
-        const nRoas=(naverRev/naverCost*100).toFixed(1);
-        const nCtr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
-        chDetail.push(`네이버 검색광고는 광고비 ${Math.round(naverCost).toLocaleString()}원 대비 매출 ${Math.round(naverRev).toLocaleString()}원으로 ROAS ${nRoas}%를 기록했고, CTR은 ${nCtr}%입니다`);
+        const nR=_r(naverRev,naverCost);const nCtr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
+        const rc=+nR>=200?'color:#16A34A':+nR<100?'color:#DC2626':'';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🟢 네이버</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(naverCost)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(naverRev)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:600;${rc}">${nR}%</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">CTR ${nCtr}%</td></tr>`);
       }
       if(gfaCost>0){
-        const gRoas=gfaCost>0?(gfaRev/gfaCost*100).toFixed(1):'0';
-        chDetail.push(`GFA는 광고비 ${Math.round(gfaCost).toLocaleString()}원, 매출 ${Math.round(gfaRev).toLocaleString()}원으로 ROAS ${gRoas}%입니다`);
+        const gR=_r(gfaRev,gfaCost);
+        const rc=+gR>=200?'color:#16A34A':+gR<100?'color:#DC2626':'';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🔵 GFA</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(gfaCost)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(gfaRev)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:600;${rc}">${gR}%</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td></tr>`);
       }
       if(metaCost>0){
-        const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
-        const mCpc=metaClick>0?Math.round(metaCost/metaClick):0;
-        const mFreq=metaReach>0?(metaImp/metaReach).toFixed(1):'0';
-        chDetail.push(`META 광고는 광고비 ${Math.round(metaCost).toLocaleString()}원, CTR ${mCtr}%, CPC ${mCpc.toLocaleString()}원, 도달 ${metaReach.toLocaleString()}명, 빈도 ${mFreq}회입니다`);
+        const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';const mCpc=metaClick>0?Math.round(metaCost/metaClick):0;const mFreq=metaReach>0?(metaImp/metaReach).toFixed(1):'0';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🔵 META</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(metaCost)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">CTR ${mCtr}% · CPC ${_s(mCpc)} · 빈도 ${mFreq}회</td></tr>`);
       }
       if(googleCostBr>0){
-        const gglRoas=googleCostBr>0?(googleRevBr/googleCostBr*100).toFixed(1):'0';
-        chDetail.push(`구글 광고는 광고비 ${Math.round(googleCostBr).toLocaleString()}원, 전환매출 ${Math.round(googleRevBr).toLocaleString()}원으로 ROAS ${gglRoas}%입니다`);
+        const ggR=_r(googleRevBr,googleCostBr);
+        const rc=+ggR>=200?'color:#16A34A':+ggR<100?'color:#DC2626':'';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🔴 구글</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(googleCostBr)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(googleRevBr)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:600;${rc}">${ggR}%</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td></tr>`);
       }
       if(ebayCostBr>0){
-        const ebRoas=ebayCostBr>0?(ebayRevBr/ebayCostBr*100).toFixed(1):'0';
-        chDetail.push(`이베이는 광고비 ${Math.round(ebayCostBr).toLocaleString()}원, 매출 ${Math.round(ebayRevBr).toLocaleString()}원으로 ROAS ${ebRoas}%입니다`);
+        const ebR=_r(ebayRevBr,ebayCostBr);
+        const rc=+ebR>=200?'color:#16A34A':+ebR<100?'color:#DC2626':'';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🟤 이베이</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(ebayCostBr)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(ebayRevBr)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:600;${rc}">${ebR}%</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td></tr>`);
       }
-      if(chDetail.length) lines.push(`<br>${chDetail.join('. ')}. `);
       if(stRev>0){
-        const refundRate=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
-        lines.push(`<br>스마트스토어는 총 결제금액 ${Math.round(stRev).toLocaleString()}원, 환불금액 ${Math.round(stRefund).toLocaleString()}원(환불률 ${refundRate}%)이며, 실매출은 ${Math.round(stNetRev).toLocaleString()}원입니다. 총 ${stOrders.toLocaleString()}건 주문, 객단가는 ${stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0'}원입니다.`);
+        const refRate=(stRefund/stRev*100).toFixed(1);const avgP=stOrders>0?Math.round(stRev/stOrders):0;
+        const rc2=+refRate>10?'color:#DC2626':'color:#16A34A';
+        lines.push(`<tr><td style="padding:5px 10px;border-bottom:1px solid var(--border)">🟠 스토어</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">${_s(stRev-stRefund)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">-</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">환불률 <span style="${rc2};font-weight:600">${refRate}%</span> · 객단가 ${_s(avgP)}</td></tr>`);
       }
+      lines.push(`</table>`);
     } else {
-      lines.push(`이번 기간에 집행된 광고 데이터가 없습니다.`);
+      lines.push(`<div style="color:var(--text3);padding:10px 0">이번 기간에 집행된 광고 데이터가 없습니다.</div>`);
     }
-    lines.push(`</p>`);
 
-    // 2. 주의 포인트
-    lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-    let hasW=false;
-    if(naverCost>0&&naverRev/naverCost<1){
-      const nRoas2=(naverRev/naverCost*100).toFixed(1);
-      lines.push(`네이버 검색광고 ROAS가 ${nRoas2}%로 광고비 대비 매출이 부족합니다. 저효율 키워드를 점검하고, 전환이 낮은 캠페인의 예산을 재배분하는 것을 권장합니다.<br>`);
-      hasW=true;
-    }
-    if(naverCost>0&&kpi.totalImp>0&&(kpi.totalClick/kpi.totalImp)<0.005){
-      lines.push(`네이버 검색광고 CTR이 ${(kpi.totalClick/kpi.totalImp*100).toFixed(2)}%로 매우 낮습니다. 광고 문구와 소재를 점검하고, 노출 대비 클릭률을 높일 수 있는 제목/설명 A/B 테스트를 추천합니다.<br>`);
-      hasW=true;
-    }
-    if(gfaCost>0&&gfaRev/gfaCost<1){
-      lines.push(`GFA ROAS가 ${(gfaRev/gfaCost*100).toFixed(1)}%로 손익분기 미만입니다. 게재위치별 성과를 점검하고 저효율 지면의 예산을 축소하는 것을 검토해주세요.<br>`);
-      hasW=true;
-    }
-    if(metaCost>0&&metaImp>0&&metaClick/metaImp<0.01){
-      lines.push(`META 광고 CTR이 ${(metaClick/metaImp*100).toFixed(2)}%로 1% 미만입니다. 타겟 오디언스의 반응이 낮은 소재일 가능성이 있으므로, 새로운 크리에이티브로 교체하거나 타겟팅을 재설정하는 것을 검토해주세요.<br>`);
-      hasW=true;
-    }
-    if(metaCost>0&&metaReach>0&&metaImp/metaReach>3){
-      lines.push(`META 광고 빈도가 ${(metaImp/metaReach).toFixed(1)}회로 높아 같은 사용자에게 반복 노출되고 있습니다. 광고 피로도가 쌓이면 CTR이 하락하고 CPC가 상승하므로, 소재 로테이션이나 오디언스 확장을 추천합니다.<br>`);
-      hasW=true;
-    }
-    if(googleCostBr>0&&googleRevBr/googleCostBr<1){
-      lines.push(`구글 광고 ROAS가 ${(googleRevBr/googleCostBr*100).toFixed(1)}%로 수익성이 낮습니다. 전환 키워드를 재점검하고 입찰 전략을 조정해주세요.<br>`);
-      hasW=true;
-    }
-    if(stRev>0&&stRefund/stRev>0.1){
-      lines.push(`스마트스토어 환불률이 ${(stRefund/stRev*100).toFixed(1)}%로 10%를 초과합니다. 상품 품질, 상세페이지 설명 일치 여부, 배송 상태를 점검하여 환불 원인을 파악하는 것이 필요합니다.<br>`);
-      hasW=true;
-    }
-    if(stRev>0&&stOrders>0&&stRev/stOrders<20000){
-      lines.push(`스마트스토어 객단가가 ${Math.round(stRev/stOrders).toLocaleString()}원으로 낮은 편입니다. 묶음 할인이나 추가 구매 유도 전략으로 객단가를 높이는 것을 검토해보세요.<br>`);
-      hasW=true;
-    }
-    if(!hasW) lines.push(`현재 전 채널에서 특별한 이상 징후 없이 안정적으로 운영되고 있습니다. 주요 지표가 정상 범위 내에 있으며, 현 운영 전략을 유지하면서 성과 추이를 모니터링하시면 됩니다.`);
-    lines.push(`</p>`);
+    // 주의 포인트 — 한줄씩
+    const warns=[];
+    if(naverCost>0&&naverRev/naverCost<1) warns.push(`네이버 ROAS ${(naverRev/naverCost*100).toFixed(1)}% — 저효율 키워드 점검 필요`);
+    if(naverCost>0&&kpi.totalImp>0&&(kpi.totalClick/kpi.totalImp)<0.005) warns.push(`네이버 CTR ${(kpi.totalClick/kpi.totalImp*100).toFixed(2)}% — 소재 문구 개선 필요`);
+    if(gfaCost>0&&gfaRev/gfaCost<1) warns.push(`GFA ROAS ${(gfaRev/gfaCost*100).toFixed(1)}% — 저효율 지면 예산 축소 검토`);
+    if(metaCost>0&&metaImp>0&&metaClick/metaImp<0.01) warns.push(`META CTR ${(metaClick/metaImp*100).toFixed(2)}% — 크리에이티브 교체 권장`);
+    if(metaCost>0&&metaReach>0&&metaImp/metaReach>3) warns.push(`META 빈도 ${(metaImp/metaReach).toFixed(1)}회 — 소재 로테이션 필요`);
+    if(googleCostBr>0&&googleRevBr/googleCostBr<1) warns.push(`구글 ROAS ${(googleRevBr/googleCostBr*100).toFixed(1)}% — 전환 키워드 재점검`);
+    if(stRev>0&&stRefund/stRev>0.1) warns.push(`스토어 환불률 ${(stRefund/stRev*100).toFixed(1)}% — 상품/배송 점검 시급`);
+    if(stRev>0&&stOrders>0&&stRev/stOrders<20000) warns.push(`스토어 객단가 ${Math.round(stRev/stOrders).toLocaleString()}원 — 묶음 할인 전략 검토`);
 
-    // 3. 액션 제안
-    lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-    let hasA=false;
-    if(naverCost>0&&naverRev/naverCost>=3){
-      lines.push(`네이버 검색광고가 ROAS ${(naverRev/naverCost*100).toFixed(1)}%로 우수한 성과를 보이고 있습니다. 전환이 잘 되는 상위 키워드를 중심으로 예산 증액을 검토하고, 유사 키워드 확장도 추천합니다.<br>`);
-      hasA=true;
-    } else if(naverCost>0){
-      lines.push(`네이버 검색광고 효율 개선을 위해 전환율이 낮은 캠페인을 정리하고, 성과가 좋은 키워드에 예산을 집중 배분해보세요. 소재 문구 A/B 테스트도 함께 진행하면 효과적입니다.<br>`);
-      hasA=true;
+    lines.push(`<div style="margin-top:12px"><b>⚠️ 주의 포인트</b></div>`);
+    if(warns.length){
+      lines.push(`<div style="margin-top:6px">${warns.map((w,i)=>`<div style="font-size:12px;padding:4px 0;color:var(--text2)"><span style="color:#DC2626;font-weight:600">${i+1}.</span> ${w}</div>`).join('')}</div>`);
+    } else {
+      lines.push(`<div style="font-size:12px;color:var(--text3);padding:4px 0">전 채널 정상 범위 내 안정적 운영 중</div>`);
     }
-    if(metaCost>0){
-      lines.push(`META 광고는 현재 성과 상위 소재를 파악하여 유사 크리에이티브를 확장 제작하는 것을 추천합니다. 리타겟팅 캠페인과 신규 유입 캠페인의 예산 비율도 점검해보세요.<br>`);
-      hasA=true;
+
+    // 액션 제안 — 한줄씩
+    const acts=[];
+    if(naverCost>0&&naverRev/naverCost>=3) acts.push(`네이버 — 전환 상위 키워드 예산 증액 및 유사 키워드 확장`);
+    else if(naverCost>0) acts.push(`네이버 — 저효율 캠페인 정리, 성과 키워드에 예산 집중`);
+    if(metaCost>0) acts.push(`META — 성과 상위 소재 확장, 리타겟팅 예산 비율 점검`);
+    if(googleCostBr>0) acts.push(`구글 — 전환 키워드 최적화, 랜딩페이지 연결 확인`);
+    if(stRev>0) acts.push(`스토어 — 객단가 ${stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0'}원, 번들 상품/리뷰 관리 강화`);
+
+    lines.push(`<div style="margin-top:12px"><b>✅ 다음 액션 제안</b></div>`);
+    if(acts.length){
+      lines.push(`<div style="margin-top:6px">${acts.map((a,i)=>`<div style="font-size:12px;padding:4px 0;color:var(--text2)"><span style="color:#16A34A;font-weight:600">${i+1}.</span> ${a}</div>`).join('')}</div>`);
+    } else {
+      lines.push(`<div style="font-size:12px;color:var(--text3);padding:4px 0">데이터 업로드 후 채널별 맞춤 액션 제안</div>`);
     }
-    if(googleCostBr>0){
-      lines.push(`구글 광고는 전환 키워드 중심으로 캠페인을 최적화하고, 검색 의도에 맞는 랜딩페이지 연결 여부를 확인해주세요.<br>`);
-      hasA=true;
-    }
-    if(stRev>0&&stOrders>0){
-      lines.push(`스마트스토어 객단가가 ${Math.round(stRev/stOrders).toLocaleString()}원입니다. 번들 상품 구성이나 사은품 증정 전략으로 객단가를 높이고, 리뷰 관리를 통해 전환율을 개선해보세요.<br>`);
-      hasA=true;
-    }
-    if(!hasA) lines.push(`광고 데이터를 업로드하시면 각 채널별 맞춤 액션을 제안해드릴 수 있습니다. 파일 관리 메뉴에서 데이터를 업로드해주세요.`);
-    lines.push(`</p>`);
 
     const text=lines.join('');
     el.innerHTML=text;
@@ -10698,149 +10673,106 @@ async function generateChannelBriefing(channel, forceNew=false){
   const toMonth=to.slice(0,7);
   const lines=[];
 
+  const _s=v=>'₩'+Math.round(v).toLocaleString();
+    const _r=(rev,cost)=>cost>0?(rev/cost*100).toFixed(1):'0';
+    const _rc=r=>+r>=200?'color:#16A34A;font-weight:600':+r<100?'color:#DC2626;font-weight:600':'font-weight:600';
+
   try{
     if(channel==='naver'){
-      const cost=kpi.totalCost||0;
-      const rev=kpi.totalPurchaseRev||0;
-      const imp=kpi.totalImp||0;
-      const click=kpi.totalClick||0;
-      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
-      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
-      const cpc=click>0?Math.round(cost/click):0;
-      const gCost=gfaData.totalCost||0;
-      const gRev=gfaData.totalRev||0;
-      const gRoas=gCost>0?(gRev/gCost*100).toFixed(1):'0';
+      const cost=kpi.totalCost||0,rev=kpi.totalPurchaseRev||0,imp=kpi.totalImp||0,click=kpi.totalClick||0;
+      const roas=_r(rev,cost),ctr=imp>0?(click/imp*100).toFixed(2):'0',cpc=click>0?Math.round(cost/click):0;
+      const gCost=gfaData.totalCost||0,gRev=gfaData.totalRev||0,gRoas=_r(gRev,gCost);
+      const channels=d?.channels||[];
+      const pcCh=channels.filter(c=>c.name.includes('PC')),moCh=channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일'));
+      const pcRoas=_r(pcCh.reduce((s,c)=>s+c.rev,0),pcCh.reduce((s,c)=>s+c.cost,0));
+      const moRoas=_r(moCh.reduce((s,c)=>s+c.rev,0),moCh.reduce((s,c)=>s+c.cost,0));
 
-      lines.push(`<p><b>📊 네이버 검색광고 성과 요약</b><br>`);
+      lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
       if(cost>0){
-        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원 집행, 매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다. `);
-        lines.push(`노출 ${imp.toLocaleString()}회, 클릭 ${click.toLocaleString()}회, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원입니다.`);
-        if(gCost>0) lines.push(`<br>GFA는 광고비 ${Math.round(gCost).toLocaleString()}원, 매출 ${Math.round(gRev).toLocaleString()}원, ROAS ${gRoas}%입니다.`);
-      } else { lines.push(`이번 기간 네이버 검색광고 데이터가 없습니다.`); }
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-      let hasW=false;
-      if(cost>0&&+roas<100){lines.push(`ROAS ${roas}%로 광고비 대비 매출이 부족합니다. 저효율 키워드를 점검하고 전환이 낮은 캠페인의 예산을 재배분하세요.<br>`);hasW=true;}
-      if(cost>0&&+ctr<0.5){lines.push(`CTR ${ctr}%로 매우 낮습니다. 광고 문구와 소재 A/B 테스트를 추천합니다.<br>`);hasW=true;}
-      if(gCost>0&&+gRoas<100){lines.push(`GFA ROAS ${gRoas}%로 손익분기 미만입니다. 게재위치별 성과를 점검하세요.<br>`);hasW=true;}
-      if(!hasW) lines.push(`현재 특별한 이상 징후 없이 안정적으로 운영되고 있습니다.`);
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-      if(cost>0&&+roas>=300) lines.push(`ROAS 우수 — 전환 상위 키워드 예산 증액 및 유사 키워드 확장을 검토하세요.`);
-      else if(cost>0) lines.push(`전환율이 낮은 캠페인을 정리하고, 성과 좋은 키워드에 예산을 집중 배분해보세요. 소재 문구 A/B 테스트도 추천합니다.`);
-      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
-      lines.push(`</p>`);
+        lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
+        lines.push(`<span style="background:#e6f9ef;color:#03C75A;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(cost)}</span>`);
+        lines.push(`<span style="background:#e6f9ef;color:#03C75A;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">매출 ${_s(rev)}</span>`);
+        lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">ROAS ${roas}%</span>`);
+        lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">CTR ${ctr}% · CPC ${_s(cpc)}</span>`);
+        lines.push(`</div>`);
+        lines.push(`<table style="width:100%;font-size:12px;border-collapse:collapse">`);
+        lines.push(`<tr style="background:var(--surface);font-weight:600"><td style="padding:5px 10px;border-bottom:1px solid var(--border)">구분</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">ROAS</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">비고</td></tr>`);
+        if(pcCh.length) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">💻 PC</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(pcRoas)}">${pcRoas}%</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">CTR ${pcCh.reduce((s,c)=>s+c.imp,0)>0?(pcCh.reduce((s,c)=>s+c.click,0)/pcCh.reduce((s,c)=>s+c.imp,0)*100).toFixed(2):'0'}%</td></tr>`);
+        if(moCh.length) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">📱 모바일</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(moRoas)}">${moRoas}%</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">CTR ${moCh.reduce((s,c)=>s+c.imp,0)>0?(moCh.reduce((s,c)=>s+c.click,0)/moCh.reduce((s,c)=>s+c.imp,0)*100).toFixed(2):'0'}%</td></tr>`);
+        if(gCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🔵 GFA</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(gRoas)}">${gRoas}%</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">광고비 ${_s(gCost)}</td></tr>`);
+        lines.push(`</table>`);
+      } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
 
     } else if(channel==='store'){
       const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
       const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
-      const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
-      const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
-      const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
-      const stNetRev=stRev-stRefund;
-      const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
-      const avgP=stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0';
+      const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0),stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0),stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+      const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0',avgP=stOrders>0?Math.round(stRev/stOrders):0;
 
-      lines.push(`<p><b>📊 스마트스토어 성과 요약</b><br>`);
+      lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
       if(stRev>0){
-        lines.push(`총 결제금액 ${Math.round(stRev).toLocaleString()}원, 환불금액 ${Math.round(stRefund).toLocaleString()}원(환불률 ${refR}%), 실매출 ${Math.round(stNetRev).toLocaleString()}원입니다. `);
-        lines.push(`총 ${stOrders.toLocaleString()}건 주문, 객단가 ${avgP}원입니다.`);
-      } else { lines.push(`이번 기간 스마트스토어 데이터가 없습니다.`); }
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-      let hasW=false;
-      if(stRev>0&&+refR>10){lines.push(`환불률 ${refR}%로 10%를 초과합니다. 상품 품질, 상세페이지 설명, 배송 상태를 점검하세요.<br>`);hasW=true;}
-      if(stOrders>0&&stRev/stOrders<20000){lines.push(`객단가 ${avgP}원으로 낮은 편입니다. 묶음 할인이나 추가 구매 유도 전략을 검토하세요.<br>`);hasW=true;}
-      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-      if(stRev>0) lines.push(`번들 상품 구성이나 사은품 전략으로 객단가를 높이고, 리뷰 관리를 통해 전환율을 개선해보세요.`);
-      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
-      lines.push(`</p>`);
+        lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
+        lines.push(`<span style="background:#fff2ec;color:#FF6B35;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">결제금액 ${_s(stRev)}</span>`);
+        lines.push(`<span style="background:#fff2ec;color:#FF6B35;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">실매출 ${_s(stRev-stRefund)}</span>`);
+        lines.push(`<span style="background:${+refR>10?'#FEE2E2':'#D1FAE5'};color:${+refR>10?'#DC2626':'#059669'};font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">환불률 ${refR}%</span>`);
+        lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">주문 ${stOrders.toLocaleString()}건 · 객단가 ${_s(avgP)}</span>`);
+        lines.push(`</div>`);
+      } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
 
     } else if(channel==='meta'){
       const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
       const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
-      const cost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
-      const imp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
-      const click=metaF.reduce((s,r)=>s+(+r.click||0),0);
-      const reach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
-      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
-      const cpc=click>0?Math.round(cost/click):0;
-      const freq=reach>0?(imp/reach).toFixed(1):'0';
+      const cost=metaF.reduce((s,r)=>s+(+r.cost||0),0),imp=metaF.reduce((s,r)=>s+(+r.imp||0),0),click=metaF.reduce((s,r)=>s+(+r.click||0),0),reach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+      const ctr=imp>0?(click/imp*100).toFixed(2):'0',cpc=click>0?Math.round(cost/click):0,freq=reach>0?(imp/reach).toFixed(1):'0';
 
-      lines.push(`<p><b>📊 META 광고 성과 요약</b><br>`);
+      lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
       if(cost>0){
-        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원입니다. `);
-        lines.push(`도달 ${reach.toLocaleString()}명, 노출 ${imp.toLocaleString()}회, 빈도 ${freq}회입니다.`);
-      } else { lines.push(`이번 기간 META 광고 데이터가 없습니다.`); }
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-      let hasW=false;
-      if(cost>0&&+ctr<1){lines.push(`CTR ${ctr}%로 1% 미만입니다. 타겟 반응이 낮은 소재일 수 있으므로 크리에이티브 교체를 검토하세요.<br>`);hasW=true;}
-      if(cost>0&&+freq>3){lines.push(`빈도 ${freq}회로 높아 광고 피로도가 쌓이고 있습니다. 소재 로테이션이나 오디언스 확장을 추천합니다.<br>`);hasW=true;}
-      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-      if(cost>0) lines.push(`성과 상위 소재를 파악하여 유사 크리에이티브를 확장하세요. 리타겟팅과 신규 유입 캠페인의 예산 비율도 점검해보세요.`);
-      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
-      lines.push(`</p>`);
+        lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
+        lines.push(`<span style="background:#EFF6FF;color:#1877F2;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(cost)}</span>`);
+        lines.push(`<span style="background:#EFF6FF;color:#1877F2;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">CTR ${ctr}% · CPC ${_s(cpc)}</span>`);
+        lines.push(`<span style="background:${+freq>3?'#FEE2E2':'#D1FAE5'};color:${+freq>3?'#DC2626':'#059669'};font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">빈도 ${freq}회</span>`);
+        lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">도달 ${reach.toLocaleString()}명 · 노출 ${imp.toLocaleString()}회</span>`);
+        lines.push(`</div>`);
+      } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
 
     } else if(channel==='google'){
       const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
-      let cost=0,rev=0,imp=0,click=0,conv=0;
-      googleBr.forEach(r=>{cost+=+r.cost||0;imp+=+r.imp||0;click+=+r.click||0;if(r.campaign_status!=='전환상세'){rev+=+r.conv_value||0;conv+=+r.conv||0;}});
-      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
-      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
-      const cpc=click>0?Math.round(cost/click):0;
+      let cost=0,rev=0,imp2=0,click2=0,conv=0;
+      googleBr.forEach(r=>{cost+=+r.cost||0;imp2+=+r.imp||0;click2+=+r.click||0;if(r.campaign_status!=='전환상세'){rev+=+r.conv_value||0;conv+=+r.conv||0;}});
+      const roas=_r(rev,cost),ctr=imp2>0?(click2/imp2*100).toFixed(2):'0',cpc=click2>0?Math.round(cost/click2):0;
 
-      lines.push(`<p><b>📊 구글 광고 성과 요약</b><br>`);
+      lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
       if(cost>0){
-        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, 전환매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다. `);
-        lines.push(`클릭 ${click.toLocaleString()}회, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원, 전환 ${conv.toFixed(0)}건입니다.`);
-      } else { lines.push(`이번 기간 구글 광고 데이터가 없습니다.`); }
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-      let hasW=false;
-      if(cost>0&&+roas<100){lines.push(`ROAS ${roas}%로 수익성이 낮습니다. 전환 키워드를 재점검하고 입찰 전략을 조정하세요.<br>`);hasW=true;}
-      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-      if(cost>0) lines.push(`전환 키워드 중심으로 캠페인을 최적화하고, 검색 의도에 맞는 랜딩페이지 연결 여부를 확인하세요.`);
-      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
-      lines.push(`</p>`);
+        lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
+        lines.push(`<span style="background:#FEF2F2;color:#EA4335;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(cost)}</span>`);
+        lines.push(`<span style="background:#FEF2F2;color:#EA4335;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">전환매출 ${_s(rev)}</span>`);
+        lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${_rc(roas)}">ROAS ${roas}%</span>`);
+        lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">CTR ${ctr}% · CPC ${_s(cpc)} · 전환 ${Math.round(conv)}건</span>`);
+        lines.push(`</div>`);
+      } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
 
     } else if(channel==='ebay'){
       const ebayAdBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
-      let cost=0,rev=0;
-      ebayAdBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;});
-      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+      let cost=0,rev=0,gmCost=0,gmRev=0,acCost=0,acRev=0;
+      ebayAdBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;if(r.platform==='gmarket'){gmCost+=+r.cost||0;gmRev+=+r.purchase_amount||0;}else{acCost+=+r.cost||0;acRev+=+r.purchase_amount||0;}});
+      const roas=_r(rev,cost),gmRoas=_r(gmRev,gmCost),acRoas=_r(acRev,acCost);
 
-      lines.push(`<p><b>📊 이베이 성과 요약</b><br>`);
+      lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
       if(cost>0){
-        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, 매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다.`);
-      } else { lines.push(`이번 기간 이베이 광고 데이터가 없습니다.`); }
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
-      if(cost>0&&+roas<100) lines.push(`ROAS ${roas}%로 효율 점검이 필요합니다.`);
-      else lines.push(`현재 안정적으로 운영되고 있습니다.`);
-      lines.push(`</p>`);
-
-      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
-      if(cost>0) lines.push(`플랫폼별(G마켓/옥션) 성과를 비교하여 효율 높은 쪽에 예산을 집중하세요.`);
-      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
-      lines.push(`</p>`);
+        lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
+        lines.push(`<span style="background:#FEF2F2;color:#E53935;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(cost)}</span>`);
+        lines.push(`<span style="background:#FEF2F2;color:#E53935;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">매출 ${_s(rev)}</span>`);
+        lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${_rc(roas)}">ROAS ${roas}%</span>`);
+        lines.push(`</div>`);
+        if(gmCost>0||acCost>0){
+          lines.push(`<table style="width:100%;font-size:12px;border-collapse:collapse">`);
+          lines.push(`<tr style="background:var(--surface);font-weight:600"><td style="padding:5px 10px;border-bottom:1px solid var(--border)">플랫폼</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">광고비</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">매출</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">ROAS</td></tr>`);
+          if(gmCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🟢 G마켓</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(gmCost)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(gmRev)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(gmRoas)}">${gmRoas}%</td></tr>`);
+          if(acCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🔴 옥션</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(acCost)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(acRev)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(acRoas)}">${acRoas}%</td></tr>`);
+          lines.push(`</table>`);
+        }
+      } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
     }
-
     const text=lines.join('');
     el.innerHTML=text||'<span style="color:var(--text3)">분석할 데이터가 없습니다.</span>';
     const now=new Date();
