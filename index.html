@@ -10753,22 +10753,33 @@ async function generateChannelBriefing(channel, forceNew=false){
 
     } else if(channel==='ebay'){
       const ebayAdBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
-      let cost=0,rev=0,gmCost=0,gmRev=0,acCost=0,acRev=0;
-      ebayAdBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;if(r.platform==='gmarket'){gmCost+=+r.cost||0;gmRev+=+r.purchase_amount||0;}else{acCost+=+r.cost||0;acRev+=+r.purchase_amount||0;}});
-      const roas=_r(rev,cost),gmRoas=_r(gmRev,gmCost),acRoas=_r(acRev,acCost);
+      const ebayProdBr=window[`_ebay_prod_${ck}_${fromMonth}_${toMonth}`]||[];
+      let adCost=0,adRev=0,gmCost=0,gmRev=0,acCost=0,acRev=0;
+      ebayAdBr.forEach(r=>{adCost+=+r.cost||0;adRev+=+r.purchase_amount||0;if(r.platform==='gmarket'){gmCost+=+r.cost||0;gmRev+=+r.purchase_amount||0;}else{acCost+=+r.cost||0;acRev+=+r.purchase_amount||0;}});
+      let prodRev=0,gmProdRev=0,acProdRev=0,prodOrders=0;
+      ebayProdBr.forEach(r=>{prodRev+=+r.sales_amount||0;prodOrders+=+r.order_count||+r.quantity||0;if(r.platform==='gmarket')gmProdRev+=+r.sales_amount||0;else acProdRev+=+r.sales_amount||0;});
+      const totalRev=adRev||prodRev;
+      const hasData=adCost>0||prodRev>0;
+      const roas=_r(adRev,adCost);
 
       lines.push(`<div style="margin-bottom:8px"><b>📊 데이터 요약</b></div>`);
-      if(cost>0){
+      if(hasData){
         lines.push(`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`);
-        lines.push(`<span style="background:#FEF2F2;color:#E53935;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(cost)}</span>`);
-        lines.push(`<span style="background:#FEF2F2;color:#E53935;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">매출 ${_s(rev)}</span>`);
-        lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${_rc(roas)}">ROAS ${roas}%</span>`);
+        if(prodRev>0){
+          lines.push(`<span style="background:#FEF2F2;color:#E53935;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">총매출 ${_s(prodRev)}</span>`);
+          if(prodOrders>0) lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">주문 ${prodOrders.toLocaleString()}건</span>`);
+          if(prodOrders>0) lines.push(`<span style="background:#EEF2FF;color:#6366F1;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">객단가 ${_s(Math.round(prodRev/prodOrders))}</span>`);
+        }
+        if(adCost>0){
+          lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">광고비 ${_s(adCost)}</span>`);
+          lines.push(`<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${_rc(roas)}">광고ROAS ${roas}%</span>`);
+        }
         lines.push(`</div>`);
-        if(gmCost>0||acCost>0){
+        if(gmProdRev>0||acProdRev>0||gmCost>0||acCost>0){
           lines.push(`<table style="width:100%;font-size:12px;border-collapse:collapse">`);
-          lines.push(`<tr style="background:var(--surface);font-weight:600"><td style="padding:5px 10px;border-bottom:1px solid var(--border)">플랫폼</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">광고비</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">매출</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">ROAS</td></tr>`);
-          if(gmCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🟢 G마켓</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(gmCost)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(gmRev)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(gmRoas)}">${gmRoas}%</td></tr>`);
-          if(acCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🔴 옥션</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(acCost)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(acRev)}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${_rc(acRoas)}">${acRoas}%</td></tr>`);
+          lines.push(`<tr style="background:var(--surface);font-weight:600"><td style="padding:5px 10px;border-bottom:1px solid var(--border)">플랫폼</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">매출</td>${adCost>0?'<td style="padding:5px 10px;border-bottom:1px solid var(--border)">광고비</td><td style="padding:5px 10px;border-bottom:1px solid var(--border)">광고ROAS</td>':''}</tr>`);
+          if(gmProdRev>0||gmCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🟢 G마켓</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(gmProdRev||gmRev)}</td>${adCost>0?`<td style="padding:4px 10px;border-bottom:1px solid var(--border)">${gmCost>0?_s(gmCost):'-'}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${gmCost>0?_rc(_r(gmRev,gmCost)):''}">${gmCost>0?_r(gmRev,gmCost)+'%':'-'}</td>`:''}</tr>`);
+          if(acProdRev>0||acCost>0) lines.push(`<tr><td style="padding:4px 10px;border-bottom:1px solid var(--border)">🔴 옥션</td><td style="padding:4px 10px;border-bottom:1px solid var(--border)">${_s(acProdRev||acRev)}</td>${adCost>0?`<td style="padding:4px 10px;border-bottom:1px solid var(--border)">${acCost>0?_s(acCost):'-'}</td><td style="padding:4px 10px;border-bottom:1px solid var(--border);${acCost>0?_rc(_r(acRev,acCost)):''}">${acCost>0?_r(acRev,acCost)+'%':'-'}</td>`:''}</tr>`);
           lines.push(`</table>`);
         }
       } else { lines.push(`<div style="color:var(--text3)">이번 기간 데이터가 없습니다.</div>`); }
@@ -10980,31 +10991,37 @@ async function generateChannelInsights(ck, channel, briefingLines){
 
   } else if(channel==='ebay'){
     const ebayBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
-    let cost=0,rev=0,gmCost=0,gmRev=0,acCost=0,acRev=0;
-    ebayBr.forEach(r=>{
-      cost+=+r.cost||0;rev+=+r.purchase_amount||0;
-      if(r.platform==='gmarket'){gmCost+=+r.cost||0;gmRev+=+r.purchase_amount||0;}
-      else{acCost+=+r.cost||0;acRev+=+r.purchase_amount||0;}
-    });
-    const roas=cost>0?(rev/cost*100).toFixed(1):'0';
-    const gmRoas=gmCost>0?(gmRev/gmCost*100).toFixed(1):'0';
-    const acRoas=acCost>0?(acRev/acCost*100).toFixed(1):'0';
-    if(cost>0){
+    const ebayProdBr=window[`_ebay_prod_${ck}_${fromMonth}_${toMonth}`]||[];
+    let adCost=0,adRev=0,gmProdRev=0,acProdRev=0,prodRev=0,prodOrders=0;
+    ebayBr.forEach(r=>{adCost+=+r.cost||0;adRev+=+r.purchase_amount||0;});
+    ebayProdBr.forEach(r=>{prodRev+=+r.sales_amount||0;prodOrders+=+r.order_count||+r.quantity||0;if(r.platform==='gmarket')gmProdRev+=+r.sales_amount||0;else acProdRev+=+r.sales_amount||0;});
+    const hasData=adCost>0||prodRev>0;
+    if(hasData){
       const op=[];
-      op.push(`1. 전체 ROAS ${roas}%${+roas>=200?'로 양호':'로 개선 필요'}합니다.`);
-      if(gmCost>0&&acCost>0){
-        if(+gmRoas>+acRoas) op.push(`2. G마켓 ROAS ${gmRoas}%로 옥션(${acRoas}%) 대비 효율적입니다. G마켓 예산 비중 확대를 권장합니다.`);
-        else op.push(`2. 옥션 ROAS ${acRoas}%로 G마켓(${gmRoas}%) 대비 효율적입니다. 옥션 중심 운영을 검토하세요.`);
+      if(prodRev>0){
+        const avgP=prodOrders>0?Math.round(prodRev/prodOrders):0;
+        op.push(`1. 총매출 ${Math.round(prodRev).toLocaleString()}원, ${prodOrders}건 주문, 객단가 ${avgP.toLocaleString()}원입니다.`);
+        if(gmProdRev>0&&acProdRev>0){
+          if(gmProdRev>acProdRev) op.push(`2. G마켓 매출 ${Math.round(gmProdRev).toLocaleString()}원으로 옥션(${Math.round(acProdRev).toLocaleString()}원) 대비 높습니다. G마켓 중심 운영을 권장합니다.`);
+          else op.push(`2. 옥션 매출 ${Math.round(acProdRev).toLocaleString()}원으로 G마켓(${Math.round(gmProdRev).toLocaleString()}원) 대비 높습니다. 옥션 중심 운영을 검토하세요.`);
+        }
       }
-      op.push(`3. 광고비 ${Math.round(cost).toLocaleString()}원 대비 매출 ${Math.round(rev).toLocaleString()}원입니다.`);
+      if(adCost>0){
+        const roas=(adRev/adCost*100).toFixed(1);
+        op.push(`${op.length+1}. 광고비 ${Math.round(adCost).toLocaleString()}원, 광고ROAS ${roas}%${+roas>=200?'로 양호':'로 개선 필요'}합니다.`);
+      } else {
+        op.push(`${op.length+1}. 광고 데이터는 아직 없습니다. 광고 집행 시 효율 분석이 가능합니다.`);
+      }
       opinionText=op.join('\n');
 
       const ch=[];
-      if(gmCost>0&&acCost>0&&+gmRoas>+acRoas) ch.push('1. G마켓 예산 비중 확대, 옥션 저효율 상품 광고 축소');
-      else if(gmCost>0&&acCost>0) ch.push('1. 옥션 예산 비중 확대, G마켓 저효율 상품 광고 축소');
-      else ch.push('1. 플랫폼별 성과 비교 후 효율 높은 쪽에 집중');
-      ch.push('2. 상위 매출 상품 중심으로 광고 집중');
-      ch.push('3. 시즌별 인기 상품 광고 소재 업데이트');
+      if(gmProdRev>0&&acProdRev>0){
+        if(gmProdRev>acProdRev) ch.push('1. G마켓 상위 매출 상품 중심으로 노출 강화');
+        else ch.push('1. 옥션 상위 매출 상품 중심으로 노출 강화');
+      } else { ch.push('1. 플랫폼별 매출 비교 후 효율 높은 쪽에 집중'); }
+      ch.push('2. 상위 매출 상품 리뷰 확보 및 상세페이지 최적화');
+      if(adCost>0) ch.push('3. 저효율 광고 상품 정리, 고매출 상품에 광고 집중');
+      else ch.push('3. 매출 상위 상품 대상 광고 집행 검토');
       changeText=ch.join('\n');
     } else { opinionText='이번 기간 이베이 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
   }
