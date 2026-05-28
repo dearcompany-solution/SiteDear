@@ -10065,8 +10065,6 @@ async function generateAIBriefing(forceNew=false){
         el.innerHTML=cArr[0].briefing_text;
         const dt=new Date(cArr[0].created_at);
         dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
-        // 캐시 히트해도 AI 인사이트는 생성 시도 (중복 체크는 generateAIInsights 내부에서)
-        setTimeout(()=>_tryGenerateAIInsights(ck,from,to,h),300);
         return;
       }
     }catch(e){}
