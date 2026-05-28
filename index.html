@@ -2462,7 +2462,12 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
       const el=document.getElementById(elId);
       if(!el)return;
       const filtered=items.map(r=>({id:String(r.id),text:extractText(r.content,section),author:r.author,created_at:r.created_at,status:r.status||'approved'})).filter(r=>r.text);
-      if(!filtered.length){el.innerHTML=`<div class="mgr-ins-empty">📝 ${emptyMsg}</div>`;return;}
+      if(!filtered.length){
+        const rejectedCount=items.filter(r=>r.status==='rejected').length;
+        const rejMsg=isAdmin&&rejectedCount>0?`<div style="font-size:11px;color:var(--text3);margin-top:6px">거부된 항목 ${rejectedCount}건은 의견/변경사항 내용이 비어있어 표시되지 않습니다</div>`:'';
+        el.innerHTML=`<div class="mgr-ins-empty">📝 ${emptyMsg}${rejMsg}</div>`;
+        return;
+      }
       // 정렬: approved → pending → rejected (거부는 맨 아래)
       const statusOrder={approved:0,pending:1,rejected:2};
       filtered.sort((a,b)=>(statusOrder[a.status]||0)-(statusOrder[b.status]||0));
