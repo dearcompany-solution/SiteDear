@@ -10059,7 +10059,8 @@ async function generateAIBriefing(forceNew=false){
   // 캐시 확인
   if(!forceNew){
     try{
-      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&order=created_at.desc&limit=1`,{headers:h});
+      const _today=new Date(new Date().getTime()+9*60*60*1000).toISOString().slice(0,10);
+      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&created_at=gte.${_today}T00:00:00%2B09:00&order=created_at.desc&limit=1`,{headers:h});
       const cArr=await cRes.json();
       if(Array.isArray(cArr)&&cArr.length>0&&cArr[0].briefing_text){
         el.innerHTML=cArr[0].briefing_text;
@@ -10652,7 +10653,8 @@ async function generateChannelBriefing(channel, forceNew=false){
   // 캐시 확인
   if(!forceNew){
     try{
-      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&briefing_type=eq.${channel}&order=created_at.desc&limit=1`,{headers:h});
+      const _today2=new Date(new Date().getTime()+9*60*60*1000).toISOString().slice(0,10);
+      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&briefing_type=eq.${channel}&created_at=gte.${_today2}T00:00:00%2B09:00&order=created_at.desc&limit=1`,{headers:h});
       const cArr=await cRes.json();
       if(Array.isArray(cArr)&&cArr.length>0&&cArr[0].briefing_text){
         el.innerHTML=cArr[0].briefing_text;
