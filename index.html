@@ -10736,6 +10736,9 @@ async function generateChannelBriefing(channel, forceNew=false){
         el.innerHTML=cArr[0].briefing_text;
         const dt=new Date(cArr[0].created_at);
         dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
+        // 캐시 히트해도 인사이트는 생성 시도 (중복 체크는 generateChannelInsights 내부에서)
+        const cachedText=cArr[0].briefing_text;
+        setTimeout(()=>generateChannelInsights(ck, channel, [cachedText]),300);
         return;
       }
     }catch(e){}
