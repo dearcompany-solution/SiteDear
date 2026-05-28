@@ -10897,18 +10897,55 @@ async function generateChannelInsights(ck, channel, briefingLines){
 
   if(channel==='naver'){
     const cost=kpi.totalCost||0, rev=kpi.totalPurchaseRev||0;
+    const imp=kpi.totalImp||0, click=kpi.totalClick||0;
     const roas=cost>0?(rev/cost*100).toFixed(1):'0';
-    const ctr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
+    const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+    const cpc=click>0?Math.round(cost/click):0;
     const gCost=gfaData.totalCost||0, gRev=gfaData.totalRev||0;
     const gRoas=gCost>0?(gRev/gCost*100).toFixed(1):'0';
-    if(cost>0&&gCost>0){
-      if(+gRoas>+roas) opinionText=`검색광고 ROAS ${roas}%, GFA ROAS ${gRoas}%로 GFA가 더 효율적입니다. GFA 예산 비중 확대를 검토해보세요.`;
-      else opinionText=`검색광고 ROAS ${roas}%, GFA ROAS ${gRoas}%로 검색광고가 더 효율적입니다. 검색광고 상위 키워드 예산 증액을 권장합니다.`;
-    } else if(cost>0){
-      opinionText=+roas>=200?`ROAS ${roas}%로 양호합니다. 전환 상위 키워드 중심으로 예산을 유지하세요.`:`ROAS ${roas}%로 개선이 필요합니다. 저효율 키워드 정리가 우선입니다.`;
-    }
-    if(cost>0&&+ctr<1) opinionText+=(opinionText?' ':'')+ `CTR ${ctr}%로 낮으니 소재 문구 개선이 필요합니다.`;
-    changeText=cost>0?(+roas>=200?'전환 상위 키워드 예산 증액 및 유사 키워드 확장 검토':'저효율 키워드 OFF 및 전환 키워드에 예산 집중'):'데이터 업로드 후 분석 가능';
+    const channels=d?.channels||[];
+    const pcCh=channels.filter(c=>c.name.includes('PC'));
+    const moCh=channels.filter(c=>c.name.includes('Mo')||c.name.includes('모바일'));
+    const pcCost=pcCh.reduce((s,c)=>s+c.cost,0), pcRev=pcCh.reduce((s,c)=>s+c.rev,0);
+    const moCost=moCh.reduce((s,c)=>s+c.cost,0), moRev=moCh.reduce((s,c)=>s+c.rev,0);
+    const pcRoas=pcCost>0?(pcRev/pcCost*100).toFixed(1):'0';
+    const moRoas=moCost>0?(moRev/moCost*100).toFixed(1):'0';
+    const pcCtr=pcCh.reduce((s,c)=>s+c.imp,0)>0?(pcCh.reduce((s,c)=>s+c.click,0)/pcCh.reduce((s,c)=>s+c.imp,0)*100).toFixed(2):'0';
+    const moCtr=moCh.reduce((s,c)=>s+c.imp,0)>0?(moCh.reduce((s,c)=>s+c.click,0)/moCh.reduce((s,c)=>s+c.imp,0)*100).toFixed(2):'0';
+    if(cost>0){
+      const op=[];
+      // 1. PC vs 모바일 분석
+      if(pcCost>0&&moCost>0){
+        if(+pcRoas>+moRoas) op.push(`1. PC ROAS ${pcRoas}%로 모바일(${moRoas}%) 대비 ${(+pcRoas/+moRoas).toFixed(1)}배 효율적입니다. PC 예산 비중 확대를 권장합니다.`);
+        else op.push(`1. 모바일 ROAS ${moRoas}%로 PC(${pcRoas}%) 대비 효율적입니다. 모바일 중심 운영을 유지하세요.`);
+      } else {
+        op.push(`1. ROAS ${roas}%${+roas>=200?' 양호':'로 개선 필요'}합니다.`);
+      }
+      // 2. GFA 비교 또는 캠페인 분석
+      if(gCost>0){
+        if(+gRoas>+roas) op.push(`2. GFA ROAS ${gRoas}%로 검색광고(${roas}%)보다 높습니다. GFA 예산 비중 확대를 검토하세요.`);
+        else op.push(`2. 검색광고 ROAS ${roas}%로 GFA(${gRoas}%)보다 효율적입니다. 검색광고 중심 운영 권장.`);
+      } else {
+        const bestCh=channels.length>0?channels.reduce((a,b)=>((b.rev/(b.cost||1))>(a.rev/(a.cost||1))?b:a)):null;
+        if(bestCh) op.push(`2. ${bestCh.name} 캠페인이 ROAS ${bestCh.cost>0?(bestCh.rev/bestCh.cost*100).toFixed(1):'0'}%로 가장 효율적입니다.`);
+      }
+      // 3. CTR 분석
+      if(+moCtr<1&&moCost>0) op.push(`3. 모바일 CTR ${moCtr}%로 낮습니다. 모바일 소재 문구 A/B 테스트를 추천합니다.`);
+      else if(+ctr<1) op.push(`3. 전체 CTR ${ctr}%로 낮습니다. 광고 소재 개선이 필요합니다.`);
+      else op.push(`3. CTR ${ctr}%, CPC ${cpc.toLocaleString()}원으로 안정적입니다.`);
+      opinionText=op.join('\n');
+
+      // 변경사항도 번호 매기기
+      const ch=[];
+      if(pcCost>0&&moCost>0&&+pcRoas>+moRoas) ch.push('1. PC 예산 비중 현재 대비 +10~15% 확대 조정');
+      else if(pcCost>0&&moCost>0) ch.push('1. 모바일 성과 상위 키워드에 예산 집중');
+      else ch.push('1. 전환 상위 키워드 예산 증액');
+      if(gCost>0&&+gRoas>+roas) ch.push('2. GFA 예산 비중 확대, 검색광고 저효율 키워드 정리');
+      else ch.push('2. 상위 전환 키워드 입찰가 증액 및 유사 키워드 확장');
+      if(+ctr<1) ch.push('3. CTR 낮은 소재 OFF 및 신규 소재 테스트');
+      else ch.push('3. 현재 소재 유지하며 전환율 모니터링');
+      changeText=ch.join('\n');
+    } else { opinionText='이번 기간 네이버 검색광고 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
 
   } else if(channel==='store'){
     const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
@@ -10916,15 +10953,25 @@ async function generateChannelInsights(ck, channel, briefingLines){
     const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
     const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
     const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+    const stNetRev=stRev-stRefund;
     const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
     const avgP=stOrders>0?Math.round(stRev/stOrders):0;
     if(stRev>0){
-      const parts=[];
-      if(+refR>10) parts.push(`환불률 ${refR}%로 높습니다. 상품/배송 점검이 시급합니다`);
-      if(avgP<20000) parts.push(`객단가 ${avgP.toLocaleString()}원으로 낮으니 묶음 할인 전략을 검토하세요`);
-      if(!parts.length) parts.push(`실매출 ${Math.round(stRev-stRefund).toLocaleString()}원, 객단가 ${avgP.toLocaleString()}원으로 안정적입니다`);
-      opinionText=parts.join('. ')+'.';
-      changeText=+refR>10?'환불 원인 파악 및 상세페이지 일치 여부 점검':'리뷰 관리 강화 및 번들 상품으로 객단가 향상';
+      const op=[];
+      op.push(`1. 실매출 ${Math.round(stNetRev).toLocaleString()}원, 총 ${stOrders.toLocaleString()}건 주문입니다.`);
+      if(+refR>10) op.push(`2. 환불률 ${refR}%로 10% 초과 — 상품 품질과 상세페이지 일치 여부 점검이 시급합니다.`);
+      else op.push(`2. 환불률 ${refR}%로 양호합니다.`);
+      if(avgP<20000) op.push(`3. 객단가 ${avgP.toLocaleString()}원으로 낮습니다. 묶음 할인/추가 구매 유도 전략을 검토하세요.`);
+      else op.push(`3. 객단가 ${avgP.toLocaleString()}원으로 안정적입니다.`);
+      opinionText=op.join('\n');
+
+      const ch=[];
+      if(+refR>10) ch.push('1. 환불 원인 분석 — 상세페이지 설명 일치 여부 및 배송 품질 점검');
+      else ch.push('1. 현재 환불률 유지하며 리뷰 관리 강화');
+      if(avgP<20000) ch.push('2. 번들 상품 구성 및 사은품 증정으로 객단가 향상');
+      else ch.push('2. 객단가 유지하며 재구매율 개선 전략 검토');
+      ch.push('3. 상위 판매 상품 리뷰 확보 및 상세페이지 최적화');
+      changeText=ch.join('\n');
     } else { opinionText='이번 기간 스토어 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
 
   } else if(channel==='meta'){
@@ -10937,33 +10984,96 @@ async function generateChannelInsights(ck, channel, briefingLines){
     const ctr=imp>0?(click/imp*100).toFixed(2):'0';
     const cpc=click>0?Math.round(cost/click):0;
     const freq=reach>0?(imp/reach).toFixed(1):'0';
+    // 캠페인별 분석
+    const campMap={};
+    metaF.forEach(r=>{const c=r.campaign_name||'기타';if(!campMap[c])campMap[c]={cost:0,click:0,imp:0};campMap[c].cost+=+r.cost||0;campMap[c].click+=+r.click||0;campMap[c].imp+=+r.imp||0;});
+    const camps=Object.entries(campMap).sort((a,b)=>b[1].cost-a[1].cost);
+    const bestCamp=camps.length>0?camps.reduce((a,b)=>(b[1].imp>0&&(b[1].click/b[1].imp)>(a[1].imp>0?a[1].click/a[1].imp:0)?b:a)):null;
     if(cost>0){
-      const parts=[];
-      if(+ctr<1) parts.push(`CTR ${ctr}%로 낮습니다. 소재 교체가 필요합니다`);
-      else parts.push(`CTR ${ctr}%, CPC ${cpc.toLocaleString()}원으로 양호합니다`);
-      if(+freq>3) parts.push(`빈도 ${freq}회로 높아 피로도 관리가 필요합니다`);
-      opinionText=parts.join('. ')+'.';
-      changeText=+ctr<1?'저효율 소재 중단 및 신규 크리에이티브 테스트':'성과 상위 소재 확장 및 리타겟팅 비율 점검';
+      const op=[];
+      op.push(`1. CTR ${ctr}%, CPC ${cpc.toLocaleString()}원${+ctr>=1?'으로 양호':'로 낮아 소재 개선 필요'}합니다.`);
+      if(+freq>3) op.push(`2. 빈도 ${freq}회로 높아 같은 유저에 반복 노출 중입니다. 오디언스 확장 또는 소재 로테이션이 필요합니다.`);
+      else op.push(`2. 빈도 ${freq}회로 적정 수준입니다. 현재 타겟팅을 유지하세요.`);
+      if(bestCamp&&bestCamp[1].imp>0){
+        const bCtr=(bestCamp[1].click/bestCamp[1].imp*100).toFixed(2);
+        const bName=bestCamp[0].length>15?bestCamp[0].slice(0,15)+'…':bestCamp[0];
+        op.push(`3. "${bName}" 캠페인이 CTR ${bCtr}%로 가장 반응이 좋습니다. 해당 소재를 확장하세요.`);
+      } else {
+        op.push(`3. 도달 ${reach.toLocaleString()}명으로 ${reach>10000?'넓은':'좁은'} 타겟입니다.`);
+      }
+      opinionText=op.join('\n');
+
+      const ch=[];
+      if(+ctr<1) ch.push('1. 저효율 소재 중단 및 신규 크리에이티브 3종 이상 테스트');
+      else ch.push('1. 성과 상위 소재 유사 크리에이티브 2~3종 추가 제작');
+      if(+freq>3) ch.push('2. 오디언스 확장 또는 유사 타겟 추가로 빈도 관리');
+      else ch.push('2. 현재 타겟팅 유지, 리타겟팅 비율 점검');
+      ch.push('3. 전환 캠페인과 인지도 캠페인 예산 비율 재조정');
+      changeText=ch.join('\n');
     } else { opinionText='이번 기간 META 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
 
   } else if(channel==='google'){
     const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
-    let cost=0,rev=0;
-    googleBr.forEach(r=>{cost+=+r.cost||0;if(r.campaign_status!=='전환상세')rev+=+r.conv_value||0;});
+    let cost=0,rev=0,imp=0,click=0,conv=0;
+    googleBr.forEach(r=>{cost+=+r.cost||0;imp+=+r.imp||0;click+=+r.click||0;if(r.campaign_status!=='전환상세'){rev+=+r.conv_value||0;conv+=+r.conv||0;}});
     const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+    const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+    const cpc=click>0?Math.round(cost/click):0;
+    const cvr=click>0?(conv/click*100).toFixed(2):'0';
+    // 캠페인별 분석
+    const gCampMap={};
+    googleBr.forEach(r=>{const c=r.campaign_name||'기타';if(!gCampMap[c])gCampMap[c]={cost:0,rev:0,conv:0};gCampMap[c].cost+=+r.cost||0;if(r.campaign_status!=='전환상세'){gCampMap[c].rev+=+r.conv_value||0;gCampMap[c].conv+=+r.conv||0;}});
+    const gCamps=Object.entries(gCampMap).sort((a,b)=>(b[1].cost>0?b[1].rev/b[1].cost:0)-(a[1].cost>0?a[1].rev/a[1].cost:0));
+    const bestGCamp=gCamps.length>0?gCamps[0]:null;
     if(cost>0){
-      opinionText=+roas>=200?`ROAS ${roas}%로 효율 양호합니다. 키워드 확장을 검토하세요.`:`ROAS ${roas}%로 개선이 필요합니다. 전환 키워드를 재점검하세요.`;
-      changeText=+roas>=200?'전환 키워드 확장 및 예산 증액 검토':'저효율 키워드 정리 및 입찰 전략 조정';
+      const op=[];
+      op.push(`1. ROAS ${roas}%${+roas>=200?'로 양호':'로 개선 필요'}합니다. 전환수 ${Math.round(conv)}건, 전환율 ${cvr}%입니다.`);
+      if(bestGCamp&&bestGCamp[1].cost>0){
+        const bRoas=(bestGCamp[1].rev/bestGCamp[1].cost*100).toFixed(1);
+        const bName=bestGCamp[0].length>15?bestGCamp[0].slice(0,15)+'…':bestGCamp[0];
+        op.push(`2. "${bName}" 캠페인이 ROAS ${bRoas}%로 가장 효율적입니다. 해당 캠페인 예산 확대를 권장합니다.`);
+      } else {
+        op.push(`2. CTR ${ctr}%, CPC ${cpc.toLocaleString()}원입니다.`);
+      }
+      op.push(`3. CPC ${cpc.toLocaleString()}원${cpc>1000?'으로 높은 편입니다. 입찰 전략 조정을 검토하세요.':'으로 적정 수준입니다.'}`);
+      opinionText=op.join('\n');
+
+      const ch=[];
+      if(+roas<100) ch.push('1. 저효율 키워드 OFF 및 전환 키워드에 예산 집중');
+      else ch.push('1. 전환 상위 키워드 예산 증액 및 유사 키워드 확장');
+      ch.push('2. 검색 의도에 맞는 랜딩페이지 연결 여부 점검');
+      ch.push('3. 입찰 전략 최적화 — 타겟 ROAS 또는 전환수 최대화 전략 테스트');
+      changeText=ch.join('\n');
     } else { opinionText='이번 기간 구글 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
 
   } else if(channel==='ebay'){
     const ebayBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
-    let cost=0,rev=0;
-    ebayBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;});
+    let cost=0,rev=0,gmCost=0,gmRev=0,acCost=0,acRev=0;
+    ebayBr.forEach(r=>{
+      cost+=+r.cost||0;rev+=+r.purchase_amount||0;
+      if(r.platform==='gmarket'){gmCost+=+r.cost||0;gmRev+=+r.purchase_amount||0;}
+      else{acCost+=+r.cost||0;acRev+=+r.purchase_amount||0;}
+    });
     const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+    const gmRoas=gmCost>0?(gmRev/gmCost*100).toFixed(1):'0';
+    const acRoas=acCost>0?(acRev/acCost*100).toFixed(1):'0';
     if(cost>0){
-      opinionText=+roas>=200?`ROAS ${roas}%로 양호합니다. 플랫폼별 성과를 비교해 효율 높은 쪽에 집중하세요.`:`ROAS ${roas}%로 효율 점검이 필요합니다.`;
-      changeText=+roas>=200?'고효율 플랫폼 예산 집중':'플랫폼별 성과 비교 후 저효율 축소';
+      const op=[];
+      op.push(`1. 전체 ROAS ${roas}%${+roas>=200?'로 양호':'로 개선 필요'}합니다.`);
+      if(gmCost>0&&acCost>0){
+        if(+gmRoas>+acRoas) op.push(`2. G마켓 ROAS ${gmRoas}%로 옥션(${acRoas}%) 대비 효율적입니다. G마켓 예산 비중 확대를 권장합니다.`);
+        else op.push(`2. 옥션 ROAS ${acRoas}%로 G마켓(${gmRoas}%) 대비 효율적입니다. 옥션 중심 운영을 검토하세요.`);
+      }
+      op.push(`3. 광고비 ${Math.round(cost).toLocaleString()}원 대비 매출 ${Math.round(rev).toLocaleString()}원입니다.`);
+      opinionText=op.join('\n');
+
+      const ch=[];
+      if(gmCost>0&&acCost>0&&+gmRoas>+acRoas) ch.push('1. G마켓 예산 비중 확대, 옥션 저효율 상품 광고 축소');
+      else if(gmCost>0&&acCost>0) ch.push('1. 옥션 예산 비중 확대, G마켓 저효율 상품 광고 축소');
+      else ch.push('1. 플랫폼별 성과 비교 후 효율 높은 쪽에 집중');
+      ch.push('2. 상위 매출 상품 중심으로 광고 집중');
+      ch.push('3. 시즌별 인기 상품 광고 소재 업데이트');
+      changeText=ch.join('\n');
     } else { opinionText='이번 기간 이베이 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
   }
 
