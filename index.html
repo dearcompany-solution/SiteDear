@@ -2623,12 +2623,18 @@ async function editInsight(id, page, tagKeyword){
     let ov=document.getElementById('insightOverlay2');
     if(!ov){ov=document.createElement('div');ov.id='insightOverlay2';ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:9000;display:flex;align-items:center;justify-content:center';document.body.appendChild(ov);}
     ov.style.display='flex';
-    ov.innerHTML=`<div style="background:var(--white);border-radius:12px;width:420px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:20px">
-      <div style="font-size:15px;font-weight:700;margin-bottom:14px">✏️ 인사이트 수정</div>
-      <textarea id="editInsightInput" rows="4" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;font-family:inherit">${currentText}</textarea>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-        <button onclick="document.getElementById('insightOverlay2').style.display='none'" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-size:12px">취소</button>
-        <button onclick="saveEditInsight(${id},'${section}','${page}','${tagKeyword}')" style="padding:6px 16px;border:none;border-radius:6px;background:#6366F1;color:#fff;cursor:pointer;font-size:12px;font-weight:600">저장 후 승인</button>
+    ov.innerHTML=`<div style="background:var(--white);border-radius:16px;width:720px;max-width:95vw;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:28px 32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">✏️ 인사이트 수정</div>
+        <span onclick="document.getElementById('insightOverlay2').style.display='none'" style="cursor:pointer;font-size:18px;color:var(--text3);padding:4px">✕</span>
+      </div>
+      <textarea id="editInsightInput" style="width:100%;min-height:220px;padding:14px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;line-height:1.8;resize:vertical;font-family:inherit;background:var(--surface);color:var(--text);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='var(--border)'">${currentText}</textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+        <span style="font-size:11px;color:var(--text3)">내용을 수정한 후 저장하면 자동으로 승인됩니다</span>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('insightOverlay2').style.display='none'" style="padding:8px 20px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:13px;font-family:inherit">취소</button>
+          <button onclick="saveEditInsight('${id}','${section}','${page}','${tagKeyword}')" style="padding:8px 20px;border:none;border-radius:8px;background:#6366F1;color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;box-shadow:0 2px 8px rgba(99,102,241,.3)">저장 후 승인</button>
+        </div>
       </div>
     </div>`;
     setTimeout(()=>document.getElementById('editInsightInput')?.focus(),100);
