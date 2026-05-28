@@ -2461,7 +2461,7 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
     const renderCol=(items,elId,color,section,emptyMsg)=>{
       const el=document.getElementById(elId);
       if(!el)return;
-      const filtered=items.map(r=>({id:r.id,text:extractText(r.content,section),author:r.author,created_at:r.created_at,status:r.status||'approved'})).filter(r=>r.text);
+      const filtered=items.map(r=>({id:String(r.id),text:extractText(r.content,section),author:r.author,created_at:r.created_at,status:r.status||'approved'})).filter(r=>r.text);
       if(!filtered.length){el.innerHTML=`<div class="mgr-ins-empty">📝 ${emptyMsg}</div>`;return;}
       el.innerHTML=filtered.slice(0,8).map(r=>{
         const dt=new Date(r.created_at);
@@ -2474,12 +2474,12 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
         if(isAdmin){
           if(isPending){
             actions=`<div style="display:flex;gap:4px;margin-top:6px">
-              <button onclick="approveInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#10B981;color:#fff;font-size:10px;cursor:pointer;font-weight:600">✅ 승인</button>
-              <button onclick="editInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:10px;cursor:pointer">✏️ 수정</button>
-              <button onclick="rejectInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🚫 거부</button>
+              <button onclick="approveInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#10B981;color:#fff;font-size:10px;cursor:pointer;font-weight:600">✅ 승인</button>
+              <button onclick="editInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:10px;cursor:pointer">✏️ 수정</button>
+              <button onclick="rejectInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🚫 거부</button>
             </div>`;
           } else {
-            actions=`<span onclick="deleteInsight2(${r.id},'${page}','${tagKeyword}','${opElId}','${chElId}')" style="cursor:pointer;float:right;font-size:10px;color:var(--text3)" title="삭제">🗑️</span>`;
+            actions=`<span onclick="deleteInsight2('${r.id}','${page}','${tagKeyword}','${opElId}','${chElId}')" style="cursor:pointer;float:right;font-size:10px;color:var(--text3)" title="삭제">🗑️</span>`;
           }
         }
         const borderStyle=isPending?`border-color:${color};border-style:dashed;background:#FFFBEB`:`border-color:${color}`;
