@@ -9969,6 +9969,8 @@ async function generateAIBriefing(forceNew=false){
         el.innerHTML=cArr[0].briefing_text;
         const dt=new Date(cArr[0].created_at);
         dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
+        // 캐시 히트해도 AI 인사이트는 생성 시도 (중복 체크는 generateAIInsights 내부에서)
+        setTimeout(()=>_tryGenerateAIInsights(ck,from,to,h),300);
         return;
       }
     }catch(e){}
@@ -10139,17 +10141,58 @@ async function generateAIBriefing(forceNew=false){
   }
 }
 
+// ═══ 캐시 히트 시에도 AI 인사이트 생성 시도하는 래퍼 ═══
+async function _tryGenerateAIInsights(ck,from,to,h){
+  try{
+    const d=REPORT_DATA[currentReportMonth];
+    const kpi=d?.kpi||{};
+    const gfaData=d?.gfa||{};
+    const naverCost=kpi.totalCost||0;
+    const naverRev=kpi.totalPurchaseRev||0;
+    const gfaCost=gfaData.totalCost||0;
+    const gfaRev=gfaData.totalRev||0;
+    const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+    const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+    const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+    const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+    const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+    const stNetRev=stRev-stRefund;
+    const fromMonth=from.slice(0,7);
+    const toMonth=to.slice(0,7);
+    const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+    const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+    const metaCost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+    const metaImp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+    const metaClick=metaF.reduce((s,r)=>s+(+r.click||0),0);
+    const metaReach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+    const ebayAdBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+    let ebayCostBr=0,ebayRevBr=0;
+    ebayAdBr.forEach(r=>{ebayCostBr+=+r.cost||0;ebayRevBr+=+r.purchase_amount||0;});
+    const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+    let googleCostBr=0,googleRevBr=0;
+    googleBr.forEach(r=>{googleCostBr+=+r.cost||0;if(r.campaign_status!=='전환상세')googleRevBr+=+r.conv_value||0;});
+    const totalCostAll=naverCost+metaCost+gfaCost+ebayCostBr+googleCostBr;
+    const totalRev=naverRev+gfaRev+stNetRev+ebayRevBr+googleRevBr;
+    const overallRoas=totalCostAll>0?((totalRev/totalCostAll)*100).toFixed(1):'0';
+    generateAIInsights(ck, {naverCost,naverRev,gfaCost,gfaRev,metaCost,metaClick,metaImp,metaReach,
+      googleCostBr,googleRevBr,ebayCostBr,ebayRevBr,stRev,stRefund,stNetRev,stOrders,
+      totalCostAll,totalRev,overallRoas,kpi});
+  }catch(e){console.warn('_tryGenerateAIInsights 오류:',e);}
+}
+
 // ═══ AI 인사이트 자동 생성 (pending으로 저장) ═══
 async function generateAIInsights(ck, d){
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   
-  // 오늘 이미 AI 인사이트를 생성했는지 체크 (중복 방지)
-  const today=new Date().toISOString().slice(0,10);
+  // 오늘(KST) 이미 AI 인사이트를 생성했는지 체크 (중복 방지)
+  const now=new Date();
+  const kstNow=new Date(now.getTime()+9*60*60*1000);
+  const todayKST=kstNow.toISOString().slice(0,10);
   const checkH={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&created_at=gte.${today}T00:00:00&limit=1`,{headers:checkH});
+    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&created_at=gte.${todayKST}T00:00:00%2B09:00&limit=1`,{headers:checkH});
     const chkArr=await chk.json();
-    if(Array.isArray(chkArr)&&chkArr.length>0)return;
+    if(Array.isArray(chkArr)&&chkArr.length>0){console.log('AI 인사이트: 오늘 이미 생성됨');return;}
   }catch(e){}
 
   const insights=[];
@@ -10157,84 +10200,126 @@ async function generateAIInsights(ck, d){
     googleCostBr,googleRevBr,ebayCostBr,ebayRevBr,stRev,stRefund,stNetRev,stOrders,
     totalCostAll,totalRev,overallRoas,kpi}=d;
 
-  // ── 통합 의견 ──
+  // ── 통합 의견 (항상 생성) ──
   const opinionParts=[];
   if(totalCostAll>0){
     if(+overallRoas>=300) opinionParts.push(`통합 ROAS ${overallRoas}%로 우수한 성과입니다. 현재 전략을 유지하되 고효율 채널에 예산 집중을 권장합니다.`);
     else if(+overallRoas>=100) opinionParts.push(`통합 ROAS ${overallRoas}%로 손익분기 이상이나, 효율 개선 여지가 있습니다. 저효율 채널을 점검해주세요.`);
     else opinionParts.push(`통합 ROAS ${overallRoas}%로 광고비 대비 매출이 부족합니다. 채널별 효율을 긴급 점검하고 저성과 채널의 예산 조정이 필요합니다.`);
+    // 채널별 요약도 항상 포함
+    const chSummary=[];
+    if(naverCost>0) chSummary.push(`네이버 ROAS ${(naverRev/naverCost*100).toFixed(1)}%`);
+    if(gfaCost>0) chSummary.push(`GFA ROAS ${(gfaRev/gfaCost*100).toFixed(1)}%`);
+    if(metaCost>0) chSummary.push(`META CTR ${metaImp>0?(metaClick/metaImp*100).toFixed(2):'0'}%`);
+    if(googleCostBr>0) chSummary.push(`구글 ROAS ${(googleRevBr/googleCostBr*100).toFixed(1)}%`);
+    if(ebayCostBr>0) chSummary.push(`이베이 ROAS ${(ebayRevBr/ebayCostBr*100).toFixed(1)}%`);
+    if(chSummary.length) opinionParts.push(`채널별: ${chSummary.join(', ')}.`);
+  } else {
+    opinionParts.push(`이번 기간 광고 데이터가 없습니다. 데이터 업로드 후 자동 분석됩니다.`);
   }
   if(naverCost>0){
     const nRoas=(naverRev/naverCost*100).toFixed(1);
     const nCtr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
     if(+nRoas<100) opinionParts.push(`네이버 검색광고 ROAS ${nRoas}%로 효율이 낮습니다. 키워드 정리 및 입찰가 조정을 검토해주세요.`);
+    else if(+nRoas>=100) opinionParts.push(`네이버 검색광고 ROAS ${nRoas}%로 양호합니다.`);
     if(+nCtr<0.5) opinionParts.push(`네이버 CTR ${nCtr}%로 낮은 편입니다. 광고 문구 A/B 테스트를 추천합니다.`);
   }
   if(metaCost>0){
     const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
     const mFreq=metaReach>0?(metaImp/metaReach).toFixed(1):'0';
     if(+mCtr<1) opinionParts.push(`META CTR ${mCtr}%로 소재 반응이 낮습니다. 크리에이티브 교체를 권장합니다.`);
+    else opinionParts.push(`META CTR ${mCtr}%입니다.`);
     if(+mFreq>3) opinionParts.push(`META 빈도 ${mFreq}회로 광고 피로도가 높습니다. 오디언스 확장 또는 소재 로테이션이 필요합니다.`);
   }
-  if(stRev>0&&stRefund>0&&stRefund/stRev>0.1){
-    opinionParts.push(`스마트스토어 환불률 ${(stRefund/stRev*100).toFixed(1)}%로 높습니다. 상품/배송 품질 점검이 필요합니다.`);
+  if(stRev>0){
+    const refR=(stRefund/stRev*100).toFixed(1);
+    if(+refR>10) opinionParts.push(`스마트스토어 환불률 ${refR}%로 높습니다. 상품/배송 품질 점검이 필요합니다.`);
   }
 
-  if(opinionParts.length>0){
-    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+opinionParts.join(' '),tags:'통합',status:'pending'});
-  }
+  // 의견은 항상 생성 (데이터 없어도 안내 문구)
+  insights.push({client_key:ck,author:'AI',content:'===의견===\n'+opinionParts.join(' '),tags:'통합',status:'pending'});
 
   // ── 통합 변경사항 제안 ──
   const changeParts=[];
-  if(naverCost>0&&naverRev/naverCost<1){
-    changeParts.push(`네이버 검색광고: 전환율 낮은 캠페인 예산 축소, 상위 전환 키워드에 예산 재배분 권장`);
+  if(naverCost>0){
+    if(naverRev/naverCost<1) changeParts.push(`네이버 검색광고: 전환율 낮은 캠페인 예산 축소, 상위 전환 키워드에 예산 재배분 권장`);
+    else if(naverRev/naverCost>=3) changeParts.push(`네이버 검색광고: ROAS 우수 — 상위 키워드 예산 증액 및 유사 키워드 확장 검토`);
+    else changeParts.push(`네이버 검색광고: 현재 성과 유지하며 전환 키워드 모니터링 지속`);
   }
-  if(naverCost>0&&naverRev/naverCost>=3){
-    changeParts.push(`네이버 검색광고: ROAS 우수 — 상위 키워드 예산 증액 및 유사 키워드 확장 검토`);
+  if(metaCost>0){
+    if(metaImp>0&&metaClick/metaImp<0.01) changeParts.push(`META: 저효율 소재 중단, 신규 크리에이티브 제작 및 타겟팅 재설정`);
+    else changeParts.push(`META: 현재 소재 유지, 리타겟팅/신규 유입 예산 비율 점검`);
   }
-  if(metaCost>0&&metaImp>0&&metaClick/metaImp<0.01){
-    changeParts.push(`META: 저효율 소재 중단, 신규 크리에이티브 제작 및 타겟팅 재설정`);
+  if(gfaCost>0){
+    if(gfaRev/gfaCost<1) changeParts.push(`GFA: 저효율 지면 예산 축소, 성과 상위 게재위치에 집중`);
+    else changeParts.push(`GFA: 현재 운영 유지, 게재위치별 성과 모니터링`);
   }
-  if(gfaCost>0&&gfaRev/gfaCost<1){
-    changeParts.push(`GFA: 저효율 지면 예산 축소, 성과 상위 게재위치에 집중`);
+  if(googleCostBr>0){
+    if(googleRevBr/googleCostBr<1) changeParts.push(`구글 광고: 전환 키워드 재점검, 입찰 전략 조정 필요`);
+    else changeParts.push(`구글 광고: 현재 전환 효율 유지, 키워드 확장 검토`);
   }
-  if(googleCostBr>0&&googleRevBr/googleCostBr<1){
-    changeParts.push(`구글 광고: 전환 키워드 재점검, 입찰 전략 조정 필요`);
+  if(stRev>0){
+    if(stOrders>0&&stRev/stOrders<20000) changeParts.push(`스토어: 객단가 향상을 위한 묶음 할인/사은품 전략 적용 검토`);
+    else if(stOrders>0) changeParts.push(`스토어: 객단가 ${Math.round(stRev/stOrders).toLocaleString()}원 유지, 리뷰 관리로 전환율 개선`);
   }
-  if(stRev>0&&stOrders>0&&stRev/stOrders<20000){
-    changeParts.push(`스토어: 객단가 향상을 위한 묶음 할인/사은품 전략 적용 검토`);
-  }
+  if(changeParts.length===0) changeParts.push(`현재 특별한 변경 권장사항 없음. 기존 전략 유지하며 성과 추이 모니터링`);
 
-  if(changeParts.length>0){
-    insights.push({client_key:ck,author:'AI',content:'===변경사항===\n'+changeParts.join('\n'),tags:'통합',status:'pending'});
-  }
+  insights.push({client_key:ck,author:'AI',content:'===변경사항===\n'+changeParts.join('\n'),tags:'통합',status:'pending'});
 
   // ── 채널별 인사이트 ──
   if(naverCost>0){
     const nRoas=(naverRev/naverCost*100).toFixed(1);
-    const nOp=+nRoas<100?`ROAS ${nRoas}%로 효율 개선이 필요합니다. 전환 키워드 중심 운영과 저효율 키워드 OFF를 권장합니다.`:`ROAS ${nRoas}%로 양호합니다. 현재 전략 유지하며 전환 상위 키워드 예산 확대를 검토해보세요.`;
+    const nCtr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
+    const nOp=+nRoas<100
+      ?`ROAS ${nRoas}%, CTR ${nCtr}%입니다. 효율 개선이 필요합니다. 전환 키워드 중심 운영과 저효율 키워드 OFF를 권장합니다.`
+      :`ROAS ${nRoas}%, CTR ${nCtr}%로 양호합니다. 현재 전략 유지하며 전환 상위 키워드 예산 확대를 검토해보세요.`;
     insights.push({client_key:ck,author:'AI',content:'===의견===\n'+nOp,tags:'네이버',status:'pending'});
   }
   if(metaCost>0){
     const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
-    const mOp=`CTR ${mCtr}%, CPC ${metaClick>0?Math.round(metaCost/metaClick).toLocaleString():'0'}원 기록 중입니다. ${+mCtr<1?'소재 교체와 타겟 재설정을 권장합니다.':'현재 소재 성과를 유지하며 유사 크리에이티브를 확장해보세요.'}`;
+    const mCpc=metaClick>0?Math.round(metaCost/metaClick):0;
+    const mOp=`CTR ${mCtr}%, CPC ${mCpc.toLocaleString()}원 기록 중입니다. ${+mCtr<1?'소재 교체와 타겟 재설정을 권장합니다.':'현재 소재 성과를 유지하며 유사 크리에이티브를 확장해보세요.'}`;
     insights.push({client_key:ck,author:'AI',content:'===의견===\n'+mOp,tags:'META',status:'pending'});
   }
   if(stRev>0){
-    const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
+    const refR=(stRefund/stRev*100).toFixed(1);
     const avgP=stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0';
     const sOp=`실매출 ${Math.round(stNetRev).toLocaleString()}원, 환불률 ${refR}%, 객단가 ${avgP}원입니다. ${+refR>10?'환불률 관리가 시급합니다.':'안정적인 운영 상태입니다.'}`;
     insights.push({client_key:ck,author:'AI',content:'===의견===\n'+sOp,tags:'스토어',status:'pending'});
   }
+  if(gfaCost>0){
+    const gRoas=(gfaRev/gfaCost*100).toFixed(1);
+    const gOp=`ROAS ${gRoas}%입니다. ${+gRoas<100?'저효율 지면 점검 및 예산 재배분이 필요합니다.':'현재 성과를 유지하며 게재위치별 최적화를 계속해주세요.'}`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+gOp,tags:'GFA',status:'pending'});
+  }
+  if(googleCostBr>0){
+    const ggRoas=(googleRevBr/googleCostBr*100).toFixed(1);
+    const ggOp=`ROAS ${ggRoas}%입니다. ${+ggRoas<100?'전환 키워드 재점검과 입찰 전략 조정이 필요합니다.':'현재 전환 효율 양호, 키워드 확장을 검토해보세요.'}`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+ggOp,tags:'구글',status:'pending'});
+  }
+  if(ebayCostBr>0){
+    const ebRoas=(ebayRevBr/ebayCostBr*100).toFixed(1);
+    const ebOp=`ROAS ${ebRoas}%입니다. ${+ebRoas<100?'광고 효율 점검이 필요합니다.':'현재 성과를 유지해주세요.'}`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+ebOp,tags:'이베이',status:'pending'});
+  }
 
   // DB에 일괄 저장
+  console.log(`AI 인사이트 생성 시도: ${insights.length}건`);
   if(insights.length===0)return;
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify(insights)});
-    console.log(`AI 인사이트 ${insights.length}건 pending 저장 완료`);
+    const saveRes=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify(insights)});
+    if(saveRes.ok){
+      console.log(`✅ AI 인사이트 ${insights.length}건 pending 저장 완료`);
+    } else {
+      const errText=await saveRes.text();
+      console.error('AI 인사이트 저장 응답 오류:',saveRes.status,errText);
+    }
+    // 관리자면 인사이트 리로드
     if(currentUser?.role==='admin'){
       setTimeout(()=>{
         if(document.getElementById('mgrFeedbackCard')) loadInsights2('combined','통합','combinedOpinionList','combinedChangeList');
+        if(document.getElementById('naverInsightCard')) loadInsights2('naver','네이버','naverOpinionList','naverChangeList');
+        if(document.getElementById('storeInsightCard')) loadInsights2('store','스토어','storeOpinionList','storeChangeList');
       },500);
     }
   }catch(e){console.warn('AI 인사이트 저장 실패:',e);}
