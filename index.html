@@ -2442,9 +2442,13 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
+  migrateInsightStatus();
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=20`,{headers:h});
+    let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=30`;
+    if(!isAdmin) url+=`&status=eq.approved`;
+    else url+=`&status=in.(approved,pending)`;
+    const res=await fetch(url,{headers:h});
     const rows=await res.json();
     if(!Array.isArray(rows))return;
     const opinions=rows.filter(r=>(r.content||'').includes('===의견==='));
@@ -2457,20 +2461,35 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
     const renderCol=(items,elId,color,section,emptyMsg)=>{
       const el=document.getElementById(elId);
       if(!el)return;
-      const filtered=items.map(r=>({id:r.id,text:extractText(r.content,section),author:r.author,created_at:r.created_at})).filter(r=>r.text);
+      const filtered=items.map(r=>({id:r.id,text:extractText(r.content,section),author:r.author,created_at:r.created_at,status:r.status||'approved'})).filter(r=>r.text);
       if(!filtered.length){el.innerHTML=`<div class="mgr-ins-empty">📝 ${emptyMsg}</div>`;return;}
-      el.innerHTML=filtered.slice(0,5).map(r=>{
+      el.innerHTML=filtered.slice(0,8).map(r=>{
         const dt=new Date(r.created_at);
         const ds=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
-        const del=isAdmin?` <span onclick="deleteInsight2(${r.id},'${page}','${tagKeyword}','${opElId}','${chElId}')" style="cursor:pointer;float:right;font-size:10px;color:var(--text3)" title="삭제">🗑️</span>`:'';
-        return `<div class="mgr-ins-item" style="border-color:${color}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${del}</div><div class="mgr-ins-item-text">${r.text}</div></div>`;
+        const isPending=r.status==='pending';
+        const isAI=r.author==='AI';
+        const pendingBadge=isPending?'<span style="display:inline-block;background:#FEF3C7;color:#D97706;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">⏳ 대기</span>':'';
+        const aiBadge=isAI?'<span style="display:inline-block;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);color:#6366F1;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">🤖 AI</span>':'';
+        let actions='';
+        if(isAdmin){
+          if(isPending){
+            actions=`<div style="display:flex;gap:4px;margin-top:6px">
+              <button onclick="approveInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#10B981;color:#fff;font-size:10px;cursor:pointer;font-weight:600">✅ 승인</button>
+              <button onclick="editInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:10px;cursor:pointer">✏️ 수정</button>
+              <button onclick="rejectInsight(${r.id},'${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🚫 거부</button>
+            </div>`;
+          } else {
+            actions=`<span onclick="deleteInsight2(${r.id},'${page}','${tagKeyword}','${opElId}','${chElId}')" style="cursor:pointer;float:right;font-size:10px;color:var(--text3)" title="삭제">🗑️</span>`;
+          }
+        }
+        const borderStyle=isPending?`border-color:${color};border-style:dashed;background:#FFFBEB`:`border-color:${color}`;
+        return `<div class="mgr-ins-item" style="${borderStyle}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${aiBadge}${pendingBadge}${!isPending&&isAdmin?actions:''}</div><div class="mgr-ins-item-text">${r.text}</div>${isPending?actions:''}</div>`;
       }).join('');
     };
     renderCol(opinions,opElId,'#6366F1','opinion','등록된 의견이 없습니다');
     renderCol(changes,chElId,'#F59E0B','change','등록된 변경사항이 없습니다');
   }catch(e){console.warn('인사이트 로드 실패:',e);}
 }
-
 function openInsightModal2(page, type, tagKeyword){
   if(currentUser?.role!=='admin'){toast('⚠️ 관리자만 작성 가능');return;}
   const typeName=type==='opinion'?'의견':'변경사항';
@@ -2500,7 +2519,7 @@ async function saveInsight2(page, type, tagKeyword){
   const content=section+'\n'+text;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tagKeyword})});
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tagKeyword,status:'approved'})});
     document.getElementById('insightOverlay2').style.display='none';
     toast('✅ 저장되었습니다');
     reloadInsights2(page,tagKeyword);
@@ -2513,6 +2532,77 @@ async function deleteInsight2(id, page, tagKeyword, opElId, chElId){
   await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'DELETE',headers:h});
   toast('🗑️ 삭제됐습니다');
   reloadInsights2(page,tagKeyword);
+}
+
+// ═══ status 컬럼 마이그레이션 (한 번만 실행) ═══
+async function migrateInsightStatus(){
+  if(window._insightStatusMigrated)return;
+  window._insightStatusMigrated=true;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?status=is.null`,{method:'PATCH',headers:h,body:JSON.stringify({status:'approved'})});
+  }catch(e){}
+}
+
+// ═══ AI 인사이트 승인/거부/수정 ═══
+async function approveInsight(id, page, tagKeyword){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'approved'})});
+    toast('✅ 승인되었습니다');
+    reloadInsights2(page,tagKeyword);
+  }catch(e){toast('❌ 승인 실패');}
+}
+
+async function rejectInsight(id, page, tagKeyword){
+  if(!confirm('이 인사이트를 거부하시겠습니까?'))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'rejected'})});
+    toast('🚫 거부되었습니다');
+    reloadInsights2(page,tagKeyword);
+  }catch(e){toast('❌ 거부 실패');}
+}
+
+async function editInsight(id, page, tagKeyword){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}&select=content`,{headers:h});
+    const arr=await res.json();
+    if(!arr||!arr.length)return;
+    const content=arr[0].content||'';
+    const opMatch=content.match(/===의견===\n?([\s\S]*?)$/);
+    const chMatch=content.match(/===변경사항===\n?([\s\S]*?)$/);
+    const currentText=(opMatch?opMatch[1]:chMatch?chMatch[1]:'').trim();
+    const section=content.includes('===의견===')?'===의견===':'===변경사항===';
+    
+    let ov=document.getElementById('insightOverlay2');
+    if(!ov){ov=document.createElement('div');ov.id='insightOverlay2';ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:9000;display:flex;align-items:center;justify-content:center';document.body.appendChild(ov);}
+    ov.style.display='flex';
+    ov.innerHTML=`<div style="background:var(--white);border-radius:12px;width:420px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:20px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px">✏️ 인사이트 수정</div>
+      <textarea id="editInsightInput" rows="4" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;font-family:inherit">${currentText}</textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button onclick="document.getElementById('insightOverlay2').style.display='none'" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-size:12px">취소</button>
+        <button onclick="saveEditInsight(${id},'${section}','${page}','${tagKeyword}')" style="padding:6px 16px;border:none;border-radius:6px;background:#6366F1;color:#fff;cursor:pointer;font-size:12px;font-weight:600">저장 후 승인</button>
+      </div>
+    </div>`;
+    setTimeout(()=>document.getElementById('editInsightInput')?.focus(),100);
+  }catch(e){toast('❌ 로드 실패');}
+}
+
+async function saveEditInsight(id, section, page, tagKeyword){
+  const input=document.getElementById('editInsightInput');
+  const text=(input?.value||'').trim();
+  if(!text){toast('⚠️ 내용을 입력해주세요');return;}
+  const content=section+'\n'+text;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({content:content,status:'approved'})});
+    document.getElementById('insightOverlay2').style.display='none';
+    toast('✅ 수정 후 승인되었습니다');
+    reloadInsights2(page,tagKeyword);
+  }catch(e){toast('❌ 저장 실패');}
 }
 
 function reloadInsights2(page, tagKeyword){
@@ -10038,10 +10128,116 @@ async function generateAIBriefing(forceNew=false){
     fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}`,{method:'DELETE',headers:{...h,'Content-Type':'application/json'}})
       .then(()=>fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:{...h,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text})}))
       .catch(()=>{});
+
+    // ═══ AI 인사이트 자동 생성 (status='pending') ═══
+    generateAIInsights(ck, {naverCost,naverRev,gfaCost,gfaRev,metaCost,metaClick,metaImp,metaReach,
+      googleCostBr,googleRevBr,ebayCostBr,ebayRevBr,stRev,stRefund,stNetRev,stOrders,
+      totalCostAll,totalRev,overallRoas,kpi});
   }catch(err){
     console.error('AI 브리핑 오류:',err);
     el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다.</span>';
   }
+}
+
+// ═══ AI 인사이트 자동 생성 (pending으로 저장) ═══
+async function generateAIInsights(ck, d){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  
+  // 오늘 이미 AI 인사이트를 생성했는지 체크 (중복 방지)
+  const today=new Date().toISOString().slice(0,10);
+  const checkH={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&created_at=gte.${today}T00:00:00&limit=1`,{headers:checkH});
+    const chkArr=await chk.json();
+    if(Array.isArray(chkArr)&&chkArr.length>0)return;
+  }catch(e){}
+
+  const insights=[];
+  const {naverCost,naverRev,gfaCost,gfaRev,metaCost,metaClick,metaImp,metaReach,
+    googleCostBr,googleRevBr,ebayCostBr,ebayRevBr,stRev,stRefund,stNetRev,stOrders,
+    totalCostAll,totalRev,overallRoas,kpi}=d;
+
+  // ── 통합 의견 ──
+  const opinionParts=[];
+  if(totalCostAll>0){
+    if(+overallRoas>=300) opinionParts.push(`통합 ROAS ${overallRoas}%로 우수한 성과입니다. 현재 전략을 유지하되 고효율 채널에 예산 집중을 권장합니다.`);
+    else if(+overallRoas>=100) opinionParts.push(`통합 ROAS ${overallRoas}%로 손익분기 이상이나, 효율 개선 여지가 있습니다. 저효율 채널을 점검해주세요.`);
+    else opinionParts.push(`통합 ROAS ${overallRoas}%로 광고비 대비 매출이 부족합니다. 채널별 효율을 긴급 점검하고 저성과 채널의 예산 조정이 필요합니다.`);
+  }
+  if(naverCost>0){
+    const nRoas=(naverRev/naverCost*100).toFixed(1);
+    const nCtr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
+    if(+nRoas<100) opinionParts.push(`네이버 검색광고 ROAS ${nRoas}%로 효율이 낮습니다. 키워드 정리 및 입찰가 조정을 검토해주세요.`);
+    if(+nCtr<0.5) opinionParts.push(`네이버 CTR ${nCtr}%로 낮은 편입니다. 광고 문구 A/B 테스트를 추천합니다.`);
+  }
+  if(metaCost>0){
+    const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
+    const mFreq=metaReach>0?(metaImp/metaReach).toFixed(1):'0';
+    if(+mCtr<1) opinionParts.push(`META CTR ${mCtr}%로 소재 반응이 낮습니다. 크리에이티브 교체를 권장합니다.`);
+    if(+mFreq>3) opinionParts.push(`META 빈도 ${mFreq}회로 광고 피로도가 높습니다. 오디언스 확장 또는 소재 로테이션이 필요합니다.`);
+  }
+  if(stRev>0&&stRefund>0&&stRefund/stRev>0.1){
+    opinionParts.push(`스마트스토어 환불률 ${(stRefund/stRev*100).toFixed(1)}%로 높습니다. 상품/배송 품질 점검이 필요합니다.`);
+  }
+
+  if(opinionParts.length>0){
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+opinionParts.join(' '),tags:'통합',status:'pending'});
+  }
+
+  // ── 통합 변경사항 제안 ──
+  const changeParts=[];
+  if(naverCost>0&&naverRev/naverCost<1){
+    changeParts.push(`네이버 검색광고: 전환율 낮은 캠페인 예산 축소, 상위 전환 키워드에 예산 재배분 권장`);
+  }
+  if(naverCost>0&&naverRev/naverCost>=3){
+    changeParts.push(`네이버 검색광고: ROAS 우수 — 상위 키워드 예산 증액 및 유사 키워드 확장 검토`);
+  }
+  if(metaCost>0&&metaImp>0&&metaClick/metaImp<0.01){
+    changeParts.push(`META: 저효율 소재 중단, 신규 크리에이티브 제작 및 타겟팅 재설정`);
+  }
+  if(gfaCost>0&&gfaRev/gfaCost<1){
+    changeParts.push(`GFA: 저효율 지면 예산 축소, 성과 상위 게재위치에 집중`);
+  }
+  if(googleCostBr>0&&googleRevBr/googleCostBr<1){
+    changeParts.push(`구글 광고: 전환 키워드 재점검, 입찰 전략 조정 필요`);
+  }
+  if(stRev>0&&stOrders>0&&stRev/stOrders<20000){
+    changeParts.push(`스토어: 객단가 향상을 위한 묶음 할인/사은품 전략 적용 검토`);
+  }
+
+  if(changeParts.length>0){
+    insights.push({client_key:ck,author:'AI',content:'===변경사항===\n'+changeParts.join('\n'),tags:'통합',status:'pending'});
+  }
+
+  // ── 채널별 인사이트 ──
+  if(naverCost>0){
+    const nRoas=(naverRev/naverCost*100).toFixed(1);
+    const nOp=+nRoas<100?`ROAS ${nRoas}%로 효율 개선이 필요합니다. 전환 키워드 중심 운영과 저효율 키워드 OFF를 권장합니다.`:`ROAS ${nRoas}%로 양호합니다. 현재 전략 유지하며 전환 상위 키워드 예산 확대를 검토해보세요.`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+nOp,tags:'네이버',status:'pending'});
+  }
+  if(metaCost>0){
+    const mCtr=metaImp>0?(metaClick/metaImp*100).toFixed(2):'0';
+    const mOp=`CTR ${mCtr}%, CPC ${metaClick>0?Math.round(metaCost/metaClick).toLocaleString():'0'}원 기록 중입니다. ${+mCtr<1?'소재 교체와 타겟 재설정을 권장합니다.':'현재 소재 성과를 유지하며 유사 크리에이티브를 확장해보세요.'}`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+mOp,tags:'META',status:'pending'});
+  }
+  if(stRev>0){
+    const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
+    const avgP=stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0';
+    const sOp=`실매출 ${Math.round(stNetRev).toLocaleString()}원, 환불률 ${refR}%, 객단가 ${avgP}원입니다. ${+refR>10?'환불률 관리가 시급합니다.':'안정적인 운영 상태입니다.'}`;
+    insights.push({client_key:ck,author:'AI',content:'===의견===\n'+sOp,tags:'스토어',status:'pending'});
+  }
+
+  // DB에 일괄 저장
+  if(insights.length===0)return;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify(insights)});
+    console.log(`AI 인사이트 ${insights.length}건 pending 저장 완료`);
+    if(currentUser?.role==='admin'){
+      setTimeout(()=>{
+        if(document.getElementById('mgrFeedbackCard')) loadInsights2('combined','통합','combinedOpinionList','combinedChangeList');
+      },500);
+    }
+  }catch(e){console.warn('AI 인사이트 저장 실패:',e);}
 }
 
 async function renderCharts(){
