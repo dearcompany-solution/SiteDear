@@ -2447,7 +2447,7 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   try{
     let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=30`;
     if(!isAdmin) url+=`&status=eq.approved`;
-    else url+=`&status=in.(approved,pending)`;
+    else url+=`&status=in.(approved,pending,rejected)`;
     const res=await fetch(url,{headers:h});
     const rows=await res.json();
     if(!Array.isArray(rows))return;
@@ -2463,13 +2463,21 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
       if(!el)return;
       const filtered=items.map(r=>({id:String(r.id),text:extractText(r.content,section),author:r.author,created_at:r.created_at,status:r.status||'approved'})).filter(r=>r.text);
       if(!filtered.length){el.innerHTML=`<div class="mgr-ins-empty">📝 ${emptyMsg}</div>`;return;}
-      el.innerHTML=filtered.slice(0,8).map(r=>{
+      // 정렬: approved → pending → rejected (거부는 맨 아래)
+      const statusOrder={approved:0,pending:1,rejected:2};
+      filtered.sort((a,b)=>(statusOrder[a.status]||0)-(statusOrder[b.status]||0));
+      el.innerHTML=filtered.slice(0,10).map(r=>{
         const dt=new Date(r.created_at);
         const ds=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
         const isPending=r.status==='pending';
+        const isApproved=r.status==='approved';
+        const isRejected=r.status==='rejected';
         const isAI=r.author==='AI';
-        const pendingBadge=isPending?'<span style="display:inline-block;background:#FEF3C7;color:#D97706;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">⏳ 대기</span>':'';
+        const statusBadge=isPending?'<span style="display:inline-block;background:#FEF3C7;color:#D97706;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">⏳ 대기</span>'
+          :isRejected?'<span style="display:inline-block;background:#FEE2E2;color:#DC2626;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">🚫 거부됨</span>'
+          :'';
         const aiBadge=isAI?'<span style="display:inline-block;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);color:#6366F1;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">🤖 AI</span>':'';
+        const approvedBadge=(isApproved&&isAdmin)?'<span style="display:inline-block;background:#D1FAE5;color:#059669;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px">✅ 게시중</span>':'';
         let actions='';
         if(isAdmin){
           if(isPending){
@@ -2478,12 +2486,29 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
               <button onclick="editInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:10px;cursor:pointer">✏️ 수정</button>
               <button onclick="rejectInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🚫 거부</button>
             </div>`;
-          } else {
-            actions=`<span onclick="deleteInsight2('${r.id}','${page}','${tagKeyword}','${opElId}','${chElId}')" style="cursor:pointer;float:right;font-size:10px;color:var(--text3)" title="삭제">🗑️</span>`;
+          } else if(isApproved){
+            actions=`<div style="display:flex;gap:4px;margin-top:6px">
+              <button onclick="editInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-size:10px;cursor:pointer">✏️ 수정</button>
+              <button onclick="revertInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid #F59E0B;border-radius:4px;background:#FFFBEB;color:#D97706;font-size:10px;cursor:pointer">↩️ 대기로</button>
+              <button onclick="deleteInsight2('${r.id}','${page}','${tagKeyword}','${opElId}','${chElId}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🗑️ 삭제</button>
+            </div>`;
+          } else if(isRejected){
+            actions=`<div style="display:flex;gap:4px;margin-top:6px">
+              <button onclick="restoreInsight('${r.id}','${page}','${tagKeyword}')" style="padding:2px 8px;border:1px solid #6366F1;border-radius:4px;background:#EEF2FF;color:#6366F1;font-size:10px;cursor:pointer;font-weight:600">🔄 복원</button>
+              <button onclick="deleteInsight2('${r.id}','${page}','${tagKeyword}','${opElId}','${chElId}')" style="padding:2px 8px;border:none;border-radius:4px;background:#FEE2E2;color:#DC2626;font-size:10px;cursor:pointer">🗑️ 삭제</button>
+            </div>`;
           }
         }
-        const borderStyle=isPending?`border-color:${color};border-style:dashed;background:#FFFBEB`:`border-color:${color}`;
-        return `<div class="mgr-ins-item" style="${borderStyle}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${aiBadge}${pendingBadge}${!isPending&&isAdmin?actions:''}</div><div class="mgr-ins-item-text">${r.text}</div>${isPending?actions:''}</div>`;
+        let borderStyle,textStyle='';
+        if(isRejected){
+          borderStyle=`border-color:#E5E7EB;background:#F9FAFB;opacity:0.65`;
+          textStyle='text-decoration:line-through;color:var(--text3)';
+        } else if(isPending){
+          borderStyle=`border-color:${color};border-style:dashed;background:#FFFBEB`;
+        } else {
+          borderStyle=`border-color:${color}`;
+        }
+        return `<div class="mgr-ins-item" style="${borderStyle}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${aiBadge}${approvedBadge}${statusBadge}</div><div class="mgr-ins-item-text" style="${textStyle}">${r.text}</div>${isAdmin?actions:''}</div>`;
       }).join('');
     };
     renderCol(opinions,opElId,'#6366F1','opinion','등록된 의견이 없습니다');
@@ -2562,6 +2587,25 @@ async function rejectInsight(id, page, tagKeyword){
     toast('🚫 거부되었습니다');
     reloadInsights2(page,tagKeyword);
   }catch(e){toast('❌ 거부 실패');}
+}
+
+async function revertInsight(id, page, tagKeyword){
+  if(!confirm('이 인사이트를 대기 상태로 되돌리시겠습니까? 광고주에게 더 이상 표시되지 않습니다.'))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'pending'})});
+    toast('↩️ 대기 상태로 되돌렸습니다');
+    reloadInsights2(page,tagKeyword);
+  }catch(e){toast('❌ 되돌리기 실패');}
+}
+
+async function restoreInsight(id, page, tagKeyword){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'pending'})});
+    toast('🔄 대기 상태로 복원했습니다');
+    reloadInsights2(page,tagKeyword);
+  }catch(e){toast('❌ 복원 실패');}
 }
 
 async function editInsight(id, page, tagKeyword){
