@@ -1968,6 +1968,23 @@ function htmlNaver(){
       </div>
     </div>
 
+    <!-- AI 운영 브리핑 (네이버) -->
+    <div id="aiBriefingCard_naver" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #03C75A;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#03C75A,#00B843);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1)">AI 운영 브리핑</div>
+            <div style="font-size:10px;color:var(--text3)" id="aiBriefingDate_naver">데이터 분석 중...</div>
+          </div>
+        </div>
+        <button onclick="generateChannelBriefing('naver',true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+      </div>
+      <div id="aiBriefingContent_naver" style="font-size:12.5px;line-height:1.7;color:var(--text2)">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="sd-spinner-sm"></div>브리핑을 준비하고 있습니다...</div>
+      </div>
+    </div>
+
     <!-- 채널별 차트 -->
     <div class="row2b" style="margin-bottom:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📊 채널별 광고비</div><div class="card-sub">캠페인유형 · 매체별</div></div></div><canvas id="naverSummaryBar"></canvas></div>
@@ -2223,6 +2240,24 @@ function htmlStore(){
         </div>
       </div>
     </div>
+
+    <!-- AI 운영 브리핑 (스토어) -->
+    <div id="aiBriefingCard_store" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #FF6B35;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#FF6B35,#E85D26);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1)">AI 운영 브리핑</div>
+            <div style="font-size:10px;color:var(--text3)" id="aiBriefingDate_store">데이터 분석 중...</div>
+          </div>
+        </div>
+        <button onclick="generateChannelBriefing('store',true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+      </div>
+      <div id="aiBriefingContent_store" style="font-size:12.5px;line-height:1.7;color:var(--text2)">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="sd-spinner-sm"></div>브리핑을 준비하고 있습니다...</div>
+      </div>
+    </div>
+
     <div class="row2b" style="margin-bottom:16px">
       <div class="card"><div class="card-hd"><div><div class="card-title">📈 일별 결제금액 추이</div><div class="card-sub">일별 결제금액</div></div></div><canvas id="stDailyRev" height="120"></canvas></div>
       <div class="card"><div class="card-hd"><div><div class="card-title">📱 모바일 vs PC</div><div class="card-sub">결제금액 기준</div></div></div><canvas id="stMobilePie" height="120"></canvas></div>
@@ -10670,6 +10705,208 @@ async function renderCharts(){
     if(document.getElementById('naverInsightCard')) loadInsights2('naver','네이버','naverOpinionList','naverChangeList');
     if(document.getElementById('storeInsightCard')) loadInsights2('store','스토어','storeOpinionList','storeChangeList');
   },0);
+
+  // 채널별 AI 브리핑 (백그라운드)
+  setTimeout(()=>{
+    if(document.getElementById('aiBriefingCard_naver')) generateChannelBriefing('naver');
+    if(document.getElementById('aiBriefingCard_store')) generateChannelBriefing('store');
+  },200);
+}
+
+// ═══ 채널별 AI 운영 브리핑 ═══
+async function generateChannelBriefing(channel, forceNew=false){
+  const el=document.getElementById('aiBriefingContent_'+channel);
+  const dateEl=document.getElementById('aiBriefingDate_'+channel);
+  if(!el)return;
+  const isAdmin=currentUser?.role==='admin';
+  const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
+  if(!ck){el.innerHTML='<span style="color:var(--text3)">업체를 선택해주세요</span>';return;}
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  if(!from||!to){el.innerHTML='<span style="color:var(--text3)">기간을 선택해주세요</span>';return;}
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const cacheKey=`ch_briefing_${channel}`;
+
+  // 캐시 확인
+  if(!forceNew){
+    try{
+      const cRes=await fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&briefing_type=eq.${channel}&order=created_at.desc&limit=1`,{headers:h});
+      const cArr=await cRes.json();
+      if(Array.isArray(cArr)&&cArr.length>0&&cArr[0].briefing_text){
+        el.innerHTML=cArr[0].briefing_text;
+        const dt=new Date(cArr[0].created_at);
+        dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
+        return;
+      }
+    }catch(e){}
+  }
+
+  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:#6366F1;border-radius:50%;animation:spin 1s linear infinite"></div>AI가 데이터를 분석하고 있습니다...</div>';
+
+  const d=REPORT_DATA[currentReportMonth];
+  const kpi=d?.kpi||{};
+  const gfaData=d?.gfa||{};
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
+  const lines=[];
+
+  try{
+    if(channel==='naver'){
+      const cost=kpi.totalCost||0;
+      const rev=kpi.totalPurchaseRev||0;
+      const imp=kpi.totalImp||0;
+      const click=kpi.totalClick||0;
+      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+      const cpc=click>0?Math.round(cost/click):0;
+      const gCost=gfaData.totalCost||0;
+      const gRev=gfaData.totalRev||0;
+      const gRoas=gCost>0?(gRev/gCost*100).toFixed(1):'0';
+
+      lines.push(`<p><b>📊 네이버 검색광고 성과 요약</b><br>`);
+      if(cost>0){
+        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원 집행, 매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다. `);
+        lines.push(`노출 ${imp.toLocaleString()}회, 클릭 ${click.toLocaleString()}회, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원입니다.`);
+        if(gCost>0) lines.push(`<br>GFA는 광고비 ${Math.round(gCost).toLocaleString()}원, 매출 ${Math.round(gRev).toLocaleString()}원, ROAS ${gRoas}%입니다.`);
+      } else { lines.push(`이번 기간 네이버 검색광고 데이터가 없습니다.`); }
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+      let hasW=false;
+      if(cost>0&&+roas<100){lines.push(`ROAS ${roas}%로 광고비 대비 매출이 부족합니다. 저효율 키워드를 점검하고 전환이 낮은 캠페인의 예산을 재배분하세요.<br>`);hasW=true;}
+      if(cost>0&&+ctr<0.5){lines.push(`CTR ${ctr}%로 매우 낮습니다. 광고 문구와 소재 A/B 테스트를 추천합니다.<br>`);hasW=true;}
+      if(gCost>0&&+gRoas<100){lines.push(`GFA ROAS ${gRoas}%로 손익분기 미만입니다. 게재위치별 성과를 점검하세요.<br>`);hasW=true;}
+      if(!hasW) lines.push(`현재 특별한 이상 징후 없이 안정적으로 운영되고 있습니다.`);
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+      if(cost>0&&+roas>=300) lines.push(`ROAS 우수 — 전환 상위 키워드 예산 증액 및 유사 키워드 확장을 검토하세요.`);
+      else if(cost>0) lines.push(`전환율이 낮은 캠페인을 정리하고, 성과 좋은 키워드에 예산을 집중 배분해보세요. 소재 문구 A/B 테스트도 추천합니다.`);
+      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
+      lines.push(`</p>`);
+
+    } else if(channel==='store'){
+      const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+      const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+      const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+      const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+      const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+      const stNetRev=stRev-stRefund;
+      const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
+      const avgP=stOrders>0?Math.round(stRev/stOrders).toLocaleString():'0';
+
+      lines.push(`<p><b>📊 스마트스토어 성과 요약</b><br>`);
+      if(stRev>0){
+        lines.push(`총 결제금액 ${Math.round(stRev).toLocaleString()}원, 환불금액 ${Math.round(stRefund).toLocaleString()}원(환불률 ${refR}%), 실매출 ${Math.round(stNetRev).toLocaleString()}원입니다. `);
+        lines.push(`총 ${stOrders.toLocaleString()}건 주문, 객단가 ${avgP}원입니다.`);
+      } else { lines.push(`이번 기간 스마트스토어 데이터가 없습니다.`); }
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+      let hasW=false;
+      if(stRev>0&&+refR>10){lines.push(`환불률 ${refR}%로 10%를 초과합니다. 상품 품질, 상세페이지 설명, 배송 상태를 점검하세요.<br>`);hasW=true;}
+      if(stOrders>0&&stRev/stOrders<20000){lines.push(`객단가 ${avgP}원으로 낮은 편입니다. 묶음 할인이나 추가 구매 유도 전략을 검토하세요.<br>`);hasW=true;}
+      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+      if(stRev>0) lines.push(`번들 상품 구성이나 사은품 전략으로 객단가를 높이고, 리뷰 관리를 통해 전환율을 개선해보세요.`);
+      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
+      lines.push(`</p>`);
+
+    } else if(channel==='meta'){
+      const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+      const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+      const cost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+      const imp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+      const click=metaF.reduce((s,r)=>s+(+r.click||0),0);
+      const reach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+      const cpc=click>0?Math.round(cost/click):0;
+      const freq=reach>0?(imp/reach).toFixed(1):'0';
+
+      lines.push(`<p><b>📊 META 광고 성과 요약</b><br>`);
+      if(cost>0){
+        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원입니다. `);
+        lines.push(`도달 ${reach.toLocaleString()}명, 노출 ${imp.toLocaleString()}회, 빈도 ${freq}회입니다.`);
+      } else { lines.push(`이번 기간 META 광고 데이터가 없습니다.`); }
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+      let hasW=false;
+      if(cost>0&&+ctr<1){lines.push(`CTR ${ctr}%로 1% 미만입니다. 타겟 반응이 낮은 소재일 수 있으므로 크리에이티브 교체를 검토하세요.<br>`);hasW=true;}
+      if(cost>0&&+freq>3){lines.push(`빈도 ${freq}회로 높아 광고 피로도가 쌓이고 있습니다. 소재 로테이션이나 오디언스 확장을 추천합니다.<br>`);hasW=true;}
+      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+      if(cost>0) lines.push(`성과 상위 소재를 파악하여 유사 크리에이티브를 확장하세요. 리타겟팅과 신규 유입 캠페인의 예산 비율도 점검해보세요.`);
+      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
+      lines.push(`</p>`);
+
+    } else if(channel==='google'){
+      const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+      let cost=0,rev=0,imp=0,click=0,conv=0;
+      googleBr.forEach(r=>{cost+=+r.cost||0;imp+=+r.imp||0;click+=+r.click||0;if(r.campaign_status!=='전환상세'){rev+=+r.conv_value||0;conv+=+r.conv||0;}});
+      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+      const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+      const cpc=click>0?Math.round(cost/click):0;
+
+      lines.push(`<p><b>📊 구글 광고 성과 요약</b><br>`);
+      if(cost>0){
+        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, 전환매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다. `);
+        lines.push(`클릭 ${click.toLocaleString()}회, CTR ${ctr}%, CPC ${cpc.toLocaleString()}원, 전환 ${conv.toFixed(0)}건입니다.`);
+      } else { lines.push(`이번 기간 구글 광고 데이터가 없습니다.`); }
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+      let hasW=false;
+      if(cost>0&&+roas<100){lines.push(`ROAS ${roas}%로 수익성이 낮습니다. 전환 키워드를 재점검하고 입찰 전략을 조정하세요.<br>`);hasW=true;}
+      if(!hasW) lines.push(`현재 안정적으로 운영되고 있습니다.`);
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+      if(cost>0) lines.push(`전환 키워드 중심으로 캠페인을 최적화하고, 검색 의도에 맞는 랜딩페이지 연결 여부를 확인하세요.`);
+      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
+      lines.push(`</p>`);
+
+    } else if(channel==='ebay'){
+      const ebayAdBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+      let cost=0,rev=0;
+      ebayAdBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;});
+      const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+
+      lines.push(`<p><b>📊 이베이 성과 요약</b><br>`);
+      if(cost>0){
+        lines.push(`광고비 ${Math.round(cost).toLocaleString()}원, 매출 ${Math.round(rev).toLocaleString()}원, ROAS ${roas}%입니다.`);
+      } else { lines.push(`이번 기간 이베이 광고 데이터가 없습니다.`); }
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>⚠️ 주의 포인트</b><br>`);
+      if(cost>0&&+roas<100) lines.push(`ROAS ${roas}%로 효율 점검이 필요합니다.`);
+      else lines.push(`현재 안정적으로 운영되고 있습니다.`);
+      lines.push(`</p>`);
+
+      lines.push(`<p><b>✅ 다음 액션 제안</b><br>`);
+      if(cost>0) lines.push(`플랫폼별(G마켓/옥션) 성과를 비교하여 효율 높은 쪽에 예산을 집중하세요.`);
+      else lines.push(`데이터를 업로드하시면 맞춤 액션을 제안해드립니다.`);
+      lines.push(`</p>`);
+    }
+
+    const text=lines.join('');
+    el.innerHTML=text||'<span style="color:var(--text3)">분석할 데이터가 없습니다.</span>';
+    const now=new Date();
+    dateEl.textContent=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 분석`;
+
+    // DB 캐시 저장 (briefing_type 컬럼으로 구분)
+    const hPost={...h,'Content-Type':'application/json','Prefer':'return=minimal'};
+    fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&briefing_type=eq.${channel}`,{method:'DELETE',headers:hPost})
+      .then(()=>fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:hPost,body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text,briefing_type:channel})}))
+      .catch(()=>{});
+  }catch(err){
+    console.error('채널 브리핑 오류:',err);
+    el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다.</span>';
+  }
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
@@ -10785,8 +11022,19 @@ async function loadGoogleTab(tabId){
           <div class="mgr-ins-col"><div class="mgr-ins-col-hd"><div style="display:flex;align-items:center;gap:6px"><span style="color:#F59E0B">🔄</span><span style="font-size:13px;font-weight:600">변경사항</span></div>${isAdm2?'<button class="mgr-ins-write-btn" onclick="openInsightModal2(\'google\',\'change\',\'구글\')">✏️ 작성</button>':''}</div><div id="googleChangeList"><div class="mgr-ins-empty">📝 등록된 변경사항이 없습니다</div></div></div>
         </div>
       </div>
+      <div id="aiBriefingCard_google" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #EA4335;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#EA4335,#D33426);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+            <div><div style="font-size:13px;font-weight:700">AI 운영 브리핑</div><div style="font-size:10px;color:var(--text3)" id="aiBriefingDate_google">데이터 분석 중...</div></div>
+          </div>
+          <button onclick="generateChannelBriefing('google',true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+        </div>
+        <div id="aiBriefingContent_google" style="font-size:12.5px;line-height:1.7;color:var(--text2)"><div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="sd-spinner-sm"></div>브리핑을 준비하고 있습니다...</div></div>
+      </div>
       <div class="row2b" style="margin-bottom:16px">${typeCards}</div>`;
     loadInsights2('google','구글','googleOpinionList','googleChangeList');
+    setTimeout(()=>generateChannelBriefing('google'),100);
   }
 
   if(tabId==='campaign'){
@@ -11019,6 +11267,16 @@ async function loadEbayTab(tabId){
           <div class="mgr-ins-col"><div class="mgr-ins-col-hd"><div style="display:flex;align-items:center;gap:6px"><span style="color:#F59E0B">🔄</span><span style="font-size:13px;font-weight:600">변경사항</span></div>${isAdm?'<button class="mgr-ins-write-btn" onclick="openInsightModal2(\'ebay\',\'change\',\'이베이\')">✏️ 작성</button>':''}</div><div id="ebayChangeList"><div class="mgr-ins-empty">📝 등록된 변경사항이 없습니다</div></div></div>
         </div>
       </div>
+      <div id="aiBriefingCard_ebay" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #E53935;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#E53935,#C62828);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+            <div><div style="font-size:13px;font-weight:700">AI 운영 브리핑</div><div style="font-size:10px;color:var(--text3)" id="aiBriefingDate_ebay">데이터 분석 중...</div></div>
+          </div>
+          <button onclick="generateChannelBriefing('ebay',true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+        </div>
+        <div id="aiBriefingContent_ebay" style="font-size:12.5px;line-height:1.7;color:var(--text2)"><div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="sd-spinner-sm"></div>브리핑을 준비하고 있습니다...</div></div>
+      </div>
       <div class="row2b" style="margin-bottom:16px">${platCard('G마켓','🟢',gmP)}${platCard('옥션','🔴',acP)}</div>
       <div class="row2b" style="margin-bottom:16px">
         <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 매출 추이</div></div></div><canvas id="ebayDailyRev" height="120"></canvas></div>
@@ -11026,6 +11284,7 @@ async function loadEbayTab(tabId){
       </div>
       ${adTableHtml}${prodTableHtml}`;
     loadInsights2('ebay','이베이','ebayOpinionList','ebayChangeList');
+    setTimeout(()=>generateChannelBriefing('ebay'),100);
     setTimeout(()=>{
       const dailyMap={};
       prodRows.forEach(r=>{const d=r.date||'';if(!d)return;if(!dailyMap[d])dailyMap[d]={date:d,gm:0,ac:0};if(r.platform==='gmarket')dailyMap[d].gm+=+r.sales_amount||0;else dailyMap[d].ac+=+r.sales_amount||0;});
@@ -11198,6 +11457,16 @@ async function loadMetaTab(tabId){
           <div class="mgr-ins-col"><div class="mgr-ins-col-hd"><div style="display:flex;align-items:center;gap:6px"><span style="color:#F59E0B">🔄</span><span style="font-size:13px;font-weight:600">변경사항</span></div>${isAdm?'<button class="mgr-ins-write-btn" onclick="openInsightModal2(\'meta\',\'change\',\'META\')">✏️ 작성</button>':''}</div><div id="metaChangeList"><div class="mgr-ins-empty">📝 등록된 변경사항이 없습니다</div></div></div>
         </div>
       </div>
+      <div id="aiBriefingCard_meta" style="background:var(--white);border:1.5px solid var(--border);border-left:4px solid #1877F2;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#1877F2,#0D65D9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">AI</div>
+            <div><div style="font-size:13px;font-weight:700">AI 운영 브리핑</div><div style="font-size:10px;color:var(--text3)" id="aiBriefingDate_meta">데이터 분석 중...</div></div>
+          </div>
+          <button onclick="generateChannelBriefing('meta',true)" style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🔄 새로 분석</button>
+        </div>
+        <div id="aiBriefingContent_meta" style="font-size:12.5px;line-height:1.7;color:var(--text2)"><div style="display:flex;align-items:center;gap:8px;color:var(--text3)"><div class="sd-spinner-sm"></div>브리핑을 준비하고 있습니다...</div></div>
+      </div>
       <div class="row2b" style="margin-bottom:16px">
         <div class="card"><div class="card-hd"><div><div class="card-title">📅 일별 광고비 추이</div></div></div><canvas id="metaDailyCost" height="120"></canvas></div>
         <div class="card"><div class="card-hd"><div><div class="card-title">👁️ 일별 노출 · 클릭</div></div></div><canvas id="metaDailyImpClick" height="120"></canvas></div>
@@ -11207,6 +11476,7 @@ async function loadMetaTab(tabId){
         <div class="card"><div class="card-hd"><div><div class="card-title">📊 캠페인 비용 비중</div></div></div><canvas id="metaCampPie" height="120"></canvas></div>
       </div>`;
     loadInsights2('meta','META','metaOpinionList','metaChangeList');
+    setTimeout(()=>generateChannelBriefing('meta'),100);
     setTimeout(()=>{
       mk('metaDailyCost',{type:'bar',data:{labels:lbls,datasets:[{label:'광고비',data:dailyList.map(d=>d.cost),backgroundColor:'rgba(24,119,242,.7)',borderRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false}}}});
       mk('metaDailyImpClick',{type:'line',data:{labels:lbls,datasets:[{label:'노출',data:dailyList.map(d=>d.imp),borderColor:'#1877F2',backgroundColor:'rgba(24,119,242,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y'},{label:'클릭',data:dailyList.map(d=>d.click),borderColor:'#E1306C',backgroundColor:'rgba(225,48,108,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y1'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,position:'left',ticks:{...ax.ticks,color:'#1877F2'}},y1:{grid:{display:false},position:'right',ticks:{color:'#E1306C',font:{size:10,family:'IBM Plex Mono'}}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
@@ -11662,7 +11932,10 @@ function switchRptTab(id, el){
   if(id==='gfa')     loadGFATab();
   if(id==='keyword') loadKeywordTab();
   if(id==='hourly')  loadHourlyTab();
-  if(id==='summary') loadInsights2('naver','네이버','naverOpinionList','naverChangeList');
+  if(id==='summary'){
+    loadInsights2('naver','네이버','naverOpinionList','naverChangeList');
+    setTimeout(()=>generateChannelBriefing('naver'),100);
+  }
   // 피드백 글로우는 go() 함수에서 통합 처리
   if(id==='device') setTimeout(()=>{
     const mk=(id2,cfg)=>{const el2=document.getElementById(id2);if(!el2)return;try{if(charts[id2])charts[id2].destroy();charts[id2]=new Chart(el2,cfg);}catch(e){}};
