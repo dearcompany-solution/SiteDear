@@ -10277,22 +10277,21 @@ async function _tryGenerateAIInsights(ck,from,to,h){
 // ═══ AI 인사이트 자동 생성 (pending으로 저장) ═══
 async function generateAIInsights(ck, d){
   // 동시 실행 방지
-  const lockKey=`_insightLock_combined_${ck}`;
-  if(window[lockKey]){console.log('AI 인사이트(통합): 이미 진행 중');return;}
-  window[lockKey]=true;
+  if(window._aiInsightLock_combined){return;}
+  window._aiInsightLock_combined=true;
 
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   
-  // 오늘(KST) 이미 AI 인사이트를 생성했는지 체크 (중복 방지)
+  // 오늘(KST) 통합 태그 인사이트만 체크
   const now=new Date();
   const kstNow=new Date(now.getTime()+9*60*60*1000);
   const todayKST=kstNow.toISOString().slice(0,10);
   const checkH={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&tags=eq.통합&created_at=gte.${todayKST}T00:00:00%2B09:00&limit=1`,{headers:checkH});
+    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&tags=eq.${encodeURIComponent('통합')}&created_at=gte.${todayKST}T00:00:00%2B09:00&limit=1`,{headers:checkH});
     const chkArr=await chk.json();
-    if(Array.isArray(chkArr)&&chkArr.length>0){console.log('AI 인사이트(통합): 오늘 이미 생성됨');window[lockKey]=false;return;}
-  }catch(e){window[lockKey]=false;return;}
+    if(Array.isArray(chkArr)&&chkArr.length>0){console.log('AI 인사이트(통합): 오늘 이미 생성됨');window._aiInsightLock_combined=false;return;}
+  }catch(e){window._aiInsightLock_combined=false;return;}
 
   const insights=[];
   const {naverCost,naverRev,gfaCost,gfaRev,metaCost,metaClick,metaImp,metaReach,
@@ -10366,6 +10365,7 @@ async function generateAIInsights(ck, d){
       },500);
     }
   }catch(e){console.warn('AI 인사이트 저장 실패:',e);}
+  window._aiInsightLock_combined=false;
 }
 
 async function renderCharts(){
@@ -10683,6 +10683,7 @@ async function generateChannelBriefing(channel, forceNew=false){
         el.innerHTML=cArr[0].briefing_text;
         const dt=new Date(cArr[0].created_at);
         dateEl.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} 분석`;
+        // 캐시 히트 — 브리핑은 캐시 사용, 인사이트는 generateChannelBriefing(force=true)시에만 생성
         return;
       }
     }catch(e){}
@@ -10865,14 +10866,14 @@ async function generateChannelInsights(ck, channel, briefingLines){
   if(!tag)return;
 
   // 동시 실행 방지
-  const lockKey=`_insightLock_${channel}_${ck}`;
+  const lockKey=`_aiInsightLock_${channel}`;
   if(window[lockKey]){console.log(`AI 인사이트(${tag}): 이미 진행 중`);return;}
   window[lockKey]=true;
 
   const hCheck={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   const hPost={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
 
-  // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵 (pending/approved/rejected 모두 체크)
+  // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵
   const now=new Date();
   const kstNow=new Date(now.getTime()+9*60*60*1000);
   const todayKST=kstNow.toISOString().slice(0,10);
@@ -10990,6 +10991,7 @@ async function generateChannelInsights(ck, channel, briefingLines){
       }
     }
   }catch(e){console.warn(`AI 인사이트(${tag}) 저장 실패:`,e);}
+  window[lockKey]=false;
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
