@@ -11428,7 +11428,6 @@ async function loadEbayTab(tabId){
       </div>
       ${adTableHtml}${prodTableHtml}`;
     loadInsights2('ebay','이베이','ebayOpinionList','ebayChangeList');
-    setTimeout(()=>generateChannelBriefing('ebay'),100);
     setTimeout(()=>{
       const dailyMap={};
       prodRows.forEach(r=>{const d=r.date||'';if(!d)return;if(!dailyMap[d])dailyMap[d]={date:d,gm:0,ac:0};if(r.platform==='gmarket')dailyMap[d].gm+=+r.sales_amount||0;else dailyMap[d].ac+=+r.sales_amount||0;});
@@ -11439,6 +11438,7 @@ async function loadEbayTab(tabId){
         {label:'옥션',data:dailyList.map(d=>d.ac),backgroundColor:'rgba(239,68,68,.7)',borderRadius:3}
       ]},options:{responsive:true,scales:{x:{...ax,stacked:true,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,stacked:true,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
       mk('ebayPlatPie',{type:'doughnut',data:{labels:['G마켓','옥션'],datasets:[{data:[gmP.amount,acP.amount],backgroundColor:['#03C75A','#EF4444'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10.5},padding:10}}}}});
+      generateChannelBriefing('ebay');
     },100);
   }
 
