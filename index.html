@@ -10903,10 +10903,76 @@ async function generateChannelBriefing(channel, forceNew=false){
     fetch(`${SUPABASE_URL}/rest/v1/ai_briefings?client_key=eq.${encodeURIComponent(ck)}&period_from=eq.${from}&period_to=eq.${to}&briefing_type=eq.${channel}`,{method:'DELETE',headers:hPost})
       .then(()=>fetch(`${SUPABASE_URL}/rest/v1/ai_briefings`,{method:'POST',headers:hPost,body:JSON.stringify({client_key:ck,period_from:from,period_to:to,briefing_text:text,briefing_type:channel})}))
       .catch(()=>{});
+
+    // ═══ 채널별 AI 인사이트 자동 생성 ═══
+    generateChannelInsights(ck, channel, lines);
   }catch(err){
     console.error('채널 브리핑 오류:',err);
     el.innerHTML='<span style="color:var(--text3)">브리핑 생성 중 오류가 발생했습니다.</span>';
   }
+}
+
+async function generateChannelInsights(ck, channel, briefingLines){
+  const tagMap={naver:'네이버',store:'스토어',meta:'META',google:'구글',ebay:'이베이'};
+  const tag=tagMap[channel];
+  if(!tag)return;
+
+  const hCheck={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const hPost={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+
+  // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵
+  const now=new Date();
+  const kstNow=new Date(now.getTime()+9*60*60*1000);
+  const todayKST=kstNow.toISOString().slice(0,10);
+  try{
+    const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&tags=eq.${encodeURIComponent(tag)}&created_at=gte.${todayKST}T00:00:00%2B09:00&limit=1`,{headers:hCheck});
+    const chkArr=await chk.json();
+    if(Array.isArray(chkArr)&&chkArr.length>0){console.log(`AI 인사이트(${tag}): 오늘 이미 생성됨`);return;}
+  }catch(e){}
+
+  // 브리핑 텍스트에서 의견/변경사항 추출
+  const fullText=briefingLines.join('').replace(/<[^>]+>/g,'');
+  const insights=[];
+
+  // 의견: 성과 요약 + 주의 포인트 결합
+  const summaryMatch=fullText.match(/성과 요약([\s\S]*?)주의 포인트/);
+  const warningMatch=fullText.match(/주의 포인트([\s\S]*?)다음 액션/);
+  let opinionText='';
+  if(summaryMatch) opinionText+=summaryMatch[1].trim();
+  if(warningMatch){
+    const warning=warningMatch[1].trim();
+    if(warning&&!warning.includes('안정적으로 운영')) opinionText+=(opinionText?' ':'')+'⚠️ '+warning;
+  }
+  if(!opinionText) opinionText='이번 기간 데이터를 기반으로 분석한 결과, 특이사항 없이 안정적으로 운영되고 있습니다.';
+  insights.push({client_key:ck,author:'AI',content:'===의견===\n'+opinionText,tags:tag,status:'pending'});
+
+  // 변경사항: 액션 제안에서 추출
+  const actionMatch=fullText.match(/다음 액션 제안([\s\S]*?)$/);
+  let changeText='';
+  if(actionMatch) changeText=actionMatch[1].trim();
+  if(!changeText) changeText='현재 특별한 변경 권장사항 없음. 기존 전략 유지하며 성과 추이 모니터링';
+  insights.push({client_key:ck,author:'AI',content:'===변경사항===\n'+changeText,tags:tag,status:'pending'});
+
+  // DB 저장
+  try{
+    const saveRes=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:hPost,body:JSON.stringify(insights)});
+    if(saveRes.ok){
+      console.log(`✅ AI 인사이트(${tag}) 2건 pending 저장 완료`);
+      // 해당 채널 인사이트 리로드
+      const pageMap={naver:'naver',store:'store',meta:'meta',google:'google',ebay:'ebay'};
+      const elMap={
+        naver:['naverOpinionList','naverChangeList'],
+        store:['storeOpinionList','storeChangeList'],
+        meta:['metaOpinionList','metaChangeList'],
+        google:['googleOpinionList','googleChangeList'],
+        ebay:['ebayOpinionList','ebayChangeList']
+      };
+      const ids=elMap[channel];
+      if(ids&&currentUser?.role==='admin'){
+        setTimeout(()=>loadInsights2(channel,tag,ids[0],ids[1]),500);
+      }
+    }
+  }catch(e){console.warn(`AI 인사이트(${tag}) 저장 실패:`,e);}
 }
 /* ════════════════════════════════════════
    구글 광고 대시보드
