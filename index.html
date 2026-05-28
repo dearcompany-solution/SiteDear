@@ -10923,7 +10923,7 @@ async function generateChannelInsights(ck, channel, briefingLines){
   const hCheck={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   const hPost={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
 
-  // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵
+  // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵 (pending/approved/rejected 모두 체크)
   const now=new Date();
   const kstNow=new Date(now.getTime()+9*60*60*1000);
   const todayKST=kstNow.toISOString().slice(0,10);
@@ -10933,36 +10933,101 @@ async function generateChannelInsights(ck, channel, briefingLines){
     if(Array.isArray(chkArr)&&chkArr.length>0){console.log(`AI 인사이트(${tag}): 오늘 이미 생성됨`);return;}
   }catch(e){}
 
-  // 브리핑 텍스트에서 의견/변경사항 추출
-  const fullText=briefingLines.join('').replace(/<[^>]+>/g,'');
-  const insights=[];
-
-  // 의견: 성과 요약 + 주의 포인트 결합
-  const summaryMatch=fullText.match(/성과 요약([\s\S]*?)주의 포인트/);
-  const warningMatch=fullText.match(/주의 포인트([\s\S]*?)다음 액션/);
+  // 채널별 데이터로 간결한 인사이트 직접 생성
+  const isAdmin=currentUser?.role==='admin';
+  const from=currentDateRange?.from||'';
+  const to=currentDateRange?.to||'';
+  const d=REPORT_DATA[currentReportMonth];
+  const kpi=d?.kpi||{};
+  const gfaData=d?.gfa||{};
+  const fromMonth=from.slice(0,7);
+  const toMonth=to.slice(0,7);
   let opinionText='';
-  if(summaryMatch) opinionText+=summaryMatch[1].trim();
-  if(warningMatch){
-    const warning=warningMatch[1].trim();
-    if(warning&&!warning.includes('안정적으로 운영')) opinionText+=(opinionText?' ':'')+'⚠️ '+warning;
-  }
-  if(!opinionText) opinionText='이번 기간 데이터를 기반으로 분석한 결과, 특이사항 없이 안정적으로 운영되고 있습니다.';
-  insights.push({client_key:ck,author:'AI',content:'===의견===\n'+opinionText,tags:tag,status:'pending'});
-
-  // 변경사항: 액션 제안에서 추출
-  const actionMatch=fullText.match(/다음 액션 제안([\s\S]*?)$/);
   let changeText='';
-  if(actionMatch) changeText=actionMatch[1].trim();
-  if(!changeText) changeText='현재 특별한 변경 권장사항 없음. 기존 전략 유지하며 성과 추이 모니터링';
-  insights.push({client_key:ck,author:'AI',content:'===변경사항===\n'+changeText,tags:tag,status:'pending'});
 
-  // DB 저장
+  if(channel==='naver'){
+    const cost=kpi.totalCost||0, rev=kpi.totalPurchaseRev||0;
+    const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+    const ctr=kpi.totalImp>0?(kpi.totalClick/kpi.totalImp*100).toFixed(2):'0';
+    const gCost=gfaData.totalCost||0, gRev=gfaData.totalRev||0;
+    const gRoas=gCost>0?(gRev/gCost*100).toFixed(1):'0';
+    if(cost>0&&gCost>0){
+      if(+gRoas>+roas) opinionText=`검색광고 ROAS ${roas}%, GFA ROAS ${gRoas}%로 GFA가 더 효율적입니다. GFA 예산 비중 확대를 검토해보세요.`;
+      else opinionText=`검색광고 ROAS ${roas}%, GFA ROAS ${gRoas}%로 검색광고가 더 효율적입니다. 검색광고 상위 키워드 예산 증액을 권장합니다.`;
+    } else if(cost>0){
+      opinionText=+roas>=200?`ROAS ${roas}%로 양호합니다. 전환 상위 키워드 중심으로 예산을 유지하세요.`:`ROAS ${roas}%로 개선이 필요합니다. 저효율 키워드 정리가 우선입니다.`;
+    }
+    if(cost>0&&+ctr<1) opinionText+=(opinionText?' ':'')+ `CTR ${ctr}%로 낮으니 소재 문구 개선이 필요합니다.`;
+    changeText=cost>0?(+roas>=200?'전환 상위 키워드 예산 증액 및 유사 키워드 확장 검토':'저효율 키워드 OFF 및 전환 키워드에 예산 집중'):'데이터 업로드 후 분석 가능';
+
+  } else if(channel==='store'){
+    const stCache=window[`_store_store_sales_${ck}_${currentReportMonth}`]||[];
+    const stF=from&&to?stCache.filter(r=>r.date>=from&&r.date<=to):stCache;
+    const stRev=stF.reduce((s,r)=>s+(+r.revenue||0),0);
+    const stRefund=stF.reduce((s,r)=>s+(+r.refund_amount||0),0);
+    const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+    const refR=stRev>0?(stRefund/stRev*100).toFixed(1):'0';
+    const avgP=stOrders>0?Math.round(stRev/stOrders):0;
+    if(stRev>0){
+      const parts=[];
+      if(+refR>10) parts.push(`환불률 ${refR}%로 높습니다. 상품/배송 점검이 시급합니다`);
+      if(avgP<20000) parts.push(`객단가 ${avgP.toLocaleString()}원으로 낮으니 묶음 할인 전략을 검토하세요`);
+      if(!parts.length) parts.push(`실매출 ${Math.round(stRev-stRefund).toLocaleString()}원, 객단가 ${avgP.toLocaleString()}원으로 안정적입니다`);
+      opinionText=parts.join('. ')+'.';
+      changeText=+refR>10?'환불 원인 파악 및 상세페이지 일치 여부 점검':'리뷰 관리 강화 및 번들 상품으로 객단가 향상';
+    } else { opinionText='이번 기간 스토어 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
+
+  } else if(channel==='meta'){
+    const metaCache=window[`_meta_${ck}_${fromMonth}_${toMonth}`]||[];
+    const metaF=metaCache.filter(r=>!r.date||(r.date>=from&&r.date<=to));
+    const cost=metaF.reduce((s,r)=>s+(+r.cost||0),0);
+    const imp=metaF.reduce((s,r)=>s+(+r.imp||0),0);
+    const click=metaF.reduce((s,r)=>s+(+r.click||0),0);
+    const reach=metaF.reduce((s,r)=>s+(+r.reach||0),0);
+    const ctr=imp>0?(click/imp*100).toFixed(2):'0';
+    const cpc=click>0?Math.round(cost/click):0;
+    const freq=reach>0?(imp/reach).toFixed(1):'0';
+    if(cost>0){
+      const parts=[];
+      if(+ctr<1) parts.push(`CTR ${ctr}%로 낮습니다. 소재 교체가 필요합니다`);
+      else parts.push(`CTR ${ctr}%, CPC ${cpc.toLocaleString()}원으로 양호합니다`);
+      if(+freq>3) parts.push(`빈도 ${freq}회로 높아 피로도 관리가 필요합니다`);
+      opinionText=parts.join('. ')+'.';
+      changeText=+ctr<1?'저효율 소재 중단 및 신규 크리에이티브 테스트':'성과 상위 소재 확장 및 리타겟팅 비율 점검';
+    } else { opinionText='이번 기간 META 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
+
+  } else if(channel==='google'){
+    const googleBr=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+    let cost=0,rev=0;
+    googleBr.forEach(r=>{cost+=+r.cost||0;if(r.campaign_status!=='전환상세')rev+=+r.conv_value||0;});
+    const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+    if(cost>0){
+      opinionText=+roas>=200?`ROAS ${roas}%로 효율 양호합니다. 키워드 확장을 검토하세요.`:`ROAS ${roas}%로 개선이 필요합니다. 전환 키워드를 재점검하세요.`;
+      changeText=+roas>=200?'전환 키워드 확장 및 예산 증액 검토':'저효율 키워드 정리 및 입찰 전략 조정';
+    } else { opinionText='이번 기간 구글 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
+
+  } else if(channel==='ebay'){
+    const ebayBr=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+    let cost=0,rev=0;
+    ebayBr.forEach(r=>{cost+=+r.cost||0;rev+=+r.purchase_amount||0;});
+    const roas=cost>0?(rev/cost*100).toFixed(1):'0';
+    if(cost>0){
+      opinionText=+roas>=200?`ROAS ${roas}%로 양호합니다. 플랫폼별 성과를 비교해 효율 높은 쪽에 집중하세요.`:`ROAS ${roas}%로 효율 점검이 필요합니다.`;
+      changeText=+roas>=200?'고효율 플랫폼 예산 집중':'플랫폼별 성과 비교 후 저효율 축소';
+    } else { opinionText='이번 기간 이베이 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
+  }
+
+  if(!opinionText)return;
+
+  const insights=[
+    {client_key:ck,author:'AI',content:'===의견===\n'+opinionText,tags:tag,status:'pending'},
+    {client_key:ck,author:'AI',content:'===변경사항===\n'+changeText,tags:tag,status:'pending'}
+  ];
+
   try{
     const saveRes=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:hPost,body:JSON.stringify(insights)});
     if(saveRes.ok){
-      console.log(`✅ AI 인사이트(${tag}) 2건 pending 저장 완료`);
-      // 해당 채널 인사이트 리로드
-      const pageMap={naver:'naver',store:'store',meta:'meta',google:'google',ebay:'ebay'};
+      console.log(`✅ AI 인사이트(${tag}) 2건 pending 저장`);
       const elMap={
         naver:['naverOpinionList','naverChangeList'],
         store:['storeOpinionList','storeChangeList'],
