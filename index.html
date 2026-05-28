@@ -11620,7 +11620,6 @@ async function loadMetaTab(tabId){
         <div class="card"><div class="card-hd"><div><div class="card-title">📊 캠페인 비용 비중</div></div></div><canvas id="metaCampPie" height="120"></canvas></div>
       </div>`;
     loadInsights2('meta','META','metaOpinionList','metaChangeList');
-    setTimeout(()=>generateChannelBriefing('meta'),100);
     setTimeout(()=>{
       mk('metaDailyCost',{type:'bar',data:{labels:lbls,datasets:[{label:'광고비',data:dailyList.map(d=>d.cost),backgroundColor:'rgba(24,119,242,.7)',borderRadius:3}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,ticks:{...ax.ticks,callback:v=>'₩'+Math.round(v/10000)+'만'}}},plugins:{legend:{display:false}}}});
       mk('metaDailyImpClick',{type:'line',data:{labels:lbls,datasets:[{label:'노출',data:dailyList.map(d=>d.imp),borderColor:'#1877F2',backgroundColor:'rgba(24,119,242,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y'},{label:'클릭',data:dailyList.map(d=>d.click),borderColor:'#E1306C',backgroundColor:'rgba(225,48,108,.1)',fill:true,tension:.4,pointRadius:2,yAxisID:'y1'}]},options:{responsive:true,scales:{x:{...ax,ticks:{...ax.ticks,maxTicksLimit:15}},y:{...ax,position:'left',ticks:{...ax.ticks,color:'#1877F2'}},y1:{grid:{display:false},position:'right',ticks:{color:'#E1306C',font:{size:10,family:'IBM Plex Mono'}}}},plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:10}}}}}});
@@ -11630,6 +11629,7 @@ async function loadMetaTab(tabId){
       const campNames=Object.keys(campMap).sort((a,b)=>campMap[b]-campMap[a]);
       const campColors=['#1877F2','#E1306C','#F59E0B','#03C75A','#8B5CF6','#EF4444'];
       mk('metaCampPie',{type:'doughnut',data:{labels:campNames.map(n=>n.length>12?n.slice(0,12)+'…':n),datasets:[{data:campNames.map(n=>campMap[n]),backgroundColor:campColors.slice(0,campNames.length),borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#4a5670',font:{size:9.5},padding:8}}}}});
+      generateChannelBriefing('meta');
     },100);
   }
 
