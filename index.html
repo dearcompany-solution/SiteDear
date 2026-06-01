@@ -2494,10 +2494,12 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
     const res=await fetch(url,{headers:h});
     const rows=await res.json();
     if(!Array.isArray(rows))return;
-    // 동일 내용 중복 제거 (최신 것만 유지)
+    // 동일 내용 중복 제거 + "데이터 없음" AI 인사이트 자동 제거
+    const _isEmpty=(r)=>r.author==='AI'&&/데이터가 없|데이터 업로드 후|업로드 후 분석/.test(r.content||'');
     const _dedup=(arr)=>{const seen=new Set();return arr.filter(r=>{const t=(r.content||'').trim();if(seen.has(t))return false;seen.add(t);return true;});};
-    const opinions=_dedup(rows.filter(r=>(r.content||'').includes('===의견===')));
-    const changes=_dedup(rows.filter(r=>(r.content||'').includes('===변경사항===')));
+    const validRows=rows.filter(r=>!_isEmpty(r));
+    const opinions=_dedup(validRows.filter(r=>(r.content||'').includes('===의견===')));
+    const changes=_dedup(validRows.filter(r=>(r.content||'').includes('===변경사항===')));
     const extractText=(content,section)=>{
       const regex=section==='opinion'?/===의견===\n?([\s\S]*?)(?=\n?===변경사항===|$)/:/===변경사항===\n?([\s\S]*?)$/;
       const m=content.match(regex);
