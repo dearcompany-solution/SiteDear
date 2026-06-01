@@ -2480,17 +2480,24 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   migrateInsightStatus();
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    // 선택 기간 시작일 기준 최근 인사이트만 (이전 기간 중복 방지)
+    // 선택 기간 기준 인사이트만 + 다음날까지 포함 (생성일이 기간 종료 다음날일 수 있음)
     const _insFrom=currentDateRange?.from||'';
+    const _insTo=currentDateRange?.to||'';
     let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=20`;
     if(_insFrom) url+=`&created_at=gte.${_insFrom}T00:00:00`;
+    if(_insTo){
+      const toD=new Date(_insTo);toD.setDate(toD.getDate()+2);
+      url+=`&created_at=lte.${toD.toISOString().slice(0,10)}T23:59:59`;
+    }
     if(!isAdmin) url+=`&status=eq.approved`;
     else url+=`&status=in.(approved,pending,rejected)`;
     const res=await fetch(url,{headers:h});
     const rows=await res.json();
     if(!Array.isArray(rows))return;
-    const opinions=rows.filter(r=>(r.content||'').includes('===의견==='));
-    const changes=rows.filter(r=>(r.content||'').includes('===변경사항==='));
+    // 동일 내용 중복 제거 (최신 것만 유지)
+    const _dedup=(arr)=>{const seen=new Set();return arr.filter(r=>{const t=(r.content||'').trim();if(seen.has(t))return false;seen.add(t);return true;});};
+    const opinions=_dedup(rows.filter(r=>(r.content||'').includes('===의견===')));
+    const changes=_dedup(rows.filter(r=>(r.content||'').includes('===변경사항===')));
     const extractText=(content,section)=>{
       const regex=section==='opinion'?/===의견===\n?([\s\S]*?)(?=\n?===변경사항===|$)/:/===변경사항===\n?([\s\S]*?)$/;
       const m=content.match(regex);
