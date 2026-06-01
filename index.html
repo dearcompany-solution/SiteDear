@@ -2480,7 +2480,10 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   migrateInsightStatus();
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
   try{
-    let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=30`;
+    // 선택 기간 시작일 기준 최근 인사이트만 (이전 기간 중복 방지)
+    const _insFrom=currentDateRange?.from||'';
+    let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=20`;
+    if(_insFrom) url+=`&created_at=gte.${_insFrom}T00:00:00`;
     if(!isAdmin) url+=`&status=eq.approved`;
     else url+=`&status=in.(approved,pending,rejected)`;
     const res=await fetch(url,{headers:h});
@@ -10274,6 +10277,9 @@ async function generateAIInsights(ck, d){
     googleCostBr,googleRevBr,ebayCostBr,ebayRevBr,stRev,stRefund,stNetRev,stOrders,
     totalCostAll,totalRev,overallRoas,kpi}=d;
 
+  // 데이터 없으면 인사이트 생성하지 않음
+  if(totalCostAll<=0&&totalRev<=0){console.log('AI 인사이트(통합): 데이터 없음 — 생성 스킵');window._aiInsightLock_combined=false;return;}
+
   // ── 통합 의견 (간결하게) ──
   let opinionText='';
   if(totalCostAll>0){
@@ -11028,7 +11034,7 @@ async function generateChannelInsights(ck, channel, briefingLines){
     } else { opinionText='이번 기간 이베이 데이터가 없습니다.'; changeText='데이터 업로드 후 분석 가능'; }
   }
 
-  if(!opinionText)return;
+  if(!opinionText||opinionText.includes('데이터가 없습니다')){console.log(`AI 인사이트(${tag}): 데이터 없음 — 생성 스킵`);window[lockKey]=false;return;}
 
   const insights=[
     {client_key:ck,author:'AI',content:'===의견===\n'+opinionText,tags:tag,status:'pending'},
