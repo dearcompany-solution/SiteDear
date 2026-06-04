@@ -190,7 +190,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 /* ════ ALERTS ════ */
 .alert-list{display:flex;flex-direction:column;gap:10px}
 .alert-item{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:all .2s}
-.alert-item:hover{box-shadow:var(--shm)}
+.alert-item:hover{box-shadow:var(--shm);transform:translateY(-1px);border-color:var(--primary)}
 .alert-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
 .alert-item.sev-critical::before{background:var(--red)}
 .alert-item.sev-warning::before{background:var(--gold)}
@@ -9235,6 +9235,41 @@ async function loadAlerts(){
   }
 }
 
+function getAlertNavTarget(alertType, title){
+  const t=(title||'').toLowerCase();
+  if(t.includes('환불')||alertType==='refund_spike')
+    return {menu:'store',tab:'summary',label:'스마트스토어'};
+  if(t.includes('meta')||alertType==='meta_ctr_drop'||alertType==='frequency_high')
+    return {menu:'meta',tab:'summary',label:'META 광고'};
+  if(t.includes('구글')||t.includes('google'))
+    return {menu:'google',tab:'summary',label:'구글 광고'};
+  if(t.includes('이베이')||t.includes('ebay'))
+    return {menu:'ebay',tab:'summary',label:'이베이'};
+  if(t.includes('네이버')||alertType==='roas_drop'||alertType==='cpc_spike'||alertType==='ctr_drop')
+    return {menu:'naver',tab:'summary',label:'네이버 검색광고'};
+  return {menu:'combined',tab:'',label:'통합 대시보드'};
+}
+
+function navigateToAlert(menu, tab, event){
+  // 확인/삭제 버튼 클릭은 무시
+  if(event&&event.target.closest('.alert-actions'))return;
+  const setActive=(id)=>{
+    document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+    const el=document.getElementById('ni-'+id);if(el)el.classList.add('active');
+  };
+  go(menu,null);
+  setActive(menu);
+  if(tab&&tab!=='summary')return;
+  // 해당 채널 요약 탭으로 이동
+  setTimeout(()=>{
+    if(menu==='naver'){const el=document.querySelector(".nav-tab[onclick*=\"'summary'\"]");if(el)switchNaverTab('summary',el);}
+    else if(menu==='store'){const el=document.querySelector(".nav-tab[onclick*=\"'summary'\"]");if(el)switchStoreTab('summary',el);}
+    else if(menu==='meta'){const el=document.querySelector(".nav-tab[onclick*=\"'summary'\"]");if(el)switchMetaTab('summary',el);}
+    else if(menu==='google'){const el=document.querySelector(".nav-tab[onclick*=\"'summary'\"]");if(el)switchGoogleTab('summary',el);}
+    else if(menu==='ebay'){const el=document.querySelector(".nav-tab[onclick*=\"'summary'\"]");if(el)switchEbayTab('summary',el);}
+  },200);
+}
+
 function renderAlertList(rows){
   const list=document.getElementById('alertList');
   const info=document.getElementById('alertCountInfo');
@@ -9254,10 +9289,14 @@ function renderAlertList(rows){
   list.innerHTML=filtered.map(r=>{
     const dt=new Date(r.created_at);
     const timeStr=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-    return `<div class="alert-item sev-${r.severity} ${r.is_read?'is-read':''}" data-id="${r.id}">
+    const navTarget=getAlertNavTarget(r.alert_type,r.title);
+    return `<div class="alert-item sev-${r.severity} ${r.is_read?'is-read':''}" data-id="${r.id}" style="cursor:pointer" onclick="navigateToAlert('${navTarget.menu}','${navTarget.tab}',event)">
       <div class="alert-hd">
         <div class="alert-title">${typeIcon[r.alert_type]||'⚠️'} ${r.title}</div>
-        <span class="alert-sev as-${r.severity}">${sevLabel[r.severity]||r.severity}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:var(--primary);background:var(--surface);padding:2px 8px;border-radius:4px;font-weight:600;white-space:nowrap">${navTarget.label} →</span>
+          <span class="alert-sev as-${r.severity}">${sevLabel[r.severity]||r.severity}</span>
+        </div>
       </div>
       <div class="alert-msg">${r.message}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -9265,7 +9304,7 @@ function renderAlertList(rows){
           <span>${timeStr}</span>
           ${r.metric_name?`<span class="alert-metric">${r.metric_name}: ${r.current_value!=null?Number(r.current_value).toLocaleString():'-'}</span>`:''}
         </div>
-        <div class="alert-actions">
+        <div class="alert-actions" onclick="event.stopPropagation()">
           <button class="btn btn-sm btn-ol" onclick="${r.is_read?`markAlertUnread('${r.id}')`:`markAlertRead('${r.id}')`}" style="${r.is_read?'color:var(--naver)':''}">✓ 확인</button>
           <button class="btn btn-sm btn-rd" onclick="deleteAlert('${r.id}')" style="font-size:10px;padding:3px 8px">삭제</button>
         </div>
