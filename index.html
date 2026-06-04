@@ -9670,6 +9670,35 @@ async function deleteWorkLog(id){
    KPI 목표 관리
 ════════════════════════════════════════ */
 let _kpiTargetData=null;
+let _kpiCurrentChannel='통합';
+let _kpiAllChannelData={};
+
+function switchKpiChannel(ch,el){
+  _kpiCurrentChannel=ch;
+  document.querySelectorAll('#ktChannelTabs .nav-tab').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const label=document.getElementById('ktChannelLabel');
+  const icons={통합:'📊',네이버:'🟢',GFA:'🔵',META:'🔵',구글:'🔴',이베이:'🟤',스토어:'🟠'};
+  if(label) label.textContent=`${icons[ch]||''} ${ch} 목표 설정 중`;
+  // 채널별 폼 필드 표시/숨김
+  const show=(id,v)=>{const el2=document.getElementById(id);if(el2)el2.style.display=v?'':'none';};
+  const isAd=['통합','네이버','GFA','META','구글','이베이'].includes(ch);
+  const isStore=ch==='스토어';
+  const isMeta=ch==='META';
+  show('ktFgRoas',isAd);
+  show('ktFgCost',isAd);
+  show('ktFgRevenue',true);
+  show('ktFgCpc',isAd&&ch!=='이베이');
+  show('ktFgCtr',isAd&&ch!=='이베이');
+  show('ktFgConv',isAd&&!isStore);
+  show('ktFgRefund',isStore);
+  show('ktFgFreq',isMeta);
+  show('ktFgAvgOrder',isStore);
+  // 해당 채널 데이터 로드
+  const data=_kpiAllChannelData[ch]||null;
+  if(data) fillKpiForm(data);
+  else clearKpiForm();
+}
 
 function htmlKpiTarget(){
   const month=currentReportMonth;
@@ -9699,13 +9728,26 @@ ${isAdmin ? `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
     <div style="font-size:14px;font-weight:600">📝 <span id="ktFormMonth">${month}</span> 목표 설정</div>
   </div>
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto" id="ktChannelTabs">
+    <button class="nav-tab active" onclick="switchKpiChannel('통합',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">📊 통합</button>
+    <button class="nav-tab" onclick="switchKpiChannel('네이버',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🟢 네이버</button>
+    <button class="nav-tab" onclick="switchKpiChannel('GFA',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🔵 GFA</button>
+    <button class="nav-tab" onclick="switchKpiChannel('META',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🔵 META</button>
+    <button class="nav-tab" onclick="switchKpiChannel('구글',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🔴 구글</button>
+    <button class="nav-tab" onclick="switchKpiChannel('이베이',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🟤 이베이</button>
+    <button class="nav-tab" onclick="switchKpiChannel('스토어',this)" style="font-size:12px;padding:8px 14px;white-space:nowrap">🟠 스토어</button>
+  </div>
+  <div id="ktChannelLabel" style="font-size:12px;color:var(--text3);margin-bottom:10px">📊 통합 목표 설정 중</div>
   <div class="kt-form">
-    <div class="kt-fg"><label>목표 ROAS</label><input type="text" id="kt-roas" placeholder="300"><div class="kt-unit">% (예: 300)</div></div>
-    <div class="kt-fg"><label>목표 광고비</label><input type="text" id="kt-cost" placeholder="5,000,000"><div class="kt-unit">원</div></div>
-    <div class="kt-fg"><label>목표 매출</label><input type="text" id="kt-revenue" placeholder="15,000,000"><div class="kt-unit">원</div></div>
-    <div class="kt-fg"><label>목표 CPC</label><input type="text" id="kt-cpc" placeholder="500"><div class="kt-unit">원 이하</div></div>
-    <div class="kt-fg"><label>목표 CTR</label><input type="text" id="kt-ctr" placeholder="3.5"><div class="kt-unit">% 이상</div></div>
-    <div class="kt-fg"><label>목표 전환수</label><input type="text" id="kt-conv" placeholder="100"><div class="kt-unit">건</div></div>
+    <div class="kt-fg" id="ktFgRoas"><label>목표 ROAS</label><input type="text" id="kt-roas" placeholder="300"><div class="kt-unit">% (예: 300)</div></div>
+    <div class="kt-fg" id="ktFgCost"><label>목표 광고비</label><input type="text" id="kt-cost" placeholder="5,000,000"><div class="kt-unit">원</div></div>
+    <div class="kt-fg" id="ktFgRevenue"><label>목표 매출</label><input type="text" id="kt-revenue" placeholder="15,000,000"><div class="kt-unit">원</div></div>
+    <div class="kt-fg" id="ktFgCpc"><label>목표 CPC</label><input type="text" id="kt-cpc" placeholder="500"><div class="kt-unit">원 이하</div></div>
+    <div class="kt-fg" id="ktFgCtr"><label>목표 CTR</label><input type="text" id="kt-ctr" placeholder="3.5"><div class="kt-unit">% 이상</div></div>
+    <div class="kt-fg" id="ktFgConv"><label>목표 전환수</label><input type="text" id="kt-conv" placeholder="100"><div class="kt-unit">건</div></div>
+    <div class="kt-fg" id="ktFgRefund" style="display:none"><label>환불률 상한</label><input type="text" id="kt-refund" placeholder="5"><div class="kt-unit">% 이하</div></div>
+    <div class="kt-fg" id="ktFgFreq" style="display:none"><label>빈도 상한</label><input type="text" id="kt-freq" placeholder="3"><div class="kt-unit">회 이하</div></div>
+    <div class="kt-fg" id="ktFgAvgOrder" style="display:none"><label>목표 객단가</label><input type="text" id="kt-avgorder" placeholder="30,000"><div class="kt-unit">원 이상</div></div>
   </div>
   <div class="kt-fg" style="margin-top:12px"><label>메모</label><input type="text" id="kt-memo" placeholder="이번 달 목표 배경, 특이사항 등" style="width:100%"></div>
   <div style="margin-top:14px;display:flex;gap:8px">
@@ -9739,12 +9781,17 @@ async function loadKpiTargets(overrideMonth){
   const month=overrideMonth||currentReportMonth;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
 
-  // 현재 월 목표
+  // 현재 월 목표 (전체 채널)
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&limit=1`,{headers:h});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}`,{headers:h});
     const rows=await res.json();
-    _kpiTargetData=Array.isArray(rows)&&rows.length?rows[0]:null;
-    if(_kpiTargetData&&isAdmin) fillKpiForm(_kpiTargetData);
+    _kpiAllChannelData={};
+    if(Array.isArray(rows)){
+      rows.forEach(r=>{_kpiAllChannelData[r.channel||'통합']=r;});
+    }
+    _kpiTargetData=_kpiAllChannelData['통합']||_kpiAllChannelData[Object.keys(_kpiAllChannelData)[0]]||null;
+    const chData=_kpiAllChannelData[_kpiCurrentChannel]||null;
+    if(chData&&isAdmin) fillKpiForm(chData);
     else if(isAdmin) clearKpiForm();
     renderKpiProgress(ck,month);
   }catch(e){console.error('KPI 목표 로드 오류:',e);}
@@ -9765,6 +9812,9 @@ function fillKpiForm(d){
   s('kt-cpc',d.target_cpc||'');
   s('kt-ctr',d.target_ctr||'');
   s('kt-conv',d.target_conv||'');
+  s('kt-refund',d.target_refund||'');
+  s('kt-freq',d.target_freq||'');
+  s('kt-avgorder',d.target_avgorder?Number(d.target_avgorder).toLocaleString():'');
   s('kt-memo',d.memo||'');
 }
 function clearKpiForm(){
@@ -9780,23 +9830,27 @@ async function saveKpiTarget(){
   if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
   const month=document.getElementById('ktMonthPicker')?.value||currentReportMonth;
   const pn=v=>parseFloat((v||'').replace(/,/g,'').trim())||0;
+  const ch=_kpiCurrentChannel||'통합';
   const data={
-    client_key:ck,month:month,
+    client_key:ck,month:month,channel:ch,
     target_roas:pn(document.getElementById('kt-roas')?.value),
     target_cost:pn(document.getElementById('kt-cost')?.value),
     target_revenue:pn(document.getElementById('kt-revenue')?.value),
     target_cpc:pn(document.getElementById('kt-cpc')?.value),
     target_ctr:pn(document.getElementById('kt-ctr')?.value),
     target_conv:pn(document.getElementById('kt-conv')?.value),
+    target_refund:pn(document.getElementById('kt-refund')?.value),
+    target_freq:pn(document.getElementById('kt-freq')?.value),
+    target_avgorder:pn(document.getElementById('kt-avgorder')?.value),
     memo:document.getElementById('kt-memo')?.value?.trim()||'',
     updated_at:new Date().toISOString()
   };
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
   try{
-    // UPSERT: 삭제 후 삽입
-    await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}`,{method:'DELETE',headers:h});
+    // UPSERT: 해당 채널만 삭제 후 삽입
+    await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&channel=eq.${encodeURIComponent(ch)}`,{method:'DELETE',headers:h});
     await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets`,{method:'POST',headers:{...h,'Prefer':'return=minimal'},body:JSON.stringify(data)});
-    toast('✅ KPI 목표가 저장되었습니다');
+    toast(`✅ ${ch} KPI 목표가 저장되었습니다`);
     loadKpiTargets(month);
   }catch(e){
     toast('❌ 저장 실패');console.error(e);
@@ -9808,10 +9862,11 @@ async function deleteKpiTarget(){
   if(!isAdmin)return;
   const ck=activeClientId||'';
   const month=document.getElementById('ktMonthPicker')?.value||currentReportMonth;
-  if(!confirm(`${month} 목표를 삭제하시겠습니까?`))return;
+  const ch=_kpiCurrentChannel||'통합';
+  if(!confirm(`${month} ${ch} 목표를 삭제하시겠습니까?`))return;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
-  await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}`,{method:'DELETE',headers:h});
-  toast('🗑 목표가 삭제되었습니다');
+  await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&channel=eq.${encodeURIComponent(ch)}`,{method:'DELETE',headers:h});
+  toast(`🗑 ${ch} 목표가 삭제되었습니다`);
   _kpiTargetData=null;
   clearKpiForm();
   loadKpiTargets(month);
@@ -9944,6 +9999,15 @@ async function runAnomalyDetection(manual=false){
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
 
+  // ── KPI 목표 로드 ──
+  let _kpiTargets={};
+  try{
+    const kRes=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${currentReportMonth}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const kRows=await kRes.json();
+    if(Array.isArray(kRows)) kRows.forEach(r=>{_kpiTargets[r.channel||'통합']=r;});
+  }catch(e){}
+  const getT=(ch,field,fallback)=>{const t=_kpiTargets[ch]||_kpiTargets['통합'];return t&&t[field]?+t[field]:fallback;};
+
   // ── 1) 네이버 검색광고 데이터 ──
   const d=REPORT_DATA[currentReportMonth];
   const kpi=d?.kpi||{};
@@ -9958,45 +10022,39 @@ async function runAnomalyDetection(manual=false){
     const cpc=naverClick>0?naverCost/naverClick:0;
     const ctr=naverImp>0?naverClick/naverImp*100:0;
 
-    // ROAS 100% 미만 → 심각
-    if(roas<100){
+    const nRoasT=getT('네이버','target_roas',100);
+    const nCpcT=getT('네이버','target_cpc',2000);
+    const nCtrT=getT('네이버','target_ctr',1);
+
+    if(roas<nRoasT*0.5){
       alerts.push({client_key:ck,alert_type:'roas_drop',severity:'critical',
-        title:'네이버 ROAS 100% 미만',
-        message:`현재 ROAS ${roas.toFixed(1)}%로 광고비 대비 매출이 부족합니다. 저효율 캠페인 정리 및 키워드 점검이 필요합니다.`,
-        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:100});
-    }
-    // ROAS 150% 미만 → 주의
-    else if(roas<150){
+        title:`네이버 ROAS 목표(${nRoasT}%)의 50% 미만`,
+        message:`현재 ROAS ${roas.toFixed(1)}%로 목표 대비 크게 부족합니다. 저효율 캠페인 정리 및 키워드 점검이 필요합니다.`,
+        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:nRoasT});
+    } else if(roas<nRoasT){
       alerts.push({client_key:ck,alert_type:'roas_drop',severity:'warning',
-        title:'네이버 ROAS 저조',
-        message:`현재 ROAS ${roas.toFixed(1)}%로 효율이 다소 낮습니다. 키워드별 성과 분석을 권장합니다.`,
-        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:150});
+        title:`네이버 ROAS 목표(${nRoasT}%) 미달`,
+        message:`현재 ROAS ${roas.toFixed(1)}%로 목표에 못 미칩니다. 키워드별 성과 분석을 권장합니다.`,
+        metric_name:'ROAS',current_value:+roas.toFixed(1),threshold_value:nRoasT});
     }
 
-    // CPC 2000원 초과 → 주의
-    if(cpc>2000){
-      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
-        title:'네이버 CPC 높음',
-        message:`평균 CPC ${Math.round(cpc).toLocaleString()}원으로 클릭 단가가 높습니다. 입찰가 조정 또는 품질지수 개선을 검토하세요.`,
-        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:2000});
-    }
-    // CPC 5000원 초과 → 심각
-    if(cpc>5000){
-      // 이전 주의 알림 대신 심각으로 덮어쓰기
-      const idx=alerts.findIndex(a=>a.alert_type==='cpc_spike'&&a.severity==='warning');
-      if(idx>=0)alerts.splice(idx,1);
+    if(cpc>nCpcT*2){
       alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'critical',
-        title:'네이버 CPC 매우 높음',
-        message:`평균 CPC ${Math.round(cpc).toLocaleString()}원으로 비정상적으로 높습니다. 즉각적인 입찰가 점검이 필요합니다.`,
-        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:5000});
+        title:`네이버 CPC ${Math.round(cpc).toLocaleString()}원 — 목표(${nCpcT.toLocaleString()}원)의 2배 초과`,
+        message:`평균 CPC가 비정상적으로 높습니다. 즉각적인 입찰가 점검이 필요합니다.`,
+        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:nCpcT});
+    } else if(cpc>nCpcT){
+      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
+        title:`네이버 CPC ${Math.round(cpc).toLocaleString()}원 — 목표(${nCpcT.toLocaleString()}원) 초과`,
+        message:`평균 CPC가 목표보다 높습니다. 입찰가 조정 또는 품질지수 개선을 검토하세요.`,
+        metric_name:'CPC',current_value:Math.round(cpc),threshold_value:nCpcT});
     }
 
-    // CTR 1% 미만 → 주의
-    if(naverImp>1000&&ctr<1){
+    if(naverImp>1000&&ctr<nCtrT){
       alerts.push({client_key:ck,alert_type:'ctr_drop',severity:'warning',
-        title:'네이버 CTR 저조',
-        message:`CTR ${ctr.toFixed(2)}%로 광고 클릭률이 낮습니다. 광고 소재(제목/설명) 개선을 검토하세요.`,
-        metric_name:'CTR',current_value:+ctr.toFixed(2),threshold_value:1});
+        title:`네이버 CTR ${ctr.toFixed(2)}% — 목표(${nCtrT}%) 미달`,
+        message:`광고 클릭률이 목표에 못 미칩니다. 광고 소재(제목/설명) 개선을 검토하세요.`,
+        metric_name:'CTR',current_value:+ctr.toFixed(2),threshold_value:nCtrT});
     }
   }
 
@@ -10013,28 +10071,27 @@ async function runAnomalyDetection(manual=false){
     const mCpc=metaClick>0?metaCost/metaClick:0;
     const mFreq=metaReach>0?metaImp/metaReach:0;
 
-    // META CTR 1% 미만
-    if(metaImp>5000&&mCtr<1){
+    const mCtrT=getT('META','target_ctr',1);
+    const mFreqT=getT('META','target_freq',3);
+    const mCpcT=getT('META','target_cpc',3000);
+
+    if(metaImp>5000&&mCtr<mCtrT){
       alerts.push({client_key:ck,alert_type:'meta_ctr_drop',severity:'warning',
-        title:'META CTR 1% 미만',
-        message:`META 광고 CTR ${mCtr.toFixed(2)}%로 소재 반응이 저조합니다. 크리에이티브 교체를 검토하세요.`,
-        metric_name:'META CTR',current_value:+mCtr.toFixed(2),threshold_value:1});
+        title:`META CTR ${mCtr.toFixed(2)}% — 목표(${mCtrT}%) 미달`,
+        message:`META 광고 소재 반응이 저조합니다. 크리에이티브 교체를 검토하세요.`,
+        metric_name:'META CTR',current_value:+mCtr.toFixed(2),threshold_value:mCtrT});
     }
-
-    // META 빈도 3회 초과 → 피로도
-    if(mFreq>3){
-      alerts.push({client_key:ck,alert_type:'frequency_high',severity:mFreq>5?'critical':'warning',
-        title:`META 빈도 ${mFreq.toFixed(1)}회 — 피로도 우려`,
-        message:`동일 사용자에게 평균 ${mFreq.toFixed(1)}회 노출 중입니다. 타겟 확장 또는 소재 교체가 필요합니다.`,
-        metric_name:'빈도',current_value:+mFreq.toFixed(1),threshold_value:3});
+    if(mFreq>mFreqT){
+      alerts.push({client_key:ck,alert_type:'frequency_high',severity:mFreq>mFreqT*2?'critical':'warning',
+        title:`META 빈도 ${mFreq.toFixed(1)}회 — 목표(${mFreqT}회) 초과`,
+        message:`동일 사용자에게 반복 노출 중입니다. 타겟 확장 또는 소재 교체가 필요합니다.`,
+        metric_name:'빈도',current_value:+mFreq.toFixed(1),threshold_value:mFreqT});
     }
-
-    // META CPC 3000원 초과
-    if(mCpc>3000){
+    if(mCpc>mCpcT){
       alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
-        title:'META CPC 높음',
-        message:`META 평균 CPC ${Math.round(mCpc).toLocaleString()}원으로 클릭 단가가 높습니다.`,
-        metric_name:'META CPC',current_value:Math.round(mCpc),threshold_value:3000});
+        title:`META CPC ${Math.round(mCpc).toLocaleString()}원 — 목표(${mCpcT.toLocaleString()}원) 초과`,
+        message:`META 평균 CPC가 목표보다 높습니다.`,
+        metric_name:'META CPC',current_value:Math.round(mCpc),threshold_value:mCpcT});
     }
   }
 
@@ -10046,20 +10103,106 @@ async function runAnomalyDetection(manual=false){
 
   if(stRev>0){
     const refundRate=stRefund/stRev*100;
-    if(refundRate>10){
+    const stRefT=getT('스토어','target_refund',5);
+    const stAvgT=getT('스토어','target_avgorder',0);
+    const stOrders=stF.reduce((s,r)=>s+(+r.orders||0),0);
+    const avgOrder=stOrders>0?stRev/stOrders:0;
+
+    if(refundRate>stRefT*2){
       alerts.push({client_key:ck,alert_type:'refund_spike',severity:'critical',
-        title:`환불률 ${refundRate.toFixed(1)}% — 즉시 점검 필요`,
-        message:`스마트스토어 환불률이 ${refundRate.toFixed(1)}%로 매우 높습니다. 상품 품질, 배송, 상세페이지를 점검하세요.`,
-        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:10});
-    } else if(refundRate>5){
+        title:`환불률 ${refundRate.toFixed(1)}% — 목표(${stRefT}%)의 2배 초과`,
+        message:`스마트스토어 환불률이 매우 높습니다. 상품 품질, 배송, 상세페이지를 즉시 점검하세요.`,
+        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:stRefT});
+    } else if(refundRate>stRefT){
       alerts.push({client_key:ck,alert_type:'refund_spike',severity:'warning',
-        title:`환불률 ${refundRate.toFixed(1)}% 주의`,
-        message:`스마트스토어 환불률이 ${refundRate.toFixed(1)}%입니다. 주요 환불 상품을 확인해보세요.`,
-        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:5});
+        title:`환불률 ${refundRate.toFixed(1)}% — 목표(${stRefT}%) 초과`,
+        message:`스마트스토어 환불률이 목표보다 높습니다. 주요 환불 상품을 확인해보세요.`,
+        metric_name:'환불률',current_value:+refundRate.toFixed(1),threshold_value:stRefT});
+    }
+    if(stAvgT>0&&avgOrder<stAvgT){
+      alerts.push({client_key:ck,alert_type:'avgorder_low',severity:'warning',
+        title:`스토어 객단가 ${Math.round(avgOrder).toLocaleString()}원 — 목표(${Math.round(stAvgT).toLocaleString()}원) 미달`,
+        message:`객단가가 목표에 못 미칩니다. 묶음 할인/추가 구매 유도 전략을 검토하세요.`,
+        metric_name:'객단가',current_value:Math.round(avgOrder),threshold_value:stAvgT});
     }
   }
 
-  // ── 4) 기존 알림과 중복 체크 후 저장 ──
+  // ── 4) GFA 데이터 ──
+  const gfaDataA=d?.gfa||{};
+  const gfaCostA=gfaDataA.totalCost||0;
+  const gfaRevA=gfaDataA.totalRev||0;
+  if(gfaCostA>0){
+    const gRoas=gfaRevA/gfaCostA*100;
+    const gRoasT=getT('GFA','target_roas',100);
+    const gCpcT=getT('GFA','target_cpc',3000);
+    const gCpc=gfaDataA.totalClick>0?gfaCostA/gfaDataA.totalClick:0;
+    if(gRoas<gRoasT){
+      alerts.push({client_key:ck,alert_type:'roas_drop',severity:gRoas<gRoasT*0.5?'critical':'warning',
+        title:`GFA ROAS ${gRoas.toFixed(1)}% — 목표(${gRoasT}%) 미달`,
+        message:`GFA 효율이 목표에 못 미칩니다. 게재위치별 성과를 점검하세요.`,
+        metric_name:'GFA ROAS',current_value:+gRoas.toFixed(1),threshold_value:gRoasT});
+    }
+    if(gCpc>gCpcT){
+      alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
+        title:`GFA CPC ${Math.round(gCpc).toLocaleString()}원 — 목표(${gCpcT.toLocaleString()}원) 초과`,
+        message:`GFA 클릭 단가가 목표보다 높습니다.`,
+        metric_name:'GFA CPC',current_value:Math.round(gCpc),threshold_value:gCpcT});
+    }
+  }
+
+  // ── 5) 구글 광고 데이터 ──
+  const googleCacheA=window[`_google_${ck}_${fromMonth}_${toMonth}`]||[];
+  if(googleCacheA.length>0){
+    let gglCost=0,gglRev=0,gglImp=0,gglClick=0,gglConv=0;
+    googleCacheA.forEach(r=>{gglCost+=+r.cost||0;gglImp+=+r.imp||0;gglClick+=+r.click||0;if(r.campaign_status!=='전환상세'){gglRev+=+r.conv_value||0;gglConv+=+r.conv||0;}});
+    if(gglCost>0){
+      const gglRoas=gglRev/gglCost*100;
+      const gglCtr=gglImp>0?gglClick/gglImp*100:0;
+      const gglCpc=gglClick>0?gglCost/gglClick:0;
+      const gglCvr=gglClick>0?gglConv/gglClick*100:0;
+      const gglRoasT=getT('구글','target_roas',100);
+      const gglCpcT=getT('구글','target_cpc',3000);
+      const gglCtrT=getT('구글','target_ctr',1);
+
+      if(gglRoas<gglRoasT){
+        alerts.push({client_key:ck,alert_type:'roas_drop',severity:gglRoas<gglRoasT*0.5?'critical':'warning',
+          title:`구글 ROAS ${gglRoas.toFixed(1)}% — 목표(${gglRoasT}%) 미달`,
+          message:`구글 광고 효율이 목표에 못 미칩니다. 전환 키워드를 재점검하세요.`,
+          metric_name:'구글 ROAS',current_value:+gglRoas.toFixed(1),threshold_value:gglRoasT});
+      }
+      if(gglCpc>gglCpcT){
+        alerts.push({client_key:ck,alert_type:'cpc_spike',severity:'warning',
+          title:`구글 CPC ${Math.round(gglCpc).toLocaleString()}원 — 목표(${gglCpcT.toLocaleString()}원) 초과`,
+          message:`구글 광고 클릭 단가가 목표보다 높습니다.`,
+          metric_name:'구글 CPC',current_value:Math.round(gglCpc),threshold_value:gglCpcT});
+      }
+      if(gglImp>1000&&gglCtr<gglCtrT){
+        alerts.push({client_key:ck,alert_type:'ctr_drop',severity:'warning',
+          title:`구글 CTR ${gglCtr.toFixed(2)}% — 목표(${gglCtrT}%) 미달`,
+          message:`구글 광고 클릭률이 목표에 못 미칩니다.`,
+          metric_name:'구글 CTR',current_value:+gglCtr.toFixed(2),threshold_value:gglCtrT});
+      }
+    }
+  }
+
+  // ── 6) 이베이 데이터 ──
+  const ebayAdCacheA=window[`_ebay_ads_${ck}_${fromMonth}_${toMonth}`]||[];
+  if(ebayAdCacheA.length>0){
+    let ebCost=0,ebRev=0;
+    ebayAdCacheA.forEach(r=>{ebCost+=+r.cost||0;ebRev+=+r.purchase_amount||0;});
+    if(ebCost>0){
+      const ebRoas=ebRev/ebCost*100;
+      const ebRoasT=getT('이베이','target_roas',100);
+      if(ebRoas<ebRoasT){
+        alerts.push({client_key:ck,alert_type:'roas_drop',severity:ebRoas<ebRoasT*0.5?'critical':'warning',
+          title:`이베이 ROAS ${ebRoas.toFixed(1)}% — 목표(${ebRoasT}%) 미달`,
+          message:`이베이 광고 효율이 목표에 못 미칩니다.`,
+          metric_name:'이베이 ROAS',current_value:+ebRoas.toFixed(1),threshold_value:ebRoasT});
+      }
+    }
+  }
+
+  // ── 7) 기존 알림과 중복 체크 후 저장 ──
   if(alerts.length===0){
     if(manual) toast('✅ 이상 항목이 감지되지 않았습니다');
     updateAlertBadge();
