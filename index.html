@@ -3363,7 +3363,7 @@ const rawDailyList=dailyArr.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b
     return {
       client:targetClient, period:periodLabel, manager:acc?.manager||'—',
       monthlyList,
-      kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,roas,ctr,cpc,cvr,cpa,roi},
+      kpi:{totalImp,totalClick,totalCost,totalConv,totalRev,totalPurchaseConv,totalPurchaseRev,totalCartRev,totalCartConv,roas,ctr,cpc,cvr,cpa,roi},
       mom:{click:0,cost:0,rev:0,roas:0},
       channels, weekly, hourly, topKeywords, insights:[],
       dailyList, rawDailyList, dowList,
