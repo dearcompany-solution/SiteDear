@@ -2059,7 +2059,8 @@ function htmlNaver(){
       <div class="sum-item" style="border-bottom:2px solid #3B82F6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👆 총 클릭수</div><div class="sum-val" style="font-size:16px">${fmtn(kpi.totalClick)}</div></div>
       <div class="sum-item" style="border-bottom:2px solid #F59E0B;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📊 CTR</div><div class="sum-val" style="font-size:16px">${kpi.ctr ? kpi.ctr.toFixed(2)+'%' : '0%'}</div></div>
       <div class="sum-item" style="border-bottom:2px solid #EF4444;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🎯 전환수</div><div class="sum-val" style="font-size:16px">${fmtn(kpi.totalConv)}건</div></div>
-      <div class="sum-item" style="border-bottom:2px solid #FF6B35;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 전환매출</div><div class="sum-val" style="font-size:16px">${fmt(kpi.totalPurchaseRev)}</div></div>
+      <div class="sum-item" style="border-bottom:2px solid #FF6B35;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💵 구매전환매출</div><div class="sum-val" style="font-size:16px">${fmt(kpi.totalPurchaseRev)}</div></div>
+      ${kpi.totalCartRev>0?`<div class="sum-item" style="border-bottom:2px solid #F59E0B;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">🛒 장바구니매출</div><div class="sum-val" style="font-size:16px">${fmt(kpi.totalCartRev)}</div></div>`:''}
       <div class="sum-item" style="border-bottom:2px solid #03C75A;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">📈 ROAS</div><div class="sum-val" style="font-size:16px">${kpi.roas ? kpi.roas.toFixed(2)+'%' : '0%'}</div></div>
     </div>
     <div class="row2b" style="margin-bottom:16px">
@@ -3219,7 +3220,8 @@ async function fetchReportData(month){
     const totalRev         = +kpiData.totalRev         || 0;
     const totalPurchaseConv= +kpiData.totalPurchaseConv|| 0;
     const totalPurchaseRev = +kpiData.totalPurchaseRev || 0;
-    const totalCartRev     = 0;
+    const totalCartRev     = +kpiData.totalCartRev || 0;
+    const totalCartConv    = +kpiData.totalCartConv || 0;
     const sum=(arr,key)=>arr.reduce((s,r)=>s+(+r[key]||0),0);
     function calcMetrics(imp,click,cost,conv,rev){
       imp=+imp||0;click=+click||0;cost=+cost||0;conv=+conv||0;rev=+rev||0;
