@@ -1229,7 +1229,7 @@ async function loadClientsFromSupabase(){
   try{
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/clients?select=*&order=created_at.desc`,
-      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}
     );
     const rows = await res.json();
     if(!Array.isArray(rows)||!rows.length) return;
@@ -1279,7 +1279,7 @@ let _clientDataFlags={has_naver:true,has_meta:true,has_store:true,has_gfa:true,h
 async function loadClientDataFlags(clientKey){
   if(!clientKey)return;
   try{
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
     const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_client_data_flags`,{
       method:'POST',headers:{...h,'Content-Type':'application/json'},
       body:JSON.stringify({p_client_key:clientKey})
@@ -1804,7 +1804,7 @@ async function naverAutoSync(){
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY),
           'apikey': SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
@@ -2319,7 +2319,7 @@ async function fetchStoreData(table){
   // 캐시 확인
   const cacheKey = `_store_${table}_${clientKey}_${currentReportMonth}`;
   if(window[cacheKey]) return window[cacheKey];
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?client_key=eq.${encodeURIComponent(clientKey)}&month=eq.${currentReportMonth}&select=*`,{headers:h});
   const data = res.ok ? await res.json() : [];
   window[cacheKey] = data; // 캐시 저장
@@ -2468,7 +2468,7 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
   migrateInsightStatus();
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     // 선택 기간 기준 인사이트만 + 다음날까지 포함 (생성일이 기간 종료 다음날일 수 있음)
     const _insFrom=currentDateRange?.from||'';
@@ -2590,7 +2590,7 @@ async function saveInsight2(page, type, tagKeyword){
   if(!ck){toast('⚠️ 업체를 선택해주세요');return;}
   const section=type==='opinion'?'===의견===':'===변경사항===';
   const content=section+'\n'+text;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks`,{method:'POST',headers:h,body:JSON.stringify({client_key:ck,author:currentUser?.name||'관리자',content:content,tags:tagKeyword,status:'approved'})});
     document.getElementById('insightOverlay2').style.display='none';
@@ -2601,7 +2601,7 @@ async function saveInsight2(page, type, tagKeyword){
 
 async function deleteInsight2(id, page, tagKeyword, opElId, chElId){
   if(!confirm('삭제하시겠습니까?'))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'DELETE',headers:h});
   toast('🗑️ 삭제됐습니다');
   reloadInsights2(page,tagKeyword);
@@ -2611,7 +2611,7 @@ async function deleteInsight2(id, page, tagKeyword, opElId, chElId){
 async function migrateInsightStatus(){
   if(window._insightStatusMigrated)return;
   window._insightStatusMigrated=true;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?status=is.null`,{method:'PATCH',headers:h,body:JSON.stringify({status:'approved'})});
   }catch(e){}
@@ -2619,7 +2619,7 @@ async function migrateInsightStatus(){
 
 // ═══ AI 인사이트 승인/거부/수정 ═══
 async function approveInsight(id, page, tagKeyword){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'approved'})});
     toast('✅ 승인되었습니다');
@@ -2629,7 +2629,7 @@ async function approveInsight(id, page, tagKeyword){
 
 async function rejectInsight(id, page, tagKeyword){
   if(!confirm('이 인사이트를 거부하시겠습니까?'))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'rejected'})});
     toast('🚫 거부되었습니다');
@@ -2639,7 +2639,7 @@ async function rejectInsight(id, page, tagKeyword){
 
 async function revertInsight(id, page, tagKeyword){
   if(!confirm('이 인사이트를 대기 상태로 되돌리시겠습니까? 광고주에게 더 이상 표시되지 않습니다.'))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'pending'})});
     toast('↩️ 대기 상태로 되돌렸습니다');
@@ -2648,7 +2648,7 @@ async function revertInsight(id, page, tagKeyword){
 }
 
 async function restoreInsight(id, page, tagKeyword){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:'pending'})});
     toast('🔄 대기 상태로 복원했습니다');
@@ -2657,7 +2657,7 @@ async function restoreInsight(id, page, tagKeyword){
 }
 
 async function editInsight(id, page, tagKeyword){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}&select=content`,{headers:h});
     const arr=await res.json();
@@ -2694,7 +2694,7 @@ async function saveEditInsight(id, section, page, tagKeyword){
   const text=(input?.value||'').trim();
   if(!text){toast('⚠️ 내용을 입력해주세요');return;}
   const content=section+'\n'+text;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({content:content,status:'approved'})});
     document.getElementById('insightOverlay2').style.display='none';
@@ -3163,7 +3163,7 @@ async function fetchReportData(month){
     const isMonthQuery = month !== currentReportMonth;
     const fromDate = isMonthQuery ? (month+'-01') : (currentDateRange?.from || (month+'-01'));
     const toDate   = isMonthQuery ? (month+'-31') : (currentDateRange?.to   || (month+'-31'));
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
     // 기간이 여러 달에 걸칠 경우 월 범위로 조회
     const fromMonth = fromDate.slice(0,7);
     const toMonth   = toDate.slice(0,7);
@@ -3717,7 +3717,7 @@ async function loadMonthlyTrend(){
     if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
     });
     const rows = await res.json();
     if(!Array.isArray(rows)||!rows.length) return;
@@ -3913,7 +3913,7 @@ async function openReportPdf(){
   const toMonth      = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
   const fromDate     = currentDateRange?.from || (currentReportMonth+'-01');
   const toDate       = currentDateRange?.to   || (currentReportMonth+'-31');
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   // GFA + 키워드 + 캠페인별 데이터 병렬 로드
   let gfaRows=[], kwRows=[], campRows=[];
@@ -4676,7 +4676,7 @@ async function loadUploadLogs(clientFilter, monthFilter){
   const wrap = document.getElementById('uploadLogWrap');
   if(!wrap) return;
   wrap.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">불러오는 중...</div>`;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const isAdmin = currentUser?.role==='admin';
     const targetClient = clientFilter || (isAdmin ? (activeClientId||'') : (currentUser?.id||''));
@@ -4796,7 +4796,7 @@ async function deleteUploadLog(logStr){
   const log = JSON.parse(logStr);
   const h = {
     'apikey':SUPABASE_ANON_KEY,
-    'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+    'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
     'Content-Type':'application/json'
   };
   const tableMap = {
@@ -5278,7 +5278,7 @@ function saveOneFile(fileObj, client) {
           (async () => {
             try {
               const campMonths = [...new Set(campRows.map(r=>r.month))];
-              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               for(const m of campMonths){
                 const delRes = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{method:'DELETE',headers:dh});
                 if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
@@ -5338,7 +5338,7 @@ function saveOneFile(fileObj, client) {
           (async () => {
             try {
               const devMonths = [...new Set(deviceRows.map(r=>r.month))];
-              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const dh = {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               for(const m of devMonths){
                 const delRes = await fetch(`${SUPABASE_URL}/rest/v1/daily_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{method:'DELETE',headers:dh});
                 if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
@@ -5402,7 +5402,7 @@ function saveOneFile(fileObj, client) {
           if(!stRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
           (async()=>{
             try{
-              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales?client_key=eq.${encodeURIComponent(client)}&month=eq.${monthVal}`,{method:'DELETE',headers:h2});
               if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
               await new Promise(r=>setTimeout(r,300));
@@ -5454,7 +5454,7 @@ function saveOneFile(fileObj, client) {
           if(!spRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
           (async()=>{
             try{
-              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_products?client_key=eq.${encodeURIComponent(client)}&month=eq.${monthVal}`,{method:'DELETE',headers:h2});
               if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
               await new Promise(r=>setTimeout(r,300));
@@ -5607,7 +5607,7 @@ function saveOneFile(fileObj, client) {
           }
 
           const doUpsert = async () => {
-            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=minimal'};
+            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'return=minimal'};
             const months = [...new Set(gfaRows.map(r=>r.month))];
             for(const m of months){
               const delRes = await fetch(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{
@@ -5698,7 +5698,7 @@ function saveOneFile(fileObj, client) {
           fileObj.status='저장중';renderUploadTab();
           (async()=>{
             try{
-              const h2={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+              const h2={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
               await fetch(`${SUPABASE_URL}/rest/v1/google_adgroup_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${agMonth}`,{method:'DELETE',headers:h2});
               for(let b=0;b<agRows.length;b+=100){
                 await fetch(`${SUPABASE_URL}/rest/v1/google_adgroup_reports`,{method:'POST',headers:h2,body:JSON.stringify(agRows.slice(b,b+100))});
@@ -5847,7 +5847,7 @@ function saveOneFile(fileObj, client) {
           fileObj.status='저장중';renderUploadTab();
           (async()=>{
             try{
-              const h2={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+              const h2={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
               await fetch(`${SUPABASE_URL}/rest/v1/google_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${googleMonth}`,{method:'DELETE',headers:h2});
               for(let b=0;b<googleRows.length;b+=100){
                 await fetch(`${SUPABASE_URL}/rest/v1/google_reports`,{method:'POST',headers:h2,body:JSON.stringify(googleRows.slice(b,b+100))});
@@ -5898,7 +5898,7 @@ function saveOneFile(fileObj, client) {
           const metaMonth = metaMonths[0]||month;
           (async()=>{
             try{
-              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               for(const m of metaMonths){
                 await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,{method:'DELETE',headers:dh});
               }
@@ -5963,7 +5963,7 @@ function saveOneFile(fileObj, client) {
           fileObj.status='저장중';renderUploadTab();
           (async()=>{
             try{
-              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               for(const m of ebMonths){
                 await fetch(`${SUPABASE_URL}/rest/v1/ebay_products?client_key=eq.${encodeURIComponent(client)}&platform=eq.${platform}&month=eq.${m}`,{method:'DELETE',headers:dh});
               }
@@ -6021,7 +6021,7 @@ function saveOneFile(fileObj, client) {
           fileObj.status='저장중';renderUploadTab();
           (async()=>{
             try{
-              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+              const dh={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
               await fetch(`${SUPABASE_URL}/rest/v1/ebay_ads?client_key=eq.${encodeURIComponent(client)}&month=eq.${adMonth}`,{method:'DELETE',headers:dh});
               await new Promise(r=>setTimeout(r,200));
               for(let i=0;i<adRows.length;i+=100){
@@ -6048,7 +6048,7 @@ function saveOneFile(fileObj, client) {
         const h = {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+          'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY)
         };
         // 기존 데이터 삭제 후 배치 INSERT (500 오류 방지)
         (async () => {
@@ -6278,7 +6278,7 @@ if (hdrIdx === -1) {
          const h2 = {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+            'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY)
           };
          // 월별로 그룹핑해서 delete+insert (async/await로 순서 보장)
 (async () => {
@@ -6451,7 +6451,7 @@ function processFiles(files){
           Object.entries(byType).forEach(([dtype, drows])=>{
             fetch(`${SUPABASE_URL}/rest/v1/${tableMap[dtype]}`,{
               method:'POST',
-              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'resolution=merge-duplicates,return=minimal'},
               body:JSON.stringify(drows)
             }).then(res=>{
               if(!res.ok) return res.text().then(t=>{throw new Error(t);});
@@ -6568,7 +6568,7 @@ async function saveToSupabase(idx){
     const headers = {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY)
     };
 
     // 1️⃣ 현재 DB에 저장된 해당 월의 데이터 목록을 가져옴 (중복 체크용)
@@ -6632,7 +6632,7 @@ async function loadDataFromSupabase(){
     let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&order=date.desc&limit=500`;
     if(client)url+=`&client_key=eq.${encodeURIComponent(client)}`;
     if(month)url+=`&month=eq.${month}`;
-    const res=await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const res=await fetch(url,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}});
     const rows=await res.json();
     if(!Array.isArray(rows))throw new Error(JSON.stringify(rows));
     rows.forEach(r=>r.data_type=type);
@@ -6648,7 +6648,7 @@ async function saveRowToSupabase(idx){
   const tableMap={daily:'daily_reports',keyword:'keyword_reports',hourly:'hourly_reports'};
   const table=tableMap[r.data_type]||'daily_reports';
   try{
-    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'};
+    const headers={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'resolution=merge-duplicates,return=minimal'};
     const res=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{method:'POST',headers,body:JSON.stringify([r])});
     if(!res.ok)throw new Error(await res.text());
     toast('✅ 저장 완료');
@@ -6678,7 +6678,7 @@ function removeFile(idx){uploadedFiles.splice(idx,1);renderContent('input');setT
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
         'Prefer':'return=minimal'
       },
       body:JSON.stringify({
@@ -6767,7 +6767,7 @@ async function loadMessages(clientKey){
   try{
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/messages?client_key=eq.${encodeURIComponent(clientKey)}&order=created_at.asc&limit=100`,
-      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+      {headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}
     );
     const rows = await res.json();
     if(!Array.isArray(rows)) return;
@@ -6782,7 +6782,7 @@ async function loadMessages(clientKey){
       await fetch(
         `${SUPABASE_URL}/rest/v1/messages?id=in.(${unreadIds.join(',')})`,
         {method:'PATCH',
-         headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+         headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)},
          body:JSON.stringify({is_read:true})}
       );
     }
@@ -6849,7 +6849,7 @@ async function saveMessage(clientKey, content){
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
         'Prefer':'return=representation'
       },
       body:JSON.stringify(payload)
@@ -6871,7 +6871,7 @@ async function saveMessage(clientKey, content){
 
 async function deleteMessage(id){
   if(!confirm('이 메시지를 삭제하시겠습니까?'))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${id}`,{method:'DELETE',headers:h});
     if(res.ok){
@@ -6911,7 +6911,7 @@ async function saveEditMessage(id){
   const input=document.getElementById('msgEditInput');
   const text=(input?.value||'').trim();
   if(!text){toast('⚠️ 내용을 입력해주세요');return;}
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({content:text})});
     if(res.ok){
@@ -6998,7 +6998,7 @@ let _unreadByClient={};
 async function updateMsgBadge(){
   try{
     const isAdmin=currentUser?.role==='admin';
-    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+    const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
     let totalUnread=0;
 
     if(isAdmin){
@@ -7310,7 +7310,7 @@ async function collectAIData(){
   const to=currentDateRange?.to||'';
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   // 네이버 데이터 없으면 fetch
   if(!REPORT_DATA[currentReportMonth]){
@@ -7633,7 +7633,7 @@ async function openChat(clientKey, clientName){
   if(currentUser?.role==='admin'){
     fetch(`${SUPABASE_URL}/rest/v1/messages?client_key=eq.${encodeURIComponent(clientKey)}&is_read=eq.false&sender_role=eq.client`,{
       method:'PATCH',
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'},
       body:JSON.stringify({is_read:true})
     }).then(()=>updateMsgBadge());
   }
@@ -7701,7 +7701,7 @@ async function uploadMsgFile(file,clientKey){
     method:'POST',
     headers:{
       'apikey':SUPABASE_ANON_KEY,
-      'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+      'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
       'Content-Type':file.type||'application/octet-stream',
       'x-upsert':'true'
     },
@@ -7819,7 +7819,7 @@ async function saveEventToSupabase(ev){
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
         'Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify({
@@ -7843,7 +7843,7 @@ async function loadCalEvents(){
     if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
     });
     const rows = await res.json();
     if(!Array.isArray(rows)) return;
@@ -8061,7 +8061,7 @@ async function loadRequests(){
     if(clientKey) url += `&client_key=eq.${encodeURIComponent(clientKey)}`;
 
     const res = await fetch(url,{
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
     });
     const rows = await res.json();
     if(!Array.isArray(rows)) return;
@@ -8092,7 +8092,7 @@ async function saveRequestToSupabase(req){
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY
+        'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)
       },
       body:JSON.stringify({
         client_key:  clientKey,
@@ -8109,7 +8109,7 @@ async function saveRequestToSupabase(req){
   const isAdmin = currentUser?.role==='admin';
   const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
   if(!clientKey) return;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const el = document.getElementById('rptFeedbackList');
   if(!el) return;
   el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">불러오는 중...</div>`;
@@ -8145,7 +8145,7 @@ async function saveRequestToSupabase(req){
 
 async function toggleFeedbackCheck(id, currentStatus){
   const newStatus = currentStatus==='확인완료' ? '대기중' : '확인완료';
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({status:newStatus})});
   toast(newStatus==='확인완료' ? '✅ 확인완료로 변경됐습니다' : '↩️ 대기중으로 변경됐습니다');
   loadRptFeedbacks();
@@ -8154,7 +8154,7 @@ async function toggleFeedbackCheck(id, currentStatus){
   const isAdmin = currentUser?.role==='admin';
   const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
   if(!clientKey) return;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res = await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?client_key=eq.${encodeURIComponent(clientKey)}&status=eq.대기중&select=page,card_key`,{headers:h});
     const rows = res.ok ? await res.json() : [];
@@ -8282,14 +8282,14 @@ function _scrollToCard(cardKey){
 }
   async function saveRptFeedbackReply(id){
   const reply = document.getElementById('reply_'+id)?.value||'';
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({reply,status:'답변완료'})});
   toast('✅ 답변이 저장됐습니다'); loadRptFeedbacks();
 }
 
 async function deleteRptFeedback(id){
   if(!confirm('삭제하시겠습니까?')) return;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks?id=eq.${id}`,{method:'DELETE',headers:h});
   toast('🗑️ 삭제됐습니다'); loadRptFeedbacks();
 }
@@ -8315,7 +8315,7 @@ async function submitFeedback(page){
   const isAdmin = currentUser?.role==='admin';
   const clientKey = isAdmin ? (activeClientId||'') : (currentUser?.id||'');
   if(!clientKey){ toast('⚠️ 업체를 선택해주세요'); return; }
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   await fetch(`${SUPABASE_URL}/rest/v1/feedbacks`,{method:'POST',headers:h,body:JSON.stringify({
     client_key:clientKey, page, title, content,
     card_key: _ctxCardKey||page,
@@ -8438,7 +8438,7 @@ async function updateReqStatus(id,status){
     const doneDate=status==='완료'?new Date().toISOString().slice(0,10).replace(/-/g,'.'):'-';
     await fetch(`${SUPABASE_URL}/rest/v1/requests?id=eq.${id}`,{
       method:'PATCH',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)},
       body:JSON.stringify({status,done_date:doneDate})
     });
     await loadRequests();
@@ -8756,7 +8756,7 @@ async function saveEditClient(id){
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY),
           'Prefer': 'return=representation'
         },
         body: JSON.stringify(updateData)
@@ -8824,7 +8824,7 @@ async function deleteClient(id){
     const res=await fetch(
       `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${id}`,
       {method:'DELETE',
-       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}}
+       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}
     );
     if(!res.ok)throw new Error(await res.text());
 
@@ -8954,7 +8954,7 @@ async function registerAcc(){
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
-        'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+        'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
         'Prefer':'return=representation'
       },
       body:JSON.stringify({
@@ -9196,7 +9196,7 @@ async function executeBulkRegister(){
         headers:{
           'Content-Type':'application/json',
           'apikey':SUPABASE_ANON_KEY,
-          'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+          'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
           'Prefer':'return=representation'
         },
         body:JSON.stringify({
@@ -9279,7 +9279,7 @@ async function loadAlerts(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&order=created_at.desc&limit=50`,{headers:h});
     const rows=await res.json();
@@ -9377,7 +9377,7 @@ function filterAlerts(type,el){
 }
 
 async function markAlertRead(id){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:true})});
   if(window._alertRows){
     const r=window._alertRows.find(a=>a.id===id);
@@ -9388,7 +9388,7 @@ async function markAlertRead(id){
 }
 
 async function markAlertUnread(id){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:false})});
   if(window._alertRows){
     const r=window._alertRows.find(a=>a.id===id);
@@ -9403,7 +9403,7 @@ async function markAllAlertsRead(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false`,{method:'PATCH',headers:h,body:JSON.stringify({is_read:true})});
   if(window._alertRows){
     window._alertRows.forEach(r=>r.is_read=true);
@@ -9414,7 +9414,7 @@ async function markAllAlertsRead(){
 }
 
 async function deleteAlert(id){
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   await fetch(`${SUPABASE_URL}/rest/v1/alerts?id=eq.${id}`,{method:'DELETE',headers:h});
   if(window._alertRows){
     window._alertRows=window._alertRows.filter(a=>a.id!==id);
@@ -9427,7 +9427,7 @@ async function updateAlertBadge(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false&select=id`,{headers:h});
     const rows=await res.json();
@@ -9442,7 +9442,7 @@ async function updateKpiBadge(){
   if(currentUser?.role==='admin')return;
   const ck=currentUser?.id||'';
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false&select=id`,{headers:h});
     const rows=await res.json();
@@ -9469,7 +9469,7 @@ async function updateWorkLogBadge(){
   if(currentUser?.role==='admin')return;
   const ck=currentUser?.id||'';
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     // 최근 7일 이내 작업 로그 카운트
     const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
@@ -9644,7 +9644,7 @@ async function loadWorkLogs(){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/work_logs?client_key=eq.${encodeURIComponent(ck)}&order=log_date.desc,created_at.desc&limit=100`,{headers:h});
     const rows=await res.json();
@@ -9700,7 +9700,7 @@ async function saveWorkLog(){
   const title=document.getElementById('wl-title')?.value?.trim()||'';
   const content=document.getElementById('wl-content')?.value?.trim()||'';
   if(!title){toast('⚠️ 제목을 입력해주세요');return;}
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/work_logs`,{
       method:'POST',headers:{...h,'Prefer':'return=minimal'},
@@ -9716,7 +9716,7 @@ async function saveWorkLog(){
 
 async function deleteWorkLog(id){
   if(!confirm('이 작업 로그를 삭제하시겠습니까?'))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   await fetch(`${SUPABASE_URL}/rest/v1/work_logs?id=eq.${id}`,{method:'DELETE',headers:h});
   toast('🗑 삭제되었습니다');
   loadWorkLogs();
@@ -9835,7 +9835,7 @@ async function loadKpiTargets(overrideMonth){
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
   const month=overrideMonth||currentReportMonth;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   // 현재 월 목표 (전체 채널)
   try{
@@ -9901,7 +9901,7 @@ async function saveKpiTarget(){
     memo:document.getElementById('kt-memo')?.value?.trim()||'',
     updated_at:new Date().toISOString()
   };
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   try{
     // UPSERT: 해당 채널만 삭제 후 삽입
     await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&channel=eq.${encodeURIComponent(ch)}`,{method:'DELETE',headers:h});
@@ -9920,7 +9920,7 @@ async function deleteKpiTarget(){
   const month=document.getElementById('ktMonthPicker')?.value||currentReportMonth;
   const ch=_kpiCurrentChannel||'통합';
   if(!confirm(`${month} ${ch} 목표를 삭제하시겠습니까?`))return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&channel=eq.${encodeURIComponent(ch)}`,{method:'DELETE',headers:h});
   toast(`🗑 ${ch} 목표가 삭제되었습니다`);
   _kpiTargetData=null;
@@ -10012,7 +10012,7 @@ async function renderKpiMiniProgress(){
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck){el.innerHTML='';return;}
   const month=currentReportMonth;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${month}&limit=1`,{headers:h});
     const rows=await res.json();
@@ -10048,7 +10048,7 @@ async function runAnomalyDetection(manual=false){
   const isAdmin=currentUser?.role==='admin';
   const ck=isAdmin?(activeClientId||''):(currentUser?.id||'');
   if(!ck)return;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
   const alerts=[];
   const from=currentDateRange?.from||'';
   const to=currentDateRange?.to||'';
@@ -10058,7 +10058,7 @@ async function runAnomalyDetection(manual=false){
   // ── KPI 목표 로드 ──
   let _kpiTargets={};
   try{
-    const kRes=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${currentReportMonth}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const kRes=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&month=eq.${currentReportMonth}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}});
     const kRows=await kRes.json();
     if(Array.isArray(kRows)) kRows.forEach(r=>{_kpiTargets[r.channel||'통합']=r;});
   }catch(e){}
@@ -10268,7 +10268,7 @@ async function runAnomalyDetection(manual=false){
   // 오늘 이미 같은 타입 알림이 있으면 건너뛰기
   const today=new Date().toISOString().slice(0,10);
   try{
-    const existRes=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&created_at=gte.${today}T00:00:00&select=alert_type,severity`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}});
+    const existRes=await fetch(`${SUPABASE_URL}/rest/v1/alerts?client_key=eq.${encodeURIComponent(ck)}&created_at=gte.${today}T00:00:00&select=alert_type,severity`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}});
     const existing=await existRes.json();
     const existSet=new Set((Array.isArray(existing)?existing:[]).map(e=>e.alert_type+'_'+e.severity));
     const newAlerts=alerts.filter(a=>!existSet.has(a.alert_type+'_'+a.severity));
@@ -10303,7 +10303,7 @@ async function generateAIBriefing(forceNew=false){
   const from=currentDateRange?.from||'';
   const to=currentDateRange?.to||'';
   if(!from||!to){el.innerHTML='<span style="color:var(--text3)">기간을 선택해주세요</span>';return;}
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const company=isAdmin?(ACCOUNTS.find(a=>a.id===ck)?.company||ck):(currentUser?.company||ck);
 
   // 캐시 확인
@@ -10506,13 +10506,13 @@ async function generateAIInsights(ck, d){
   if(window._aiInsightLock_combined){return;}
   window._aiInsightLock_combined=true;
 
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
   
   // 오늘(KST) 통합 태그 인사이트만 체크
   const now=new Date();
   const kstNow=new Date(now.getTime()+9*60*60*1000);
   const todayKST=kstNow.toISOString().slice(0,10);
-  const checkH={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const checkH={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
     const chk=await fetch(`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&author=eq.AI&tags=eq.${encodeURIComponent('통합')}&created_at=gte.${todayKST}T00:00:00%2B09:00&limit=1`,{headers:checkH});
     const chkArr=await chk.json();
@@ -10627,7 +10627,7 @@ async function renderCharts(){
   const _toComb = currentDateRange?.to||'';
   const _fmComb = _fromComb.slice(0,7);
   const _tmComb = _toComb.slice(0,7);
-  const _hComb = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const _hComb = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   if(_ckComb){
     // META 캐시 없으면 fetch
     if(!window[`_meta_${_ckComb}_${_fmComb}_${_tmComb}`]){
@@ -10835,7 +10835,7 @@ async function renderCharts(){
   // 월별 ROAS 추이 — DB 최신 월 기준, 기간 선택 무관 고정 (최소3개월 ~ 최대12개월)
   const isAdmin3 = currentUser?.role==='admin';
   const ck3 = isAdmin3?(activeClientId||''):(currentUser?.id||'');
-  const h3 = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h3 = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   // DB에서 해당 클라이언트의 최신 월 조회
   let latestMonth = currentReportMonth;
   try {
@@ -10900,7 +10900,7 @@ async function generateChannelBriefing(channel, forceNew=false){
   const from=currentDateRange?.from||'';
   const to=currentDateRange?.to||'';
   if(!from||!to){el.innerHTML='<span style="color:var(--text3)">기간을 선택해주세요</span>';return;}
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const cacheKey=`ch_briefing_${channel}`;
 
   // 캐시 확인
@@ -11068,8 +11068,8 @@ async function generateChannelInsights(ck, channel, briefingLines){
   if(window[lockKey]){console.log(`AI 인사이트(${tag}): 이미 진행 중`);return;}
   window[lockKey]=true;
 
-  const hCheck={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
-  const hPost={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const hCheck={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
+  const hPost={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'return=minimal'};
 
   // 오늘 이 채널에 AI 인사이트가 이미 있으면 스킵
   const now=new Date();
@@ -11340,7 +11340,7 @@ async function loadGoogleTab(tabId){
   const to=currentDateRange?.to||'';
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   const cacheKey=`_google_${ck}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
@@ -11529,7 +11529,7 @@ async function loadEbayTab(tabId){
   const to=currentDateRange?.to||'';
   const fromMonth=from.slice(0,7);
   const toMonth=to.slice(0,7);
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const fmt=v=>'₩'+Math.round(+v||0).toLocaleString('ko-KR');
   const fmtn=v=>Math.round(+v||0).toLocaleString('ko-KR');
   const pct=v=>(+v||0).toFixed(1)+'%';
@@ -11784,7 +11784,7 @@ async function loadMetaTab(tabId){
   const toMonth=currentDateRange?.to?.slice(0,7)||currentReportMonth;
   const fromDate=currentDateRange?.from||`${fromMonth}-01`;
   const toDate=currentDateRange?.to||`${toMonth}-31`;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const fmt=v=>'₩'+Math.round(v||0).toLocaleString('ko-KR');
   const fmtn=v=>(v||0).toLocaleString('ko-KR');
   const calcR=(cost,rev)=>cost>0?(rev/cost*100).toFixed(2)+'%':'—';
@@ -12683,7 +12683,7 @@ async function loadHourlyTab(){
   const toDate   = currentDateRange?.to   || (currentReportMonth+'-31');
   const fromMonth = fromDate.slice(0,7);
   const toMonth   = toDate.slice(0,7);
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   try{
     const hourlyResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_hourly_data`, {
@@ -12906,7 +12906,7 @@ async function loadKeywordTab(){
 
   const fromMonth = currentDateRange?.from?.slice(0,7) || currentReportMonth;
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   try{
     const kwResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_keyword_data`, {
@@ -13165,7 +13165,7 @@ async function loadRptGFATab(){
   const toMonth=currentDateRange?.to?.slice(0,7)||currentReportMonth;
   const fromDate=currentDateRange?.from||`${fromMonth}-01`;
   const toDate=currentDateRange?.to||`${toMonth}-31`;
-  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const cacheKey=`_meta_${targetClient}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
     const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
@@ -13262,7 +13262,7 @@ async function loadRptGFATab(){
 
   const fromMonth = currentDateRange?.from?.slice(0,7) || currentReportMonth;
   const toMonth   = currentDateRange?.to?.slice(0,7)   || currentReportMonth;
-  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   const fmt      = v => '₩'+Math.round(v||0).toLocaleString();
   const fmtn     = v => (v||0).toLocaleString();
