@@ -9461,25 +9461,15 @@ async function updateKpiBadge(){
   if(!ck)return;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&is_read=eq.false&select=id`,{headers:h});
+    // kpi_targets 에는 is_read 컬럼이 없으므로 전체 목표 개수를 카운트
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&select=id`,{headers:h});
     const rows=await res.json();
     const badge=document.getElementById('kpiBadge');
     if(!badge)return;
     const cnt=Array.isArray(rows)?rows.length:0;
     badge.textContent=cnt;
     badge.style.display=cnt>0?'inline-block':'none';
-  }catch(e){
-    // is_read 컬럼 없으면 전체 카운트
-    try{
-      const res2=await fetch(`${SUPABASE_URL}/rest/v1/kpi_targets?client_key=eq.${encodeURIComponent(ck)}&select=id`,{headers:h});
-      const rows2=await res2.json();
-      const badge2=document.getElementById('kpiBadge');
-      if(!badge2)return;
-      const cnt2=Array.isArray(rows2)?rows2.length:0;
-      badge2.textContent=cnt2;
-      badge2.style.display=cnt2>0?'inline-block':'none';
-    }catch(e2){}
-  }
+  }catch(e){}
 }
 
 async function updateWorkLogBadge(){
