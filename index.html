@@ -763,6 +763,7 @@ canvas{max-height:210px}
         <input id="lpw" type="text" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="off" style="-webkit-text-security:disc;text-security:disc">
         <span onclick="const i=document.getElementById('lpw');const d=i.style.webkitTextSecurity==='none';i.style.webkitTextSecurity=d?'disc':'none';i.style.textSecurity=d?'disc':'none';this.textContent=d?'👁':'👁‍🗨'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none">👁</span>
       </div>
+    </div>
     <button class="lbtn" onclick="doLogin()">로그인 →</button>
     <div class="lerr" id="lerr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
     <div class="l-features">
