@@ -1118,16 +1118,25 @@ function checkDataAndGuide(data, period){
     return `c${hex}@clients.sitedear.app`;
   }
 
+  let _loginBusy = false;
   async function doLogin(){
+  if(_loginBusy) return;                 // 중복 클릭/Enter 방지
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value.trim();
   const errEl = document.getElementById('lerr');
+  const btn = document.querySelector('.lbtn');
 
   if(!id || !pw){
     errEl.textContent = "아이디와 비밀번호를 모두 입력해주세요.";
     errEl.style.display = 'block';
     return;
   }
+
+  // ── 로딩 상태 표시 (버벅임 체감 제거) ──
+  _loginBusy = true;
+  const _btnText = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.7'; btn.style.cursor = 'wait'; btn.textContent = '로그인 중...'; }
+  errEl.style.display = 'none';
 
   try {
     const { data, error } = await sbAuth.auth.signInWithPassword({
@@ -1137,6 +1146,8 @@ function checkDataAndGuide(data, period){
     if(error || !data || !data.session){
       errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
       errEl.style.display = 'block';
+      if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = _btnText; }
+      _loginBusy = false;
       return;
     }
     AUTH_TOKEN = data.session.access_token;
@@ -1157,10 +1168,15 @@ function checkDataAndGuide(data, period){
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appShell').style.display = 'block';
     initApp();
+    // 성공 시 화면 전환됨 — 버튼 복구는 불필요하나 안전하게 복구
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = _btnText; }
+    _loginBusy = false;
   } catch(e) {
     console.error('로그인 처리 오류:', e);
     errEl.textContent = "로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
     errEl.style.display = 'block';
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = _btnText; }
+    _loginBusy = false;
   }
 }
 async function doLogout(){
