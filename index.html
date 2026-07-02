@@ -6814,7 +6814,8 @@ function renderMessages(rows){
     const isMine = r.sender_id === currentUser.id || (r.sender_role===(currentUser?.role==='admin'?'admin':'client'));
     const time = new Date(r.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     const initials = (r.sender||r.sender_name||'?').charAt(0);
-    const msgActions = isMine ? `<div class="msg-actions" style="display:none;position:absolute;${isMine?'left:-60px':'right:-60px'};top:50%;transform:translateY(-50%);gap:2px">
+    const canEdit = isMine || currentUser?.role==='admin';
+    const msgActions = canEdit ? `<div class="msg-actions" style="display:none;position:absolute;${isMine?'left:-60px':'right:-60px'};top:50%;transform:translateY(-50%);gap:2px">
       <button onclick="editMessage('${r.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer" title="수정">✏️</button>
       <button onclick="deleteMessage('${r.id}')" style="background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer" title="삭제">🗑️</button>
     </div>` : '';
