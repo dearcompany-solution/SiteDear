@@ -5866,6 +5866,7 @@ function saveOneFile(fileObj, client) {
               Object.keys(window).filter(k=>k.startsWith('_google_')).forEach(k=>delete window[k]);
               fileObj.status='저장완료';fileObj.savedCount=googleRows.length;
               renderUploadTab();toast(`✅ ${fileObj.name} — ${googleRows.length}개 저장 완료!`);
+              saveUploadLog(client, fileObj.name, 'google_ad', googleMonth, googleRows.length);
             }catch(err){fileObj.status='저장실패';renderUploadTab();toast('❌ 구글 광고 저장 실패: '+err.message);}
           })();
           return;
