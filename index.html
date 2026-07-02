@@ -9228,15 +9228,14 @@ async function executeBulkRegister(){
 
   for(const c of toRegister){
     try{
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-client-account`,{
         method:'POST',
         headers:{
           'Content-Type':'application/json',
-          'apikey':SUPABASE_ANON_KEY,
-          'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
-          'Prefer':'return=representation'
+          'Authorization':'Bearer '+AUTH_TOKEN
         },
         body:JSON.stringify({
+          action:          'create',
           client_key:      c.id,
           password:        c.pw,
           company_name:    c.company,
@@ -9244,11 +9243,11 @@ async function executeBulkRegister(){
           store_url:       c.url,
           memo:            c.memo||'',
           naver_search_id: c.search_id||null,
-          naver_gfa_id:    c.gfa_id||null,
-          is_active:       true
+          naver_gfa_id:    c.gfa_id||null
         })
       });
-      if(!res.ok) throw new Error(await res.text());
+      const result = await res.json();
+      if(!res.ok || result.error) throw new Error(result.error || '등록 실패');
       ACCOUNTS.push({id:c.id, pw:c.pw, role:'client', name:c.company, company:c.company, manager:c.manager, url:c.url, memo:c.memo||'', naver_search_id:c.search_id||'', naver_gfa_id:c.gfa_id||''});
       successCount++;
     }catch(err){
