@@ -6814,11 +6814,18 @@ function renderMessages(rows){
     const isMine = r.sender_id === currentUser.id || (r.sender_role===(currentUser?.role==='admin'?'admin':'client'));
     const time = new Date(r.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     const initials = (r.sender||r.sender_name||'?').charAt(0);
+    const msgActions = isMine ? `<div class="msg-actions" style="display:none;position:absolute;${isMine?'left:-60px':'right:-60px'};top:50%;transform:translateY(-50%);gap:2px">
+      <button onclick="editMessage('${r.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer" title="수정">✏️</button>
+      <button onclick="deleteMessage('${r.id}')" style="background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer" title="삭제">🗑️</button>
+    </div>` : '';
     return `<div class="brow ${isMine?'mine':''}">
       <div class="bav ${isMine?'bav-c':'bav-m'}">${initials}</div>
       <div>
         ${!isMine?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px">${r.sender||r.sender_name||''}</div>`:''}
-        <div class="bubble ${isMine?'cli':'mgr'}">${renderBubbleContent(r.content)}</div>
+        <div style="position:relative" onmouseenter="this.querySelector('.msg-actions')&&(this.querySelector('.msg-actions').style.display='flex')" onmouseleave="this.querySelector('.msg-actions')&&(this.querySelector('.msg-actions').style.display='none')">
+          <div class="bubble ${isMine?'cli':'mgr'}" data-msgid="${r.id}">${renderBubbleContent(r.content)}</div>
+          ${msgActions}
+        </div>
         <div class="bmeta">${time}</div>
       </div>
     </div>`;
@@ -6867,6 +6874,60 @@ async function saveMessage(clientKey, content){
     toast('❌ 메시지 전송 오류');
     return null;
   }
+}
+
+async function deleteMessage(id){
+  if(!confirm('이 메시지를 삭제하시겠습니까?'))return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${id}`,{method:'DELETE',headers:h});
+    if(res.ok){
+      toast('🗑️ 메시지가 삭제되었습니다');
+      const bubble=document.querySelector(`[data-msgid="${id}"]`);
+      if(bubble){
+        const brow=bubble.closest('.brow');
+        if(brow){brow.style.transition='opacity 0.3s';brow.style.opacity='0';setTimeout(()=>brow.remove(),300);}
+      }
+    } else { toast('❌ 삭제 실패'); }
+  }catch(e){toast('❌ 삭제 실패');}
+}
+
+async function editMessage(id){
+  const bubble=document.querySelector(`[data-msgid="${id}"]`);
+  if(!bubble)return;
+  const currentText=bubble.innerText||bubble.textContent||'';
+  
+  let ov=document.getElementById('msgEditOverlay');
+  if(!ov){ov=document.createElement('div');ov.id='msgEditOverlay';ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:9000;display:flex;align-items:center;justify-content:center';document.body.appendChild(ov);}
+  ov.style.display='flex';
+  ov.innerHTML=`<div style="background:var(--white);border-radius:16px;width:500px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700">✏️ 메시지 수정</div>
+      <span onclick="document.getElementById('msgEditOverlay').style.display='none'" style="cursor:pointer;font-size:18px;color:var(--text3);padding:4px">✕</span>
+    </div>
+    <textarea id="msgEditInput" style="width:100%;min-height:120px;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;line-height:1.7;resize:vertical;font-family:inherit;outline:none" onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='var(--border)'">${currentText}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button onclick="document.getElementById('msgEditOverlay').style.display='none'" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:13px">취소</button>
+      <button onclick="saveEditMessage('${id}')" style="padding:8px 16px;border:none;border-radius:8px;background:#6366F1;color:#fff;cursor:pointer;font-size:13px;font-weight:600">수정 완료</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('msgEditInput')?.focus(),100);
+}
+
+async function saveEditMessage(id){
+  const input=document.getElementById('msgEditInput');
+  const text=(input?.value||'').trim();
+  if(!text){toast('⚠️ 내용을 입력해주세요');return;}
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${id}`,{method:'PATCH',headers:h,body:JSON.stringify({content:text})});
+    if(res.ok){
+      document.getElementById('msgEditOverlay').style.display='none';
+      toast('✅ 메시지가 수정되었습니다');
+      const bubble=document.querySelector(`[data-msgid="${id}"]`);
+      if(bubble) bubble.innerHTML=renderBubbleContent(text);
+    } else { toast('❌ 수정 실패'); }
+  }catch(e){toast('❌ 수정 실패');}
 }
 
 /* ── Realtime 구독 시작 ── */
