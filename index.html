@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script>ChartDataLabels&&Chart.register(ChartDataLabels);Chart.defaults.plugins.datalabels={display:false};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ════ 기본 변수 ════ */  
@@ -929,6 +930,8 @@ let calEvents=[];
 let savedData=[];
 let currentUser=null;
 let activeClientId=null;
+let AUTH_TOKEN=null;   // 로그인 세션 access_token (추가)
+let sbAuth=null;       // Supabase Auth 클라이언트 (추가)
 let adminSearch='';
 let adminTeamFilter='전체';
 let adminPageSize=20;
@@ -1105,80 +1108,63 @@ function checkDataAndGuide(data, period){
   if(missing.length > 0)
     showDataGuide(missing, `${p} 기간 데이터 현황`);
 }
+  // ── Supabase Auth 초기화 (추가) ──
+  sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // client_key → 결정적 이메일 (마이그레이션 스크립트의 clientKeyToEmail 과 반드시 동일)
+  function clientKeyToEmail(key){
+    const bytes = new TextEncoder().encode(String(key));
+    const hex = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+    return `c${hex}@clients.sitedear.app`;
+  }
+
   async function doLogin(){
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value.trim();
   const errEl = document.getElementById('lerr');
-  
+
   if(!id || !pw){
     errEl.textContent = "아이디와 비밀번호를 모두 입력해주세요.";
     errEl.style.display = 'block';
     return;
   }
 
-  // 1. 로컬 계정 먼저 확인 (관리자 포함)
-  let acc = ACCOUNTS.find(a => a.id === id && a.pw === pw);
-
-  // 2. 로컬에 없을 경우에만 Supabase DB에서 확인 (클라이언트 계정)
-  if(!acc){
-    try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/clients?client_key=eq.${encodeURIComponent(id)}&select=*`,
-        {
-          method: 'GET',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if(response.ok){
-        const rows = await response.json();
-        if(rows && rows.length > 0){
-          const row = rows[0];
-          if(row.password === pw){
-            acc = {
-              id: row.client_key,
-              pw: row.password,
-              role: 'client',
-              name: row.company_name,
-              company: row.company_name,
-              manager: row.manager || '',
-              url: row.store_url || '',
-            };
-            if(!ACCOUNTS.find(a => a.id === acc.id)) ACCOUNTS.push(acc);
-          }
-        }
-      } else {
-        // Supabase 응답 오류 — 클라이언트 계정 조회 실패, 아이디/비번 불일치로 처리
-        console.warn('Supabase 응답 오류:', response.status);
-      }
-    } catch(e) {
-      // 네트워크 오류 — 클라이언트 계정 조회 실패, 아이디/비번 불일치로 처리
-      console.error('로그인 중 에러 발생:', e);
+  try {
+    const { data, error } = await sbAuth.auth.signInWithPassword({
+      email: clientKeyToEmail(id),
+      password: pw
+    });
+    if(error || !data || !data.session){
+      errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
+      errEl.style.display = 'block';
+      return;
     }
-  }
-
-  // 3. 최종 로그인 성공 처리
-  if(acc){
-    currentUser = acc;
-    sessionStorage.setItem('currentUser', JSON.stringify(acc));
-    // 새로고침이 아닌 첫 로그인 시에만 기본 페이지 설정
+    AUTH_TOKEN = data.session.access_token;
+    const meta = (data.user && data.user.app_metadata) || {};
+    currentUser = {
+      id:      meta.client_key || id,
+      role:    meta.role || 'client',
+      name:    meta.name || (meta.role === 'admin' ? '관리자' : id),
+      company: meta.name || id,
+      manager: meta.manager || '',
+      url:     meta.url || ''
+    };
+    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
     if(!sessionStorage.getItem('currentPage')){
-      sessionStorage.setItem('currentPage', acc.role==='admin' ? 'admin' : 'combined');
+      sessionStorage.setItem('currentPage', currentUser.role === 'admin' ? 'admin' : 'combined');
     }
     errEl.style.display = 'none';
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appShell').style.display = 'block';
     initApp();
-  } else {
-    errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
+  } catch(e) {
+    console.error('로그인 처리 오류:', e);
+    errEl.textContent = "로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
     errEl.style.display = 'block';
   }
 }
-function doLogout(){
+async function doLogout(){
+  try{ if(sbAuth) await sbAuth.auth.signOut(); }catch(e){}
+  AUTH_TOKEN=null;
   currentUser=null;activeClientId=null;destroyCharts();
   sessionStorage.clear();
   document.getElementById('appShell').style.display='none';
@@ -13650,18 +13636,28 @@ document.addEventListener('click',e=>{
   if(overlay&&e.target===overlay)closePdfOverlay();
 });
 /* ── 새로고침 시 로그인 상태 복원 ── */
-(function(){
-  const saved         = sessionStorage.getItem('currentUser');
+(async function(){
   const savedPage     = sessionStorage.getItem('currentPage') || 'combined';
   const savedClientId = sessionStorage.getItem('activeClientId');
+  if(!sbAuth) return;
+  const { data } = await sbAuth.auth.getSession();
+  if(!data || !data.session){ sessionStorage.clear(); return; }  // 세션 만료 → 로그인 화면
+  AUTH_TOKEN = data.session.access_token;
+  const saved = sessionStorage.getItem('currentUser');
   if(saved){
     currentUser = JSON.parse(saved);
-    if(savedClientId) activeClientId = savedClientId;
-    document.getElementById('loginPage').style.display='none';
-    document.getElementById('appShell').style.display='block';
-    const page = savedPage === 'combined' && currentUser.role === 'admin' && !savedClientId ? 'admin' : savedPage;
-    initApp(page);
+  } else {
+    const meta = (data.session.user && data.session.user.app_metadata) || {};
+    currentUser = { id: meta.client_key||'', role: meta.role||'client',
+      name: meta.name||(meta.role==='admin'?'관리자':meta.client_key),
+      company: meta.name||meta.client_key, manager: meta.manager||'', url: meta.url||'' };
+    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
   }
+  if(savedClientId) activeClientId = savedClientId;
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  const page = savedPage === 'combined' && currentUser.role === 'admin' && !savedClientId ? 'admin' : savedPage;
+  initApp(page);
 })();
 </script>
 <div id="ctxMenu" style="display:none;position:fixed;z-index:9999;background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0;min-width:160px">
