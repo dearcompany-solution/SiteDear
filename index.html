@@ -5425,6 +5425,7 @@ function saveOneFile(fileObj, client) {
               }
               fileObj.status='저장완료'; fileObj.savedCount=stRows.length;
               renderUploadTab(); toast(`✅ ${fileObj.name} — ${stRows.length}개 저장 완료!`);
+              saveUploadLog(client, fileObj.name, 'store_sales', monthVal, stRows.length);
             }catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 스토어 판매 저장 실패: '+err.message); }
           })();
           return;
@@ -5476,6 +5477,7 @@ function saveOneFile(fileObj, client) {
               }
               fileObj.status='저장완료'; fileObj.savedCount=spRows.length;
               renderUploadTab(); toast(`✅ ${fileObj.name} — ${spRows.length}개 저장 완료!`);
+              saveUploadLog(client, fileObj.name, 'store_products', monthVal, spRows.length);
             }catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 스토어 상품 저장 실패: '+err.message); }
           })();
           return;
