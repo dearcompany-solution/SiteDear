@@ -9024,6 +9024,10 @@ document.addEventListener('click', function(e){
 function htmlDataStatus(){
   return `
   <div class="content">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 14px;background:#FCEBEB;border:1px solid #F09595;border-radius:10px">
+      <span style="font-size:14px">🔒</span>
+      <span style="font-size:13px;color:#A32D2D;font-weight:600">이 메뉴는 관리자 로그인 시에만 확인 가능합니다. (광고주에게는 노출되지 않습니다)</span>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div style="font-size:13px;color:var(--muted)">🟢 완료 · 🔴 누락(업로드 필요) · ⬜ 미운영 · ⏸️ 운영중지(수동)</div>
       <div style="display:flex;align-items:center;gap:10px">
