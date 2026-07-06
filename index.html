@@ -1197,6 +1197,23 @@ function checkDataAndGuide(data, period){
       return;
     }
     AUTH_TOKEN = data.session.access_token;
+    const _meta0 = (data.user && data.user.app_metadata) || {};
+    // 비활성(로그인 차단) 업체인지 확인 — 관리자는 예외
+    if((_meta0.role||'client') !== 'admin'){
+      try{
+        const _ckq = encodeURIComponent(_meta0.client_key || id);
+        const _r = await fetch(`${SUPABASE_URL}/rest/v1/clients?client_key=eq.${_ckq}&select=is_active`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+AUTH_TOKEN}});
+        const _rows = await _r.json();
+        if(Array.isArray(_rows) && _rows.length && _rows[0].is_active === false){
+          await sbAuth.auth.signOut(); AUTH_TOKEN=null;
+          errEl.textContent = '비활성화된 계정입니다. 관리자에게 문의해주세요.';
+          errEl.style.display='block';
+          if(btn){ btn.disabled=false; btn.style.opacity=''; btn.style.cursor=''; btn.textContent=_btnText; }
+          _loginBusy=false;
+          return;
+        }
+      }catch(e){}
+    }
     const meta = (data.user && data.user.app_metadata) || {};
     currentUser = {
       id:      meta.client_key || id,
@@ -1402,6 +1419,7 @@ function renderAdminNav(){
     <div class="ni" id="ni-alerts" onclick="go('alerts',this)"><span class="ic">🚨</span>이상 감지 알림<span class="nbadge nb-y" id="alertBadge" style="display:none">0</span></div>
     <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
     <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
+    <div class="ni" id="ni-datastatus" onclick="go('datastatus',this)"><span class="ic">📊</span>데이터 현황</div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
@@ -1429,8 +1447,11 @@ const pageTitles={
   'work-log':['작업 로그','소재 교체 · 예산 조정 · 키워드 변경 기록'],
  admin:   ['클라이언트 관리',''],
   register:['계정 등록',''],
+  datastatus:['데이터 업로드 현황','업체별 매체 데이터 최신화 상태'],
 };
 function go(id,el){
+  const adminOnly=['admin','register','datastatus'];
+  if(adminOnly.includes(id) && currentUser.role!=='admin'){ return; }  // 광고주 접근 차단
   const needsClient=['naver','store','combined','meta','google','ebay','req','cal','input','report','alerts','kpi-target','work-log'];
   if(currentUser.role==='admin'&&needsClient.includes(id)&&!activeClientId){
     toast('⚠️ 먼저 클라이언트 관리에서 업체를 선택해주세요');
@@ -1622,6 +1643,13 @@ function renderContent(id){
       break;
     case 'register':
       c.innerHTML=htmlRegister();
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
+      document.getElementById('defaultActions').style.display='none';
+      break;
+    case 'datastatus':
+      c.innerHTML=htmlDataStatus();
+      setTimeout(()=>{ loadDataStatus(); },50);
       document.getElementById('dateRow').style.display='none';
       document.getElementById('adminActions').style.display='none';
       document.getElementById('defaultActions').style.display='none';
@@ -8931,6 +8959,144 @@ async function deleteClient(id){
 /* ════════════════════════════════════════
    REGISTER HTML
 ════════════════════════════════════════ */
+/* ════ 데이터 업로드 현황판 (관리자 전용) ════ */
+const DS_MEDIA = [
+  {key:'naver', label:'네이버'},
+  {key:'gfa',   label:'GFA'},
+  {key:'store', label:'스토어'},
+  {key:'meta',  label:'메타'},
+  {key:'google',label:'구글'},
+  {key:'ebay',  label:'이베이'},
+];
+let _dsRows = [];
+let _dsMonth = '';
+
+function dsMonthOptions(){
+  const now = new Date(Date.now()+9*3600*1000);
+  let opts='';
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    opts+=`<option value="${m}">${m}</option>`;
+  }
+  return opts;
+}
+
+function htmlDataStatus(){
+  return `
+  <div class="content">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--muted)">🟢 완료 · 🔴 누락(업로드 필요) · ⬜ 미운영 · ⏸️ 운영중지(수동)</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;color:var(--muted)">기준 월</span>
+        <select id="dsMonth" onchange="loadDataStatus()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px">${dsMonthOptions()}</select>
+        <button onclick="loadDataStatus()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer">↻ 새로고침</button>
+      </div>
+    </div>
+    <div id="dsTableWrap" style="overflow-x:auto;border:1px solid var(--border);border-radius:12px">
+      <div style="padding:40px;text-align:center;color:var(--muted)">불러오는 중…</div>
+    </div>
+  </div>`;
+}
+
+async function loadDataStatus(){
+  if(currentUser.role!=='admin') return;
+  const sel=document.getElementById('dsMonth');
+  _dsMonth = sel ? sel.value : '';
+  const wrap=document.getElementById('dsTableWrap');
+  if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">불러오는 중…</div>';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_data_status`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'},
+      body: JSON.stringify({ p_month: _dsMonth })
+    });
+    _dsRows = await res.json();
+    if(!Array.isArray(_dsRows)){ if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--red)">조회 실패</div>'; return; }
+    renderDataStatusTable();
+  }catch(e){ if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--red)">오류가 발생했습니다</div>'; }
+}
+
+function dsCell(row){
+  if(row.stopped)      return {bg:'#F1EFE8', color:'#5F5E5A', txt:'⏸️', title:'운영중지(수동)'};
+  if(!row.operating)   return {bg:'#F7F7F5', color:'#B4B2A9', txt:'—', title:'미운영'};
+  if(row.has_selected) return {bg:'#E1F5EE', color:'#0F6E56', txt:'✓', title:'업로드 완료 ('+(row.latest_month||'')+')'};
+  return {bg:'#FCEBEB', color:'#A32D2D', txt:'!', title:'누락 — 업로드 필요 (최신:'+(row.latest_month||'없음')+')'};
+}
+
+function renderDataStatusTable(){
+  const wrap=document.getElementById('dsTableWrap');
+  if(!wrap) return;
+  const byClient={};
+  const order=[];
+  _dsRows.forEach(r=>{
+    if(!byClient[r.client_key]){ byClient[r.client_key]={active:r.is_active, media:{}}; order.push(r.client_key); }
+    byClient[r.client_key].media[r.media]=r;
+  });
+  let html=`<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:680px">
+    <thead><tr style="background:var(--bg)">
+      <th style="text-align:left;padding:10px 12px;position:sticky;left:0;background:var(--bg)">업체</th>`;
+  DS_MEDIA.forEach(m=> html+=`<th style="padding:10px 8px">${m.label}</th>`);
+  html+=`<th style="padding:10px 8px">업체상태</th></tr></thead><tbody>`;
+  order.forEach(ck=>{
+    const c=byClient[ck];
+    html+=`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:9px 12px;font-weight:600;position:sticky;left:0;background:var(--white)">${ck}</td>`;
+    DS_MEDIA.forEach(m=>{
+      const r=c.media[m.key]||{client_key:ck,media:m.key,operating:false,has_selected:false,stopped:false,latest_month:null};
+      const cell=dsCell(r);
+      html+=`<td onclick="dsCellClick('${ck}','${m.key}')" title="${cell.title}" style="padding:6px 8px;text-align:center;cursor:pointer;background:${cell.bg};color:${cell.color};font-weight:700">${cell.txt}</td>`;
+    });
+    const act=c.active!==false;
+    html+=`<td style="padding:6px 8px;text-align:center">
+      <span onclick="dsToggleActive('${ck}',${act})" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;${act?'background:#E1F5EE;color:#0F6E56':'background:#F1EFE8;color:#5F5E5A;border:1px solid var(--border)'}">
+      ${act?'● 활성':'🔒 로그인차단'}</span></td></tr>`;
+  });
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+}
+
+async function dsCellClick(ck, media){
+  const row=_dsRows.find(r=>r.client_key===ck && r.media===media);
+  if(!row) return;
+  const mLabel=(DS_MEDIA.find(m=>m.key===media)||{}).label||media;
+  if(row.stopped){
+    if(!confirm(`[${ck} · ${mLabel}] 운영을 재개할까요? (운영중지 해제)`)) return;
+    await dsSetMediaStatus(ck, media, null);
+  } else {
+    const msg = row.has_selected
+      ? `[${ck} · ${mLabel}] 이 매체를 '운영중지'로 표시할까요?`
+      : `[${ck} · ${mLabel}] ${_dsMonth} 데이터가 없습니다.\n\n확인=운영중지로 표시 / 취소=닫기\n(업로드는 '파일 관리'에서 하세요)`;
+    if(!confirm(msg)) return;
+    await dsSetMediaStatus(ck, media, 'stopped');
+  }
+}
+
+async function dsSetMediaStatus(ck, media, status){
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+  try{
+    if(status===null){
+      await fetch(`${SUPABASE_URL}/rest/v1/media_status?client_key=eq.${encodeURIComponent(ck)}&media=eq.${encodeURIComponent(media)}`,{method:'DELETE',headers:h});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/media_status`,{method:'POST',headers:h,body:JSON.stringify({client_key:ck,media:media,status:status,updated_at:new Date().toISOString()})});
+    }
+    toast('상태가 변경되었습니다');
+    loadDataStatus();
+  }catch(e){ toast('변경 실패'); }
+}
+
+async function dsToggleActive(ck, currentActive){
+  const next = !currentActive;
+  const msg = next ? `[${ck}] 업체를 활성화할까요? (로그인 허용)` : `[${ck}] 업체를 비활성화할까요?\n이 광고주는 로그인할 수 없게 됩니다.`;
+  if(!confirm(msg)) return;
+  const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json'};
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/clients?client_key=eq.${encodeURIComponent(ck)}`,{method:'PATCH',headers:h,body:JSON.stringify({is_active:next})});
+    toast(next?'활성화되었습니다':'비활성화(로그인 차단)되었습니다');
+    loadDataStatus();
+  }catch(e){ toast('변경 실패'); }
+}
+
 function htmlRegister(){return `
 <div class="admin-hero">
   <div><h2>➕ 신규 계정 등록</h2><p>광고주에게 전달할 아이디와 비밀번호를 설정합니다</p></div>
