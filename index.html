@@ -1135,6 +1135,28 @@ function checkDataAndGuide(data, period){
 }
   // ── Supabase Auth 초기화 (추가) ──
   sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // 토큰 자동 갱신 시 AUTH_TOKEN 최신 유지 (401 방지)
+  sbAuth.auth.onAuthStateChange((event, session) => {
+    if (session && session.access_token) AUTH_TOKEN = session.access_token;
+  });
+  // 오늘 날짜(KST, YYYY-MM-DD) 문자열
+  function getKSTDateStr(){
+    return new Date(Date.now() + 9*3600*1000).toISOString().slice(0,10);
+  }
+  // 날짜가 바뀌었으면(자정 지남) 자동 로그아웃
+  async function checkDateAndLogout(){
+    const ld = sessionStorage.getItem('loginDate');
+    if(currentUser && ld && ld !== getKSTDateStr()){
+      try{ if(sbAuth) await sbAuth.auth.signOut(); }catch(e){}
+      sessionStorage.clear();
+      alert('날짜가 변경되어 자동 로그아웃되었습니다. 다시 로그인해주세요.');
+      location.reload();
+      return true;
+    }
+    return false;
+  }
+  // 켜둔 채 자정을 넘기는 경우: 1분마다 날짜 확인
+  setInterval(checkDateAndLogout, 60*1000);
   // client_key → 결정적 이메일 (마이그레이션 스크립트의 clientKeyToEmail 과 반드시 동일)
   function clientKeyToEmail(key){
     const bytes = new TextEncoder().encode(String(key));
@@ -1185,6 +1207,7 @@ function checkDataAndGuide(data, period){
       url:     meta.url || ''
     };
     sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+    sessionStorage.setItem('loginDate', getKSTDateStr());   // 로그인한 날짜(KST) 기록
     if(!sessionStorage.getItem('currentPage')){
       sessionStorage.setItem('currentPage', currentUser.role === 'admin' ? 'admin' : 'combined');
     }
@@ -13695,6 +13718,13 @@ document.addEventListener('click',e=>{
   if(!sbAuth) return;
   const { data } = await sbAuth.auth.getSession();
   if(!data || !data.session){ sessionStorage.clear(); return; }  // 세션 만료 → 로그인 화면
+  // 로그인한 날짜가 오늘(KST)과 다르면 → 새 날이므로 로그아웃하고 새로 로그인
+  const _ld = sessionStorage.getItem('loginDate');
+  if(_ld && _ld !== getKSTDateStr()){
+    try{ await sbAuth.auth.signOut(); }catch(e){}
+    sessionStorage.clear();
+    return;   // 로그인 화면 유지
+  }
   AUTH_TOKEN = data.session.access_token;
   const saved = sessionStorage.getItem('currentUser');
   if(saved){
