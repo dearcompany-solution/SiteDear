@@ -8971,16 +8971,47 @@ const DS_MEDIA = [
 let _dsRows = [];
 let _dsMonth = '';
 
-function dsMonthOptions(){
+function dsMonthList(){
   const now = new Date(Date.now()+9*3600*1000);
-  let opts='';
+  const arr=[];
   for(let i=0;i<12;i++){
     const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    opts+=`<option value="${m}">${m}</option>`;
+    arr.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
-  return opts;
+  return arr;
 }
+
+function dsToggleMonth(e){
+  if(e) e.stopPropagation();
+  const list=document.getElementById('dsMonthList');
+  const caret=document.getElementById('dsMonthCaret');
+  if(!list) return;
+  const open = list.style.display==='block';
+  if(open){ list.style.display='none'; if(caret)caret.style.transform=''; return; }
+  // 목록 그리기
+  list.innerHTML = dsMonthList().map(m=>{
+    const sel = (m===_dsMonth);
+    return `<div onclick="dsPickMonth('${m}')" onmouseover="this.style.background='#F1EFF9'" onmouseout="this.style.background='${sel?'#EEEDFE':'transparent'}'" style="padding:9px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:${sel?'600':'400'};color:${sel?'#534AB7':'#2C2C2A'};background:${sel?'#EEEDFE':'transparent'};display:flex;align-items:center;justify-content:space-between">
+      <span>${m}</span>${sel?'<span style="font-size:11px">✓</span>':''}</div>`;
+  }).join('');
+  list.style.display='block';
+  if(caret) caret.style.transform='rotate(180deg)';
+}
+
+function dsPickMonth(m){
+  _dsMonth = m;
+  const lbl=document.getElementById('dsMonthLabel'); if(lbl) lbl.textContent=m;
+  const list=document.getElementById('dsMonthList'); if(list) list.style.display='none';
+  const caret=document.getElementById('dsMonthCaret'); if(caret) caret.style.transform='';
+  loadDataStatus();
+}
+
+// 바깥 클릭 시 드롭다운 닫기
+document.addEventListener('click', function(e){
+  const wrap=document.getElementById('dsMonthWrap');
+  const list=document.getElementById('dsMonthList');
+  if(wrap && list && !wrap.contains(e.target)){ list.style.display='none'; const c=document.getElementById('dsMonthCaret'); if(c)c.style.transform=''; }
+});
 
 function htmlDataStatus(){
   return `
@@ -8989,11 +9020,14 @@ function htmlDataStatus(){
       <div style="font-size:13px;color:var(--muted)">🟢 완료 · 🔴 누락(업로드 필요) · ⬜ 미운영 · ⏸️ 운영중지(수동)</div>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:13px;color:var(--muted);font-weight:500">기준 월</span>
-        <div style="position:relative;display:inline-flex;align-items:center">
-          <select id="dsMonth" onchange="loadDataStatus()" style="appearance:none;-webkit-appearance:none;padding:8px 34px 8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:600;color:var(--fg,#2C2C2A);cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s" onfocus="this.style.borderColor='#7F77DD';this.style.boxShadow='0 0 0 3px rgba(127,119,221,.15)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">${dsMonthOptions()}</select>
-          <span style="position:absolute;right:12px;pointer-events:none;font-size:10px;color:var(--muted)">▼</span>
+        <div id="dsMonthWrap" style="position:relative">
+          <button type="button" id="dsMonthBtn" onclick="dsToggleMonth(event)" style="display:inline-flex;align-items:center;gap:10px;min-width:120px;justify-content:space-between;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s">
+            <span id="dsMonthLabel">${(_dsMonth||'')}</span>
+            <span id="dsMonthCaret" style="font-size:9px;color:var(--muted);transition:transform .2s">▼</span>
+          </button>
+          <div id="dsMonthList" style="display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:100%;max-height:260px;overflow-y:auto;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:1000"></div>
         </div>
-        <button onclick="loadDataStatus()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:500;color:var(--fg,#2C2C2A);cursor:pointer;transition:background .15s,border-color .15s" onmouseover="this.style.background='#F7F7F5';this.style.borderColor='#B4B2A9'" onmouseout="this.style.background='var(--white)';this.style.borderColor='var(--border)'">
+        <button onclick="loadDataStatus()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:500;color:#2C2C2A;cursor:pointer;transition:background .15s,border-color .15s" onmouseover="this.style.background='#F7F7F5';this.style.borderColor='#B4B2A9'" onmouseout="this.style.background='var(--white)';this.style.borderColor='var(--border)'">
           <span style="font-size:13px">↻</span>새로고침
         </button>
       </div>
@@ -9006,8 +9040,8 @@ function htmlDataStatus(){
 
 async function loadDataStatus(){
   if(currentUser.role!=='admin') return;
-  const sel=document.getElementById('dsMonth');
-  _dsMonth = sel ? sel.value : '';
+  if(!_dsMonth){ _dsMonth = dsMonthList()[0]; }   // 처음엔 최신월
+  const lbl=document.getElementById('dsMonthLabel'); if(lbl) lbl.textContent=_dsMonth;
   const wrap=document.getElementById('dsTableWrap');
   if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">불러오는 중…</div>';
   try{
