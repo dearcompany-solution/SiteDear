@@ -9055,7 +9055,7 @@ function htmlDataStatus(){
 
 async function loadDataStatus(){
   if(currentUser.role!=='admin') return;
-  if(!_dsMonth){ _dsMonth = dsMonthList()[0]; }   // 처음엔 최신월
+  if(!_dsMonth){ _dsMonth = dsMonthList()[1] || dsMonthList()[0]; }   // 처음엔 지난달(전달)
   const lbl=document.getElementById('dsMonthLabel'); if(lbl) lbl.textContent=_dsMonth;
   const wrap=document.getElementById('dsTableWrap');
   if(wrap) wrap.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">불러오는 중…</div>';
