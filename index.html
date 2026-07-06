@@ -8987,10 +8987,15 @@ function htmlDataStatus(){
   <div class="content">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div style="font-size:13px;color:var(--muted)">🟢 완료 · 🔴 누락(업로드 필요) · ⬜ 미운영 · ⏸️ 운영중지(수동)</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:13px;color:var(--muted)">기준 월</span>
-        <select id="dsMonth" onchange="loadDataStatus()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px">${dsMonthOptions()}</select>
-        <button onclick="loadDataStatus()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer">↻ 새로고침</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;color:var(--muted);font-weight:500">기준 월</span>
+        <div style="position:relative;display:inline-flex;align-items:center">
+          <select id="dsMonth" onchange="loadDataStatus()" style="appearance:none;-webkit-appearance:none;padding:8px 34px 8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:600;color:var(--fg,#2C2C2A);cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s" onfocus="this.style.borderColor='#7F77DD';this.style.boxShadow='0 0 0 3px rgba(127,119,221,.15)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">${dsMonthOptions()}</select>
+          <span style="position:absolute;right:12px;pointer-events:none;font-size:10px;color:var(--muted)">▼</span>
+        </div>
+        <button onclick="loadDataStatus()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:500;color:var(--fg,#2C2C2A);cursor:pointer;transition:background .15s,border-color .15s" onmouseover="this.style.background='#F7F7F5';this.style.borderColor='#B4B2A9'" onmouseout="this.style.background='var(--white)';this.style.borderColor='var(--border)'">
+          <span style="font-size:13px">↻</span>새로고침
+        </button>
       </div>
     </div>
     <div id="dsTableWrap" style="overflow-x:auto;border:1px solid var(--border);border-radius:12px">
