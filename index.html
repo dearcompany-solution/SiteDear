@@ -9006,6 +9006,14 @@ function dsPickMonth(m){
   loadDataStatus();
 }
 
+// 지난달로 바로 이동 (현재 KST 월의 한 달 전)
+function dsGoLastMonth(){
+  const now = new Date(Date.now()+9*3600*1000);
+  const d = new Date(now.getFullYear(), now.getMonth()-1, 1);   // 한 달 전
+  const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  dsPickMonth(m);
+}
+
 // 바깥 클릭 시 드롭다운 닫기
 document.addEventListener('click', function(e){
   const wrap=document.getElementById('dsMonthWrap');
@@ -9019,6 +9027,9 @@ function htmlDataStatus(){
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div style="font-size:13px;color:var(--muted)">🟢 완료 · 🔴 누락(업로드 필요) · ⬜ 미운영 · ⏸️ 운영중지(수동)</div>
       <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="dsGoLastMonth()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:500;color:#2C2C2A;cursor:pointer;transition:background .15s,border-color .15s" onmouseover="this.style.background='#F1EFF9';this.style.borderColor='#7F77DD'" onmouseout="this.style.background='var(--white)';this.style.borderColor='var(--border)'">
+          <span style="font-size:12px">←</span>지난달
+        </button>
         <span style="font-size:13px;color:var(--muted);font-weight:500">기준 월</span>
         <div id="dsMonthWrap" style="position:relative">
           <button type="button" id="dsMonthBtn" onclick="dsToggleMonth(event)" style="display:inline-flex;align-items:center;gap:10px;min-width:120px;justify-content:space-between;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s">
