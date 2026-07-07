@@ -1568,6 +1568,7 @@ function renderContent(id){
         const cacheKey = `_store_store_sales_${ck}_${currentReportMonth}`;
         if(!window[cacheKey]) window[cacheKey] = await fetchStoreData('store_sales');
         c.innerHTML=htmlCombined();
+        setTimeout(loadTaskCalendar, 60);
         setTimeout(renderCharts,50);
       },50);
       break;
@@ -2809,6 +2810,156 @@ function reloadInsights2(page, tagKeyword){
   if(ids.length===2) loadInsights2(page,tagKeyword,ids[0],ids[1]);
 }
 
+/* ════ 작업 일정 캘린더 (통합 대시보드) ════ */
+let _calYear=null, _calMonth=null, _calTasks=[], _calClientKey=null;
+
+async function loadTaskCalendar(){
+  const ck = currentUser?.role==='admin' ? (activeClientId||'') : (currentUser?.id||'');
+  if(!ck) return;
+  if(ck!==_calClientKey){ _calYear=null; _calMonth=null; _calClientKey=ck; }
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/requests?select=*&client_key=eq.${encodeURIComponent(ck)}&order=upload_date.asc`,{
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
+    });
+    const rows=await res.json();
+    _calTasks = Array.isArray(rows) ? rows.filter(r=>r.upload_date) : [];
+    if(_calYear===null){
+      let latest=null;
+      _calTasks.forEach(r=>{ const d=(r.done_date||r.upload_date||'').slice(0,7); if(d && (!latest||d>latest)) latest=d; });
+      if(latest){ _calYear=+latest.slice(0,4); _calMonth=+latest.slice(5,7); }
+      else { const n=new Date(Date.now()+9*3600*1000); _calYear=n.getFullYear(); _calMonth=n.getMonth()+1; }
+    }
+    renderTaskCalendar();
+  }catch(e){ console.warn('캘린더 로드 실패',e); }
+}
+
+function calGoThisMonth(){
+  const n=new Date(Date.now()+9*3600*1000);
+  _calYear=n.getFullYear(); _calMonth=n.getMonth()+1; renderTaskCalendar();
+}
+function calPrevMonth(){ _calMonth--; if(_calMonth<1){_calMonth=12;_calYear--;} renderTaskCalendar(); }
+function calNextMonth(){ _calMonth++; if(_calMonth>12){_calMonth=1;_calYear++;} renderTaskCalendar(); }
+
+function renderTaskCalendar(){
+  const card=document.getElementById('taskCalCard');
+  if(!card) return;
+  const y=_calYear, m=_calMonth;
+  const ym=`${y}-${String(m).padStart(2,'0')}`;
+  const monthStart=`${ym}-01`;
+  const daysInMonth=new Date(y,m,0).getDate();
+  const monthEnd=`${ym}-${String(daysInMonth).padStart(2,'0')}`;
+  const firstDow=new Date(y,m-1,1).getDay();
+
+  const COLORS=[['#CECBF6','#26215C'],['#9FE1CB','#04342C'],['#F5C4B3','#4A1B0C'],['#FAC775','#412402'],['#B5D4F4','#042C53'],['#F4C0D1','#4B1528']];
+  const evs=[];
+  _calTasks.forEach((r,i)=>{
+    let s0=(r.upload_date||'').slice(0,10);
+    let e0=(r.done_date||'').slice(0,10) || s0;
+    if(!s0) return;
+    if(e0<s0) e0=s0;
+    if(e0<monthStart || s0>monthEnd) return;
+    const sd=Math.max(1, s0>=monthStart ? +s0.slice(8,10) : 1);
+    const ed=Math.min(daysInMonth, e0<=monthEnd ? +e0.slice(8,10) : daysInMonth);
+    const col=COLORS[i%COLORS.length];
+    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:r.title||'작업',status:r.status||''});
+  });
+
+  const listSorted=[..._calTasks].filter(r=>{
+    const s0=(r.upload_date||'').slice(0,10), e0=(r.done_date||'').slice(0,10)||s0;
+    return s0 && !(e0<monthStart || s0>monthEnd);
+  }).sort((a,b)=>(a.upload_date||'').localeCompare(b.upload_date||''));
+
+  const listHtml = listSorted.length ? listSorted.map((r)=>{
+    const s0=(r.upload_date||'').slice(5,10).replace('-','/');
+    const e0=(r.done_date||'').slice(5,10).replace('-','/');
+    const badge = (e0 && e0!==s0) ? `${s0}~${e0}` : s0;
+    const col=COLORS[_calTasks.indexOf(r)%COLORS.length];
+    const stColor = r.done_date ? '#0F6E56' : '#854F0B';
+    const stBg    = r.done_date ? '#E1F5EE' : '#FAEEDA';
+    const stTxt   = r.done_date ? '완료' : (r.status||'진행중');
+    return `<div style="display:flex;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)">
+      <span style="flex-shrink:0;font-size:11px;color:${col[1]};background:${col[0]};border-radius:5px;padding:2px 7px;height:fit-content;white-space:nowrap">${badge}</span>
+      <div style="min-width:0">
+        <div style="font-size:12px;font-weight:600">${(r.title||'작업')} <span style="font-size:10px;color:${stColor};background:${stBg};padding:1px 6px;border-radius:5px;margin-left:2px">${stTxt}</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.content||''}</div>
+      </div></div>`;
+  }).join('') : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">이 달에는 작업 내역이 없습니다</div>`;
+
+  card.innerHTML = `
+  <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white)">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <span style="font-size:15px;font-weight:700">📅 작업 일정</span>
+      <div style="display:flex;align-items:center;gap:4px;margin-left:4px">
+        <button onclick="calPrevMonth()" style="border:1px solid var(--border);background:var(--white);border-radius:7px;width:26px;height:26px;cursor:pointer">‹</button>
+        <span style="font-size:13px;font-weight:600;min-width:82px;text-align:center">${y}년 ${m}월</span>
+        <button onclick="calNextMonth()" style="border:1px solid var(--border);background:var(--white);border-radius:7px;width:26px;height:26px;cursor:pointer">›</button>
+      </div>
+      <button onclick="calGoThisMonth()" style="margin-left:6px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">이번달</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1.15fr 0.85fr">
+      <div style="border-right:1px solid var(--border);padding:12px 12px">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+          ${['일','월','화','수','목','금','토'].map((d,idx)=>`<div style="text-align:center;font-size:11px;padding-bottom:6px;color:${idx===0?'#D4453A':idx===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')}
+        </div>
+        <div id="taskCalGrid" style="position:relative"></div>
+      </div>
+      <div style="overflow-y:auto;max-height:340px">${listHtml}</div>
+    </div>
+  </div>`;
+
+  drawCalGrid(firstDow, daysInMonth, evs);
+}
+
+function drawCalGrid(firstDow, days, events){
+  const grid=document.getElementById('taskCalGrid');
+  if(!grid) return;
+  const cols=7, rows=Math.ceil((firstDow+days)/cols);
+  const cellH=64, headH=18, barH=14, barGap=3, maxBars=3;
+  grid.style.height=(rows*cellH)+'px';
+  grid.innerHTML='';
+  const dow=d=>(firstDow+d-1)%cols, wk=d=>Math.floor((firstDow+d-1)/cols);
+
+  for(let w=0;w<rows;w++){ for(let c=0;c<cols;c++){
+    const dn=w*cols+c-firstDow+1;
+    const cell=document.createElement('div');
+    cell.style.cssText=`position:absolute;box-sizing:border-box;border:0.5px solid var(--border);left:${c/cols*100}%;top:${w*cellH}px;width:${100/cols}%;height:${cellH}px;`;
+    if(dn>=1&&dn<=days){ const n=document.createElement('div'); n.textContent=dn; n.style.cssText=`font-size:11px;padding:3px 5px;color:${c===0?'#D4453A':c===6?'#378ADD':'var(--text3)'}`; cell.appendChild(n); }
+    else cell.style.background='var(--bg)';
+    grid.appendChild(cell);
+  }}
+
+  const lanes={};
+  events.forEach(ev=>{
+    let d=ev.s;
+    while(d<=ev.e){
+      const w=wk(d), sD=dow(d);
+      const weekEnd=(w+1)*cols-firstDow, segEnd=Math.min(ev.e,weekEnd), eD=dow(segEnd);
+      if(!lanes[w]) lanes[w]=[];
+      let lane=0;
+      while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
+      lanes[w].push({lane,s:sD,e:eD});
+      if(lane<maxBars){
+        const bar=document.createElement('div');
+        const left=sD/cols*100, wid=(eD-sD+1)/cols*100, top=w*cellH+headH+lane*(barH+barGap);
+        bar.style.cssText=`position:absolute;left:calc(${left}% + 2px);top:${top}px;width:calc(${wid}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;`;
+        bar.textContent=ev.label;
+        bar.title=ev.label+(ev.status?(' · '+ev.status):'');
+        grid.appendChild(bar);
+      }
+      d=segEnd+1;
+    }
+  });
+  Object.keys(lanes).forEach(w=>{
+    const maxLane=Math.max(...lanes[w].map(x=>x.lane));
+    if(maxLane>=maxBars){
+      const more=document.createElement('div');
+      more.style.cssText=`position:absolute;left:4px;top:${w*cellH+headH+maxBars*(barH+barGap)}px;font-size:9px;color:var(--text3);`;
+      more.textContent='+더보기';
+      grid.appendChild(more);
+    }
+  });
+}
+
 function htmlCombined(){
   const hasClient = currentUser?.role==='admin' ? !!activeClientId : true;
   const d = hasClient ? (REPORT_DATA[currentReportMonth] || null) : null;
@@ -2871,6 +3022,9 @@ ${ (()=>{
   <div class="sum-item"><div class="sum-lbl">📦 주문수</div><div class="sum-val">${fmtn(stOrders)}건</div></div>
 </div>`;
 })() }
+
+<!-- 작업 일정 캘린더 -->
+<div id="taskCalCard" style="margin-top:14px"></div>
 
 <!-- KPI 목표 달성률 미니 -->
 <div id="kpiMiniProgress"></div>
@@ -3203,6 +3357,7 @@ async function refreshAllPages(){
 
   if(activePage==='combined'){
     c.innerHTML=htmlCombined();
+    setTimeout(loadTaskCalendar, 60);
     setTimeout(renderCharts,50);
   } else if(activePage==='naver'){
     const savedTab = sessionStorage.getItem('currentNaverTab') || 'summary';
