@@ -2818,11 +2818,23 @@ async function loadTaskCalendar(){
   if(!ck) return;
   if(ck!==_calClientKey){ _calYear=null; _calMonth=null; _calClientKey=ck; }
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/requests?select=*&client_key=eq.${encodeURIComponent(ck)}&order=upload_date.asc`,{
+    // 일정(공지)와 동일한 calendar_events 테이블 사용 → 자동 동기화
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?select=*&client_key=eq.${encodeURIComponent(ck)}&order=event_date.asc`,{
       headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
     });
     const rows=await res.json();
-    _calTasks = Array.isArray(rows) ? rows.filter(r=>r.upload_date) : [];
+    // 같은 title+월을 하나의 작업으로 묶기 (일정은 하루씩 여러 행으로 저장되므로)
+    const arr = Array.isArray(rows) ? rows : [];
+    const map = {};
+    arr.forEach(r=>{
+      const key = (r.title||'')+'|'+(r.event_date||'').slice(0,7);
+      const sd = (r.event_date||'').slice(0,10);
+      const ed = (r.end_date||r.event_date||'').slice(0,10);
+      if(!map[key]){ map[key] = { title:r.title||'작업', s:sd, e:ed, desc:r.description||'', result:r.result||'', platform:r.platform||r.type||'', status:r.status||'', ids:[r.id] }; }
+      else { if(sd && sd<map[key].s) map[key].s=sd; if(ed && ed>map[key].e) map[key].e=ed; map[key].ids.push(r.id);
+             if(r.description) map[key].desc=r.description; if(r.result) map[key].result=r.result; }
+    });
+    _calTasks = Object.values(map).map(t=>({ upload_date:t.s, done_date:t.e, title:t.title, content:t.desc, result:t.result, platform:t.platform, status:t.status, ids:t.ids }));
     if(_calYear===null){
       let latest=null;
       _calTasks.forEach(r=>{ const d=(r.done_date||r.upload_date||'').slice(0,7); if(d && (!latest||d>latest)) latest=d; });
@@ -2831,6 +2843,33 @@ async function loadTaskCalendar(){
     }
     renderTaskCalendar();
   }catch(e){ console.warn('캘린더 로드 실패',e); }
+}
+
+// 캘린더 바/목록 클릭 → 상세 팝업
+function openTaskDetail(idx){
+  const t=_calTasks[idx];
+  if(!t) return;
+  const s0=(t.upload_date||'').replace(/-/g,'.');
+  const e0=(t.done_date||'').replace(/-/g,'.');
+  const period = (e0&&e0!==s0)? `${s0} ~ ${e0}` : s0;
+  const stTxt = t.status || (t.done_date? '완료':'진행중');
+  let ov=document.getElementById('taskDetailOverlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='taskDetailOverlay'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="width:92%;max-width:420px;background:var(--white);border-radius:12px;overflow:hidden" onclick="event.stopPropagation()">
+    <div style="height:5px;background:#7F77DD"></div>
+    <div style="padding:18px 20px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div><div style="font-size:16px;font-weight:700">${t.title||'작업'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">📅 ${period}${t.platform?(' · '+t.platform):''}</div></div>
+        <span onclick="document.getElementById('taskDetailOverlay').remove()" style="cursor:pointer;font-size:20px;color:var(--text3);line-height:1">×</span>
+      </div>
+      <span style="display:inline-block;font-size:11px;color:#0F6E56;background:#E1F5EE;padding:2px 9px;border-radius:20px;margin-bottom:14px">${stTxt}</span>
+      ${t.content?`<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">설명</div><div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${t.content}</div></div>`:''}
+      ${t.result?`<div style="padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">결과</div><div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${t.result}</div></div>`:''}
+    </div>
+  </div>`;
 }
 
 function calGoThisMonth(){
@@ -2861,7 +2900,7 @@ function renderTaskCalendar(){
     const sd=Math.max(1, s0>=monthStart ? +s0.slice(8,10) : 1);
     const ed=Math.min(daysInMonth, e0<=monthEnd ? +e0.slice(8,10) : daysInMonth);
     const col=COLORS[i%COLORS.length];
-    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:r.title||'작업',status:r.status||''});
+    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:r.title||'작업',status:r.status||'',gi:i});
   });
 
   const listSorted=[..._calTasks].filter(r=>{
@@ -2873,11 +2912,12 @@ function renderTaskCalendar(){
     const s0=(r.upload_date||'').slice(5,10).replace('-','/');
     const e0=(r.done_date||'').slice(5,10).replace('-','/');
     const badge = (e0 && e0!==s0) ? `${s0}~${e0}` : s0;
-    const col=COLORS[_calTasks.indexOf(r)%COLORS.length];
-    const stColor = r.done_date ? '#0F6E56' : '#854F0B';
-    const stBg    = r.done_date ? '#E1F5EE' : '#FAEEDA';
-    const stTxt   = r.done_date ? '완료' : (r.status||'진행중');
-    return `<div style="display:flex;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)">
+    const gi=_calTasks.indexOf(r);
+    const col=COLORS[gi%COLORS.length];
+    const stColor = r.status==='완료'||r.done_date ? '#0F6E56' : '#854F0B';
+    const stBg    = r.status==='완료'||r.done_date ? '#E1F5EE' : '#FAEEDA';
+    const stTxt   = r.status || (r.done_date ? '완료' : '진행중');
+    return `<div onclick="openTaskDetail(${gi})" style="display:flex;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer">
       <span style="flex-shrink:0;font-size:11px;color:${col[1]};background:${col[0]};border-radius:5px;padding:2px 7px;height:fit-content;white-space:nowrap">${badge}</span>
       <div style="min-width:0">
         <div style="font-size:12px;font-weight:600">${(r.title||'작업')} <span style="font-size:10px;color:${stColor};background:${stBg};padding:1px 6px;border-radius:5px;margin-left:2px">${stTxt}</span></div>
@@ -2941,9 +2981,10 @@ function drawCalGrid(firstDow, days, events){
       if(lane<maxBars){
         const bar=document.createElement('div');
         const left=sD/cols*100, wid=(eD-sD+1)/cols*100, top=w*cellH+headH+lane*(barH+barGap);
-        bar.style.cssText=`position:absolute;left:calc(${left}% + 2px);top:${top}px;width:calc(${wid}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;`;
+        bar.style.cssText=`position:absolute;left:calc(${left}% + 2px);top:${top}px;width:calc(${wid}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;`;
         bar.textContent=ev.label;
         bar.title=ev.label+(ev.status?(' · '+ev.status):'');
+        bar.onclick=(function(g){return function(){ openTaskDetail(g); };})(ev.gi);
         grid.appendChild(bar);
       }
       d=segEnd+1;
