@@ -2939,6 +2939,7 @@ function renderTaskCalendar(){
         <button onclick="calNextMonth()" style="border:1px solid var(--border);background:var(--white);border-radius:7px;width:26px;height:26px;cursor:pointer">›</button>
       </div>
       <button onclick="calGoThisMonth()" style="margin-left:6px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">이번달</button>
+      <button onclick="openAddTask()" class="btn btn-bl btn-sm" style="margin-left:auto">+ 일정 추가</button>
     </div>
     <div style="display:grid;grid-template-columns:1.15fr 0.85fr">
       <div style="border-right:1px solid var(--border);padding:12px 12px">
@@ -8571,6 +8572,17 @@ async function deleteTask(idx){
   const ov=document.getElementById('taskDetailOverlay'); if(ov) ov.remove();
   toast(ok?'🗑️ 일정이 삭제되었습니다':'❌ 삭제 실패 (권한/네트워크 확인)');
   if(typeof loadCalEvents==='function') loadCalEvents();
+  if(typeof loadTaskCalendar==='function') loadTaskCalendar();
+}
+function openAddTask(){
+  openAddEventModal();
+  const footer=document.getElementById('modalFooter');
+  if(footer) footer.innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="saveNewTask()">✅ 저장</button>`;
+}
+async function saveNewTask(){
+  await addEvent();
   if(typeof loadTaskCalendar==='function') loadTaskCalendar();
 }
 function efTypeToggle(e){
