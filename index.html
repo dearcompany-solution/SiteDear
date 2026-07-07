@@ -8115,7 +8115,7 @@ async function saveEventToSupabase(ev){
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
         'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
-        'Prefer':'return=minimal'
+        'Prefer':'return=representation'
       },
       body:JSON.stringify({
         client_key:  clientKey,
@@ -8127,7 +8127,8 @@ async function saveEventToSupabase(ev){
         manager:     ev.manager || ''
       })
     });
-    if(!res.ok){ console.warn('일정 저장 응답 오류:', res.status, await res.text()); }
+    if(res.ok){ const rows=await res.json(); if(Array.isArray(rows)&&rows[0]&&rows[0].id!=null) ev.id=rows[0].id; }
+    else { console.warn('일정 저장 응답 오류:', res.status, await res.text()); }
   }catch(e){ console.warn('일정 저장 실패:',e); }
 }
 
@@ -8178,12 +8179,7 @@ async function loadCalEvents(){
       <div style="font-size:14px;font-weight:600" id="evPanelTitle">전체 일정</div>
       <button class="btn btn-bl btn-sm" onclick="openAddEventModal()">+ 일정 추가</button>
     </div>
-    <div style="margin-bottom:10px">
-      <div class="notice-pinned">
-        <span class="np-icon">📑</span>
-        <div class="np-content"><div class="np-title">2026년 2월 성과 보고서 확인</div><div class="np-meta">2026.03.01 · 이채환</div></div>
-      </div>
-    </div>
+    
     <div class="ev-list" id="evList" style="flex:1;overflow-y:auto;max-height:none"></div>
   </div>
 </div>`;}
@@ -8326,25 +8322,39 @@ function renderEvList(dateFilter, filterYear, filterMonth){
     const s=(e.date||'').slice(0,10), en=(e.date_end||e.date||'').slice(0,10);
     const badge=(en&&en!==s)?`${mmdd(s)}~${mmdd(en)}`:mmdd(s);
     return `
-    <div class="ev-item">
+    <div class="ev-item" style="position:relative">
+      <div style="position:absolute;top:9px;right:9px;display:flex;gap:5px">
+        <button onclick="editEvent('${e.id}')" title="수정" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;font-size:12px;cursor:pointer;line-height:1;padding:0">✏️</button>
+        <button onclick="deleteEvent('${e.id}')" title="삭제" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;font-size:12px;cursor:pointer;line-height:1;padding:0">🗑️</button>
+      </div>
       <span style="display:inline-block;font-size:10px;background:${col[0]};color:${col[1]};border-radius:5px;padding:2px 7px;margin-bottom:5px">${badge}</span>
-      <div class="ev-title">${typeLabel[e.type]||''} ${e.title}</div>
+      <div class="ev-title" style="padding-right:64px">${typeLabel[e.type]||''} ${e.title}</div>
       ${e.manager?`<div class="ev-meta">${e.manager}</div>`:''}
       ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
     </div>`;
   }).join('');
 }
-function openAddEventModal(){
+function openAddEventModal(ev){
+  efEditId = ev ? ev.id : null;
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('modalTitle').textContent = '📅 일정 추가';
+  const TLAB={meet:'🤝 미팅',report:'📊 리포트',notice:'📢 공지',task:'✅ 작업'};
+  const initType  = ev ? (ev.type||'meet') : 'meet';
+  const initTLab  = TLAB[initType]||'🤝 미팅';
+  const initStart = ev ? ((ev.date||'').slice(0,10)||today) : (selectedCalDate||today);
+  const initEnd   = ev ? (((ev.date_end||ev.date)||'').slice(0,10)||initStart) : (selectedCalDate||today);
+  const initTitle = ev ? (ev.title||'') : '';
+  const initDesc  = ev ? (ev.desc||'') : '';
+  const initMgr   = ev ? (ev.manager||'') : '';
+  document.getElementById('modalTitle').textContent = ev ? '📅 일정 수정' : '📅 일정 추가';
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:13px">
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">유형</label>
         <div id="ef-type-wrap" style="position:relative">
-          <input type="hidden" id="ef-type" value="meet">
+          <input type="hidden" id="ef-type" value="${initType}">
           <button type="button" id="ef-type-btn" onclick="efTypeToggle(event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s">
-            <span id="ef-type-label">🤝 미팅</span>
+            <span id="ef-type-label">${initTLab}</span>
             <span id="ef-type-caret" style="font-size:10px;color:var(--text3);transition:transform .2s">▼</span>
           </button>
           <div id="ef-type-list" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:1000;box-sizing:border-box">
@@ -8359,9 +8369,9 @@ function openAddEventModal(){
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">시작일 *</label>
           <div id="ef-date-start-wrap" style="position:relative">
-            <input type="hidden" id="ef-date-start" value="${selectedCalDate||today}">
+            <input type="hidden" id="ef-date-start" value="${initStart}">
             <button type="button" onclick="efDateToggle('start',event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none">
-              <span id="ef-date-start-label">${selectedCalDate||today}</span>
+              <span id="ef-date-start-label">${initStart}</span>
               <span style="font-size:15px">📅</span>
             </button>
             <div id="ef-date-start-pop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;min-width:244px;background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:12px;z-index:1200;box-sizing:border-box"></div>
@@ -8370,9 +8380,9 @@ function openAddEventModal(){
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">종료일</label>
           <div id="ef-date-end-wrap" style="position:relative">
-            <input type="hidden" id="ef-date-end" value="${selectedCalDate||today}">
+            <input type="hidden" id="ef-date-end" value="${initEnd}">
             <button type="button" onclick="efDateToggle('end',event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none">
-              <span id="ef-date-end-label">${selectedCalDate||today}</span>
+              <span id="ef-date-end-label">${initEnd}</span>
               <span style="font-size:15px">📅</span>
             </button>
             <div id="ef-date-end-pop" style="display:none;position:absolute;top:calc(100% + 6px);right:0;width:100%;min-width:244px;background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:12px;z-index:1200;box-sizing:border-box"></div>
@@ -8381,17 +8391,17 @@ function openAddEventModal(){
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">제목 *</label>
-        <input type="text" id="ef-title" class="fi" placeholder="예: 3월 전략 미팅">
+        <input type="text" id="ef-title" class="fi" placeholder="예: 3월 전략 미팅" value="${esc(initTitle)}">
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">내용</label>
-        <textarea id="ef-desc" class="fi" style="height:70px;resize:none" placeholder="상세 내용을 입력해주세요"></textarea>
+        <textarea id="ef-desc" class="fi" style="height:70px;resize:none" placeholder="상세 내용을 입력해주세요">${esc(initDesc)}</textarea>
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">담당자</label>
         <select id="ef-mgr" class="fi">
           <option value="">선택</option>
-          ${MANAGERS.map(m=>`<option>${m}</option>`).join('')}
+          ${MANAGERS.map(m=>`<option ${m===initMgr?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
     </div>`;
@@ -8478,7 +8488,39 @@ document.addEventListener('click', function(e){
     const pop=document.getElementById('ef-date-'+f+'-pop');
     if(wrap && pop && !wrap.contains(e.target)) pop.style.display='none';
   });
-});  
+});
+
+/* ── 일정 수정/삭제 ── */
+var efEditId=null;
+function editEvent(id){
+  const ev=calEvents.find(e=>String(e.id)===String(id));
+  if(!ev){ toast('일정을 찾을 수 없습니다'); return; }
+  openAddEventModal(ev);
+}
+async function updateEventToSupabase(id, ev){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(id)}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'return=minimal'},
+      body:JSON.stringify({ event_date:ev.date, end_date:ev.date_end||ev.date, type:ev.type||'task', title:ev.title, description:ev.desc||'', manager:ev.manager||'' })
+    });
+    if(!res.ok){ console.warn('일정 수정 오류:', res.status, await res.text()); return false; }
+    return true;
+  }catch(e){ console.warn('일정 수정 실패:',e); return false; }
+}
+async function deleteEvent(id){
+  if(!confirm('이 일정을 삭제할까요?')) return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(id)}`,{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}
+    });
+    if(!res.ok){ console.warn('일정 삭제 오류:', res.status, await res.text()); toast('❌ 삭제 실패 (권한/네트워크 확인)'); return; }
+  }catch(e){ console.warn('일정 삭제 실패:',e); toast('❌ 삭제 실패'); return; }
+  calEvents=calEvents.filter(e=>String(e.id)!==String(id));
+  renderCal();
+  toast('🗑️ 일정이 삭제되었습니다');
+}
 function efTypeToggle(e){
   if(e) e.stopPropagation();
   const list=document.getElementById('ef-type-list');
@@ -8514,21 +8556,29 @@ async function addEvent(){
   const title     = document.getElementById('ef-title').value.trim();
   if(!dateStart||!title){toast('⚠️ 시작일과 제목을 입력해주세요');return;}
   if(dateEnd < dateStart){toast('⚠️ 종료일이 시작일보다 빠를 수 없습니다');return;}
-  const newEv = {
-    id: Date.now()+Math.random(),
-    date: dateStart,
-    date_end: dateEnd,
-    type:    document.getElementById('ef-type').value,
-    title,
-    desc:    document.getElementById('ef-desc').value,
-    manager: document.getElementById('ef-mgr').value
-  };
-  calEvents.push(newEv);
-  await saveEventToSupabase(newEv);
-  closeModal();
-  renderCal();
-  const rangeText = dateStart===dateEnd ? dateStart : dateStart+' ~ '+dateEnd;
-  toast('✅ 일정이 추가되었습니다! ('+rangeText+')');
+  const type    = document.getElementById('ef-type').value;
+  const desc    = document.getElementById('ef-desc').value;
+  const manager = document.getElementById('ef-mgr').value;
+  if(efEditId!=null){
+    // 수정
+    const ok=await updateEventToSupabase(efEditId,{date:dateStart,date_end:dateEnd,type,title,desc,manager});
+    if(!ok){ toast('❌ 수정 실패 (권한/네트워크 확인)'); return; }
+    const it=calEvents.find(e=>String(e.id)===String(efEditId));
+    if(it){ it.date=dateStart; it.date_end=dateEnd; it.type=type; it.title=title; it.desc=desc; it.manager=manager; }
+    efEditId=null;
+    closeModal();
+    renderCal();
+    toast('✏️ 일정이 수정되었습니다');
+  } else {
+    // 추가
+    const newEv = { id: Date.now()+Math.random(), date: dateStart, date_end: dateEnd, type, title, desc, manager };
+    calEvents.push(newEv);
+    await saveEventToSupabase(newEv);
+    closeModal();
+    renderCal();
+    const rangeText = dateStart===dateEnd ? dateStart : dateStart+' ~ '+dateEnd;
+    toast('✅ 일정이 추가되었습니다! ('+rangeText+')');
+  }
 }
 
 /* ════════════════════════════════════════
