@@ -2985,9 +2985,11 @@ function drawCalGrid(firstDow, days, events){
       const dn=w*cols+c-firstDow+1;
       if(dn>=1&&dn<=days){
         const isToday=dn===todayN;
-        const numCol=isToday?'#fff':(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
-        const bg=isToday?'background:var(--blue);':'';
-        tiles+=`<div style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;color:${numCol};${bg}">${dn}</div>`;
+        const baseCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
+        const numSpan=isToday
+          ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700">${dn}</span>`
+          : `<span style="color:${baseCol}">${dn}</span>`;
+        tiles+=`<div style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px">${numSpan}</div>`;
       } else {
         tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
       }
@@ -8254,11 +8256,12 @@ function renderCal(){
       if(dn>=1&&dn<=daysInMonth){
         const dateStr=`${y}-${pad(m+1)}-${pad(dn)}`;
         const isToday=dateStr===todayStr, isSel=selectedCalDate===dateStr;
-        let numCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)'), bg='';
-        if(isToday){ numCol='#fff'; bg='background:var(--blue);'; }
-        else if(isSel){ numCol='#fff'; bg='background:var(--indigo);'; }
-        const hover=(isToday||isSel)?'':` onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''"`;
-        tiles+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')"${hover} style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;color:${numCol};cursor:pointer;${bg}">${dn}</div>`;
+        const baseCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
+        let numSpan;
+        if(isToday) numSpan=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700">${dn}</span>`;
+        else if(isSel) numSpan=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--indigo);color:#fff;font-weight:700">${dn}</span>`;
+        else numSpan=`<span style="color:${baseCol}">${dn}</span>`;
+        tiles+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')" onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''" style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;cursor:pointer">${numSpan}</div>`;
       } else {
         tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
       }
