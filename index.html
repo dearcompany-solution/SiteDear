@@ -2830,11 +2830,11 @@ async function loadTaskCalendar(){
       const key = (r.title||'')+'|'+(r.event_date||'').slice(0,7);
       const sd = (r.event_date||'').slice(0,10);
       const ed = (r.end_date||r.event_date||'').slice(0,10);
-      if(!map[key]){ map[key] = { title:r.title||'작업', s:sd, e:ed, desc:r.description||'', result:r.result||'', platform:r.platform||r.type||'', status:r.status||'', ids:[r.id] }; }
+      if(!map[key]){ map[key] = { title:r.title||'작업', s:sd, e:ed, desc:r.description||'', result:r.result||'', platform:r.platform||r.type||'', status:r.status||'', manager:r.manager||'', ids:[r.id] }; }
       else { if(sd && sd<map[key].s) map[key].s=sd; if(ed && ed>map[key].e) map[key].e=ed; map[key].ids.push(r.id);
              if(r.description) map[key].desc=r.description; if(r.result) map[key].result=r.result; }
     });
-    _calTasks = Object.values(map).map(t=>({ upload_date:t.s, done_date:t.e, title:t.title, content:t.desc, result:t.result, platform:t.platform, status:t.status, ids:t.ids }));
+    _calTasks = Object.values(map).map(t=>({ upload_date:t.s, done_date:t.e, title:t.title, content:t.desc, result:t.result, platform:t.platform, status:t.status, manager:t.manager, ids:t.ids }));
     if(_calYear===null){
       let latest=null;
       _calTasks.forEach(r=>{ const d=(r.done_date||r.upload_date||'').slice(0,7); if(d && (!latest||d>latest)) latest=d; });
@@ -2868,6 +2868,10 @@ function openTaskDetail(idx){
       <span style="display:inline-block;font-size:11px;color:#0F6E56;background:#E1F5EE;padding:2px 9px;border-radius:20px;margin-bottom:14px">${stTxt}</span>
       ${t.content?`<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">설명</div><div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${t.content}</div></div>`:''}
       ${t.result?`<div style="padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">결과</div><div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${t.result}</div></div>`:''}
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+        <button onclick="editTask(${idx})" style="padding:7px 14px;border:1px solid var(--border);background:var(--white);border-radius:9px;font-size:13px;cursor:pointer">✏️ 수정</button>
+        <button onclick="deleteTask(${idx})" style="padding:7px 14px;border:1px solid #F0999B;background:var(--white);color:#A32D2D;border-radius:9px;font-size:13px;cursor:pointer">🗑️ 삭제</button>
+      </div>
     </div>
   </div>`;
 }
@@ -8520,6 +8524,54 @@ async function deleteEvent(id){
   calEvents=calEvents.filter(e=>String(e.id)!==String(id));
   renderCal();
   toast('🗑️ 일정이 삭제되었습니다');
+}
+
+/* ── 통합대시보드 작업 상세: 수정/삭제 ── */
+var efTaskIds=null;
+function editTask(idx){
+  const t=_calTasks[idx]; if(!t) return;
+  const ov=document.getElementById('taskDetailOverlay'); if(ov) ov.remove();
+  const ev={ id:(t.ids&&t.ids[0])||null, type:t.platform||'task', date:t.upload_date, date_end:t.done_date||t.upload_date, title:t.title, desc:t.content||'', manager:t.manager||'' };
+  openAddEventModal(ev);
+  efTaskIds=(t.ids||[]).slice();
+  const footer=document.getElementById('modalFooter');
+  if(footer) footer.innerHTML=`
+    <button class="btn btn-ol" onclick="closeModal()">취소</button>
+    <button class="btn btn-bl" onclick="saveTaskEdit()">✅ 저장</button>`;
+}
+async function saveTaskEdit(){
+  const dateStart=document.getElementById('ef-date-start').value;
+  const dateEnd=document.getElementById('ef-date-end').value||dateStart;
+  const title=document.getElementById('ef-title').value.trim();
+  if(!dateStart||!title){toast('⚠️ 시작일과 제목을 입력해주세요');return;}
+  if(dateEnd<dateStart){toast('⚠️ 종료일이 시작일보다 빠를 수 없습니다');return;}
+  const type=document.getElementById('ef-type').value;
+  const desc=document.getElementById('ef-desc').value;
+  const manager=document.getElementById('ef-mgr').value;
+  const ids=(efTaskIds||[]).slice(); efTaskIds=null;
+  if(!ids.length){ toast('❌ 대상을 찾을 수 없습니다'); return; }
+  const ok=await updateEventToSupabase(ids[0],{date:dateStart,date_end:dateEnd,type,title,desc,manager});
+  if(!ok){ toast('❌ 수정 실패 (권한/네트워크 확인)'); return; }
+  for(let i=1;i<ids.length;i++){
+    try{ await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(ids[i])}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}); }catch(e){}
+  }
+  closeModal();
+  if(typeof loadCalEvents==='function') loadCalEvents();
+  if(typeof loadTaskCalendar==='function') loadTaskCalendar();
+  toast('✏️ 일정이 수정되었습니다');
+}
+async function deleteTask(idx){
+  const t=_calTasks[idx]; if(!t) return;
+  if(!confirm('이 일정을 삭제할까요?')) return;
+  const ids=(t.ids||[]).slice();
+  let ok=true;
+  for(const id of ids){
+    try{ const r=await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}); if(!r.ok) ok=false; }catch(e){ ok=false; }
+  }
+  const ov=document.getElementById('taskDetailOverlay'); if(ov) ov.remove();
+  toast(ok?'🗑️ 일정이 삭제되었습니다':'❌ 삭제 실패 (권한/네트워크 확인)');
+  if(typeof loadCalEvents==='function') loadCalEvents();
+  if(typeof loadTaskCalendar==='function') loadTaskCalendar();
 }
 function efTypeToggle(e){
   if(e) e.stopPropagation();
