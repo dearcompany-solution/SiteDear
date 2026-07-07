@@ -8351,21 +8351,17 @@ async function addEvent(){
   const title     = document.getElementById('ef-title').value.trim();
   if(!dateStart||!title){toast('⚠️ 시작일과 제목을 입력해주세요');return;}
   if(dateEnd < dateStart){toast('⚠️ 종료일이 시작일보다 빠를 수 없습니다');return;}
-  let cur = new Date(dateStart);
-  const end = new Date(dateEnd);
-  while(cur <= end){
-    const dateStr = cur.toISOString().slice(0,10);
-    const newEv = {
-      id: Date.now()+Math.random(), date: dateStr, date_end: dateEnd,
-      type:    document.getElementById('ef-type').value,
-      title,
-      desc:    document.getElementById('ef-desc').value,
-      manager: document.getElementById('ef-mgr').value
-    };
-    calEvents.push(newEv);
-    await saveEventToSupabase(newEv);
-    cur.setDate(cur.getDate()+1);
-  }
+  const newEv = {
+    id: Date.now()+Math.random(),
+    date: dateStart,
+    date_end: dateEnd,
+    type:    document.getElementById('ef-type').value,
+    title,
+    desc:    document.getElementById('ef-desc').value,
+    manager: document.getElementById('ef-mgr').value
+  };
+  calEvents.push(newEv);
+  await saveEventToSupabase(newEv);
   closeModal();
   renderCal();
   const rangeText = dateStart===dateEnd ? dateStart : dateStart+' ~ '+dateEnd;
