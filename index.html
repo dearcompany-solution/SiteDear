@@ -8355,12 +8355,25 @@ function openAddEventModal(){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">시작일 *</label>
-          <input type="date" id="ef-date-start" class="fi" value="${selectedCalDate||today}"
-            onchange="const e=document.getElementById('ef-date-end');if(!e.value||e.value<this.value)e.value=this.value;">
+          <div id="ef-date-start-wrap" style="position:relative">
+            <input type="hidden" id="ef-date-start" value="${selectedCalDate||today}">
+            <button type="button" onclick="efDateToggle('start',event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none">
+              <span id="ef-date-start-label">${selectedCalDate||today}</span>
+              <span style="font-size:15px">📅</span>
+            </button>
+            <div id="ef-date-start-pop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;min-width:244px;background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:12px;z-index:1200;box-sizing:border-box"></div>
+          </div>
         </div>
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">종료일</label>
-          <input type="date" id="ef-date-end" class="fi" value="${selectedCalDate||today}">
+          <div id="ef-date-end-wrap" style="position:relative">
+            <input type="hidden" id="ef-date-end" value="${selectedCalDate||today}">
+            <button type="button" onclick="efDateToggle('end',event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none">
+              <span id="ef-date-end-label">${selectedCalDate||today}</span>
+              <span style="font-size:15px">📅</span>
+            </button>
+            <div id="ef-date-end-pop" style="display:none;position:absolute;top:calc(100% + 6px);right:0;width:100%;min-width:244px;background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:12px;z-index:1200;box-sizing:border-box"></div>
+          </div>
         </div>
       </div>
       <div>
@@ -8384,6 +8397,85 @@ function openAddEventModal(){
     <button class="btn btn-bl" onclick="addEvent()">✅ 저장</button>`;
   document.getElementById('modalOverlay').classList.add('open');
 }
+/* ── 일정 추가: 커스텀 날짜 선택기 ── */
+var efDP={start:{y:0,m:0},end:{y:0,m:0}};
+function efDateSetLabel(field,v){ const l=document.getElementById('ef-date-'+field+'-label'); if(l) l.textContent=v; }
+function efDateToggle(field,ev){
+  if(ev) ev.stopPropagation();
+  const pop=document.getElementById('ef-date-'+field+'-pop'); if(!pop) return;
+  const other=document.getElementById('ef-date-'+(field==='start'?'end':'start')+'-pop'); if(other) other.style.display='none';
+  const opening=(pop.style.display==='none'||!pop.style.display);
+  if(opening){
+    const cur=(document.getElementById('ef-date-'+field).value||'').split('-').map(Number);
+    if(cur[0]){ efDP[field].y=cur[0]; efDP[field].m=cur[1]-1; } else { const n=new Date(); efDP[field].y=n.getFullYear(); efDP[field].m=n.getMonth(); }
+    efDateRender(field); pop.style.display='block';
+  } else { pop.style.display='none'; }
+}
+function efDateMove(field,dir,ev){
+  if(ev) ev.stopPropagation();
+  efDP[field].m+=dir;
+  if(efDP[field].m>11){efDP[field].m=0;efDP[field].y++;}
+  if(efDP[field].m<0){efDP[field].m=11;efDP[field].y--;}
+  efDateRender(field);
+}
+function efDateToday(field,ev){
+  if(ev) ev.stopPropagation();
+  const n=new Date();
+  efDP[field].y=n.getFullYear(); efDP[field].m=n.getMonth();
+  efDatePick(field,`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`);
+}
+function efDatePick(field,dateStr){
+  const inp=document.getElementById('ef-date-'+field); if(inp) inp.value=dateStr;
+  efDateSetLabel(field,dateStr);
+  const si=document.getElementById('ef-date-start'), ei=document.getElementById('ef-date-end');
+  if(field==='start' && ei && ei.value && ei.value<dateStr){ ei.value=dateStr; efDateSetLabel('end',dateStr); }
+  if(field==='end' && si && si.value && dateStr<si.value){ si.value=dateStr; efDateSetLabel('start',dateStr); }
+  const pop=document.getElementById('ef-date-'+field+'-pop'); if(pop) pop.style.display='none';
+}
+function efDateRender(field){
+  const pop=document.getElementById('ef-date-'+field+'-pop'); if(!pop) return;
+  const pad=n=>String(n).padStart(2,'0');
+  const y=efDP[field].y, m=efDP[field].m;
+  const sel=(document.getElementById('ef-date-'+field).value||'');
+  const t=new Date(); const todayStr=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const firstDow=new Date(y,m,1).getDay();
+  const prevDays=new Date(y,m,0).getDate();
+  const dows=['일','월','화','수','목','금','토'];
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <button type="button" onclick="efDateMove('${field}',-1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">‹</button>
+      <span style="font-size:13px;font-weight:600">${y}년 ${m+1}월</span>
+      <button type="button" onclick="efDateMove('${field}',1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">`+
+    dows.map((d,i)=>`<div style="text-align:center;font-size:11px;padding:3px 0;color:${i===0?'#D4453A':i===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')+
+    `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+  for(let i=0;i<firstDow;i++){
+    html+=`<div style="height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);opacity:.4">${prevDays-firstDow+1+i}</div>`;
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${y}-${pad(m+1)}-${pad(d)}`;
+    const col=(firstDow+d-1)%7;
+    const isSel=ds===sel, isToday=ds===todayStr;
+    let st='height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:12px;cursor:pointer;box-sizing:border-box;';
+    if(isSel) st+='background:var(--blue);color:#fff;font-weight:700;';
+    else if(isToday) st+='border:1px solid var(--blue);color:var(--blue);';
+    else st+=`color:${col===0?'#D4453A':col===6?'#378ADD':'var(--text)'};`;
+    const hov=isSel?'':` onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''"`;
+    html+=`<div onclick="efDatePick('${field}','${ds}')"${hov} style="${st}">${d}</div>`;
+  }
+  html+=`</div><div style="display:flex;justify-content:flex-end;margin-top:8px">
+      <button type="button" onclick="efDateToday('${field}',event)" style="font-size:12px;padding:5px 12px;border:1px solid var(--blue);background:var(--white);color:var(--blue);border-radius:9px;cursor:pointer;font-weight:600">오늘</button>
+    </div>`;
+  pop.innerHTML=html;
+}
+document.addEventListener('click', function(e){
+  ['start','end'].forEach(function(f){
+    const wrap=document.getElementById('ef-date-'+f+'-wrap');
+    const pop=document.getElementById('ef-date-'+f+'-pop');
+    if(wrap && pop && !wrap.contains(e.target)) pop.style.display='none';
+  });
+});  
 function efTypeToggle(e){
   if(e) e.stopPropagation();
   const list=document.getElementById('ef-type-list');
