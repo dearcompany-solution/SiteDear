@@ -8187,63 +8187,118 @@ function renderCal(){
   document.getElementById('calMonthLabel').textContent=`${calYear}년 ${months[calMonth]}`;
   const grid=document.getElementById('calGrid');
   if(!grid)return;
-  const dows=['월','화','수','목','금','토','일'];
-  let html=dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
-  const first=new Date(calYear,calMonth,1);
-  let startDay=first.getDay()-1;if(startDay<0)startDay=6;
-  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
-  const prevDays=new Date(calYear,calMonth,0).getDate();
-  const today=new Date();
-  const typeColor={meet:'var(--blue)',report:'var(--naver)',notice:'var(--gold)',task:'var(--indigo)'};
-  const evMap={};
+  grid.style.display='block'; grid.style.gap='0';
+
+  const y=calYear, m=calMonth;
+  const pad=n=>String(n).padStart(2,'0');
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const firstDow=new Date(y,m,1).getDay();            // 0=일 ... 6=토 (일요일 시작)
+  const monthStart=`${y}-${pad(m+1)}-01`;
+  const monthEnd=`${y}-${pad(m+1)}-${pad(daysInMonth)}`;
+  const t=new Date();
+  const todayStr=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+
+  // 유형별 형광펜 색상 [배경, 글자]
+  const TYPE_BAR={meet:['#B5D4F4','#0C447C'],report:['#C0DD97','#27500A'],notice:['#FAC775','#633806'],task:['#CECBF6','#3C3489']};
+  const barOf=tp=>TYPE_BAR[tp]||['#D3D1C7','#444441'];
+
+  // 이번 달에 걸치는 일정 → 기간바 데이터
+  const evs=[];
   calEvents.forEach(e=>{
-    const[y,m,d]=e.date.split('-').map(Number);
-    if(y===calYear&&m===calMonth+1){if(!evMap[d])evMap[d]=[];evMap[d].push(e.type);}
+    if(!e.date) return;
+    const s0=e.date.slice(0,10);
+    let e0=(e.date_end||e.date).slice(0,10);
+    if(e0<s0) e0=s0;
+    if(e0<monthStart || s0>monthEnd) return;
+    const sd=s0>=monthStart? +s0.slice(8,10) : 1;
+    const ed=e0<=monthEnd? +e0.slice(8,10) : daysInMonth;
+    const col=barOf(e.type);
+    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:e.title||'일정',date:s0});
   });
-  for(let i=startDay-1;i>=0;i--)html+=`<div class="cal-day other-month" style="pointer-events:none"><span>${prevDays-i}</span></div>`;
-  for(let d=1;d<=daysInMonth;d++){
-    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
-    const dots=evMap[d]?evMap[d].map(t=>`<div class="ev-day-dot" style="background:${typeColor[t]||'var(--store)'}"></div>`).join(''):'';
-    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    html+=`<div class="cal-day ${isToday?'today':''} ${evMap[d]?'has-event':''}" data-date="${dateStr}" onclick="selectCalDay('${dateStr}',${d})">
-      <span>${d}</span><div class="ev-dots">${dots}</div>
-    </div>`;
-  }
-  const total=startDay+daysInMonth;
-  const remain=total%7===0?0:7-(total%7);
-  for(let i=1;i<=remain;i++)html+=`<div class="cal-day other-month" style="pointer-events:none"><span>${i}</span></div>`;
+
+  // 요일 헤더 (일요일 시작)
+  const dows=['일','월','화','수','목','금','토'];
+  let html=`<div style="display:grid;grid-template-columns:repeat(7,1fr)">`+
+    dows.map((d,i)=>`<div class="cal-dow" style="color:${i===0?'#D4453A':i===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')+`</div>`;
+
+  // 날짜 셀 + 기간바 (절대배치)
+  const cols=7, rows=Math.ceil((firstDow+daysInMonth)/cols);
+  const cellH=72, headH=20, barH=15, barGap=3, maxBars=3;
+  const dow=d=>(firstDow+d-1)%cols, wk=d=>Math.floor((firstDow+d-1)/cols);
+
+  let cells='';
+  for(let w=0;w<rows;w++){ for(let c=0;c<cols;c++){
+    const dn=w*cols+c-firstDow+1;
+    const left=c/cols*100, top=w*cellH;
+    if(dn>=1&&dn<=daysInMonth){
+      const dateStr=`${y}-${pad(m+1)}-${pad(dn)}`;
+      const isToday=dateStr===todayStr, isSel=selectedCalDate===dateStr;
+      const numCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
+      let numStyle=`font-size:11px;color:${numCol}`;
+      if(isToday) numStyle='font-size:11px;color:#fff;font-weight:700;background:var(--blue)';
+      else if(isSel) numStyle='font-size:11px;color:#fff;font-weight:700;background:var(--indigo)';
+      cells+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')" style="position:absolute;box-sizing:border-box;left:${left}%;top:${top}px;width:${100/cols}%;height:${cellH}px;border:0.5px solid var(--border);cursor:pointer">`+
+        `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin:3px;border-radius:50%;${numStyle}">${dn}</span></div>`;
+    } else {
+      cells+=`<div style="position:absolute;box-sizing:border-box;left:${left}%;top:${top}px;width:${100/cols}%;height:${cellH}px;border:0.5px solid var(--border);background:var(--bg)"></div>`;
+    }
+  }}
+
+  // 기간바 lane 배치 (겹치면 아래 줄로)
+  const lanes={}; let bars='';
+  evs.forEach(ev=>{
+    let d=ev.s;
+    while(d<=ev.e){
+      const w=wk(d), sD=dow(d);
+      const weekEnd=(w+1)*cols-firstDow, segEnd=Math.min(ev.e,weekEnd), eD=dow(segEnd);
+      if(!lanes[w]) lanes[w]=[];
+      let lane=0;
+      while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
+      lanes[w].push({lane,s:sD,e:eD});
+      if(lane<maxBars){
+        const bl=sD/cols*100, bw=(eD-sD+1)/cols*100, bt=w*cellH+headH+lane*(barH+barGap);
+        bars+=`<div onclick="selectCalDay('${ev.date}')" title="${ev.label}" style="position:absolute;left:calc(${bl}% + 2px);top:${bt}px;width:calc(${bw}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${ev.label}</div>`;
+      }
+      d=segEnd+1;
+    }
+  });
+
+  html+=`<div style="position:relative;height:${rows*cellH}px;margin-top:2px">${cells}${bars}</div>`;
   grid.innerHTML=html;
-  // 날짜 선택 없으면 현재 캘린더 월 전체 일정 표시
-  if(selectedCalDate && selectedCalDate.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)){
+
+  // 리스트 갱신
+  if(selectedCalDate && selectedCalDate.startsWith(`${y}-${pad(m+1)}`)){
     renderEvList(selectedCalDate);
   } else {
-    selectedCalDate = null;
-    const titleEl = document.getElementById('evPanelTitle');
-    if(titleEl) titleEl.textContent = `${calMonth+1}월 전체 일정`;
-    renderEvList(null, calYear, calMonth+1);
+    selectedCalDate=null;
+    const titleEl=document.getElementById('evPanelTitle');
+    if(titleEl) titleEl.textContent=`${m+1}월 전체 일정`;
+    renderEvList(null,y,m+1);
   }
 }
 function calMove(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCal();}
 function selectCalDay(dateStr){
   selectedCalDate=dateStr;
-  const[y,m,dd]=dateStr.split('-');
-  const evs=calEvents.filter(e=>e.date===dateStr);
-  // 선택 셀 하이라이트
-  document.querySelectorAll('.cal-day').forEach(el=>el.classList.remove('selected'));
-  const sel=document.querySelector(`.cal-day[data-date="${dateStr}"]`);
-  if(sel) sel.classList.add('selected');
+  renderCal();
+  const p=dateStr.split('-');
+  const cnt=calEvents.filter(e=>{const s=(e.date||'').slice(0,10),en=((e.date_end||e.date)||'').slice(0,10);return s&&s<=dateStr&&dateStr<=en;}).length;
   const titleEl=document.getElementById('evPanelTitle');
-  if(titleEl) titleEl.textContent=`${m}월 ${dd}일 · ${evs.length?evs.length+'개 일정':'일정 없음'}`;
-  renderEvList(dateStr);
+  if(titleEl) titleEl.textContent=`${+p[1]}월 ${+p[2]}일 · ${cnt?cnt+'개 일정':'일정 없음'}`;
+}
+function calGoToday(){
+  const n=new Date();
+  calYear=n.getFullYear(); calMonth=n.getMonth();
+  selectCalDay(`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`);
 }
 function renderEvList(dateFilter, filterYear, filterMonth){
   const el=document.getElementById('evList');if(!el)return;
   const typeLabel={meet:'🤝 미팅',report:'📊 리포트',notice:'📢 공지',task:'✅ 작업'};
-  const typeClass={meet:'et-meet',report:'et-rep',notice:'et-notice',task:'et-task'};
+  const TYPE_BAR={meet:['#B5D4F4','#0C447C'],report:['#C0DD97','#27500A'],notice:['#FAC775','#633806'],task:['#CECBF6','#3C3489']};
+  const mmdd=s=>s?s.slice(5,10).replace('-','/'):'';
   let evs;
   if(dateFilter){
-    // 특정 날짜만
-    evs=calEvents.filter(e=>e.date===dateFilter);
+    // 해당 날짜에 걸치는 일정(기간 포함)
+    evs=calEvents.filter(e=>{const s=(e.date||'').slice(0,10),en=((e.date_end||e.date)||'').slice(0,10);return s&&s<=dateFilter&&dateFilter<=en;}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   } else {
     // 해당 월 전체 날짜순 정렬
     const y=filterYear||calYear;
@@ -8255,13 +8310,18 @@ function renderEvList(dateFilter, filterYear, filterMonth){
     el.innerHTML=`<div class="ev-empty"><div class="ei">📅</div><p>일정이 없습니다</p></div>`;
     return;
   }
-  el.innerHTML=evs.map(e=>`
+  el.innerHTML=evs.map(e=>{
+    const col=TYPE_BAR[e.type]||['#D3D1C7','#444441'];
+    const s=(e.date||'').slice(0,10), en=(e.date_end||e.date||'').slice(0,10);
+    const badge=(en&&en!==s)?`${mmdd(s)}~${mmdd(en)}`:mmdd(s);
+    return `
     <div class="ev-item">
-      <span class="ev-tag ${typeClass[e.type]||'et-task'}">${typeLabel[e.type]||e.type}</span>
-      <div class="ev-title">${e.title}</div>
-      <div class="ev-meta">${e.date_end&&e.date_end!==e.date?e.date+' ~ '+e.date_end:e.date} · ${e.manager||''}</div>
+      <span style="display:inline-block;font-size:10px;background:${col[0]};color:${col[1]};border-radius:5px;padding:2px 7px;margin-bottom:5px">${badge}</span>
+      <div class="ev-title">${typeLabel[e.type]||''} ${e.title}</div>
+      ${e.manager?`<div class="ev-meta">${e.manager}</div>`:''}
       ${e.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${e.desc}</div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function openAddEventModal(){
   const today = new Date().toISOString().split('T')[0];
