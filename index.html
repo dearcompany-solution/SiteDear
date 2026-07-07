@@ -2938,7 +2938,7 @@ function renderTaskCalendar(){
     </div>
     <div style="display:grid;grid-template-columns:1.15fr 0.85fr">
       <div style="border-right:1px solid var(--border);padding:12px 12px">
-        <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);column-gap:5px">
           ${['일','월','화','수','목','금','토'].map((d,idx)=>`<div style="text-align:center;font-size:11px;padding-bottom:6px;color:${idx===0?'#D4453A':idx===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')}
         </div>
         <div id="taskCalGrid" style="position:relative"></div>
@@ -2953,22 +2953,13 @@ function renderTaskCalendar(){
 function drawCalGrid(firstDow, days, events){
   const grid=document.getElementById('taskCalGrid');
   if(!grid) return;
-  const cols=7, rows=Math.ceil((firstDow+days)/cols);
-  const cellH=64, headH=18, barH=14, barGap=3, maxBars=3;
-  grid.style.height=(rows*cellH)+'px';
-  grid.innerHTML='';
+  const cols=7, rows=Math.ceil((firstDow+days)/cols), maxBars=3;
   const dow=d=>(firstDow+d-1)%cols, wk=d=>Math.floor((firstDow+d-1)/cols);
+  const t=new Date();
+  const todayN=(t.getFullYear()===_calYear && (t.getMonth()+1)===_calMonth)? t.getDate() : -1;
 
-  for(let w=0;w<rows;w++){ for(let c=0;c<cols;c++){
-    const dn=w*cols+c-firstDow+1;
-    const cell=document.createElement('div');
-    cell.style.cssText=`position:absolute;box-sizing:border-box;border:0.5px solid var(--border);left:${c/cols*100}%;top:${w*cellH}px;width:${100/cols}%;height:${cellH}px;`;
-    if(dn>=1&&dn<=days){ const n=document.createElement('div'); n.textContent=dn; n.style.cssText=`font-size:11px;padding:3px 5px;color:${c===0?'#D4453A':c===6?'#378ADD':'var(--text3)'}`; cell.appendChild(n); }
-    else cell.style.background='var(--bg)';
-    grid.appendChild(cell);
-  }}
-
-  const lanes={};
+  // 주별 레인 배치
+  const segs={}, lanes={};
   events.forEach(ev=>{
     let d=ev.s;
     while(d<=ev.e){
@@ -2979,26 +2970,39 @@ function drawCalGrid(firstDow, days, events){
       while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
       lanes[w].push({lane,s:sD,e:eD});
       if(lane<maxBars){
-        const bar=document.createElement('div');
-        const left=sD/cols*100, wid=(eD-sD+1)/cols*100, top=w*cellH+headH+lane*(barH+barGap);
-        bar.style.cssText=`position:absolute;left:calc(${left}% + 2px);top:${top}px;width:calc(${wid}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;`;
-        bar.textContent=ev.label;
-        bar.title=ev.label+(ev.status?(' · '+ev.status):'');
-        bar.onclick=(function(g){return function(){ openTaskDetail(g); };})(ev.gi);
-        grid.appendChild(bar);
+        if(!segs[w]) segs[w]=[];
+        segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,gi:ev.gi,status:ev.status});
       }
       d=segEnd+1;
     }
   });
-  Object.keys(lanes).forEach(w=>{
-    const maxLane=Math.max(...lanes[w].map(x=>x.lane));
-    if(maxLane>=maxBars){
-      const more=document.createElement('div');
-      more.style.cssText=`position:absolute;left:4px;top:${w*cellH+headH+maxBars*(barH+barGap)}px;font-size:9px;color:var(--text3);`;
-      more.textContent='+더보기';
-      grid.appendChild(more);
+
+  // 둥근 날짜 타일 + 라운드 형광펜 바 (주 단위)
+  let html='';
+  for(let w=0;w<rows;w++){
+    let tiles='';
+    for(let c=0;c<cols;c++){
+      const dn=w*cols+c-firstDow+1;
+      if(dn>=1&&dn<=days){
+        const isToday=dn===todayN;
+        const numCol=isToday?'#fff':(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
+        const bg=isToday?'background:var(--blue);':'';
+        tiles+=`<div style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;color:${numCol};${bg}">${dn}</div>`;
+      } else {
+        tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
+      }
     }
-  });
+    let bars='';
+    (segs[w]||[]).forEach(s=>{
+      bars+=`<div onclick="openTaskDetail(${s.gi})" title="${s.label}${s.status?(' · '+s.status):''}" style="grid-column:${s.cs}/${s.ce};grid-row:${s.lane+1};background:${s.c};color:${s.t};border-radius:7px;font-size:10px;line-height:16px;padding:0 7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;pointer-events:auto">${s.label}</div>`;
+    });
+    html+=`<div style="position:relative;margin-bottom:5px">`+
+      `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">${tiles}</div>`+
+      `<div style="position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:repeat(7,1fr);column-gap:5px;row-gap:3px;grid-auto-rows:16px;padding-top:24px;pointer-events:none">${bars}</div>`+
+    `</div>`;
+  }
+  grid.style.height='auto';
+  grid.innerHTML=html;
 }
 
 function htmlCombined(){
@@ -8216,36 +8220,10 @@ function renderCal(){
     evs.push({s:sd,e:ed,c:col[0],t:col[1],label:e.title||'일정',date:s0});
   });
 
-  // 요일 헤더 (일요일 시작)
-  const dows=['일','월','화','수','목','금','토'];
-  let html=`<div style="display:grid;grid-template-columns:repeat(7,1fr)">`+
-    dows.map((d,i)=>`<div class="cal-dow" style="color:${i===0?'#D4453A':i===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')+`</div>`;
-
-  // 날짜 셀 + 기간바 (절대배치)
-  const cols=7, rows=Math.ceil((firstDow+daysInMonth)/cols);
-  const cellH=72, headH=20, barH=15, barGap=3, maxBars=3;
+  // 주별 레인 배치
+  const cols=7, rows=Math.ceil((firstDow+daysInMonth)/cols), maxBars=3;
   const dow=d=>(firstDow+d-1)%cols, wk=d=>Math.floor((firstDow+d-1)/cols);
-
-  let cells='';
-  for(let w=0;w<rows;w++){ for(let c=0;c<cols;c++){
-    const dn=w*cols+c-firstDow+1;
-    const left=c/cols*100, top=w*cellH;
-    if(dn>=1&&dn<=daysInMonth){
-      const dateStr=`${y}-${pad(m+1)}-${pad(dn)}`;
-      const isToday=dateStr===todayStr, isSel=selectedCalDate===dateStr;
-      const numCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)');
-      let numStyle=`font-size:11px;color:${numCol}`;
-      if(isToday) numStyle='font-size:11px;color:#fff;font-weight:700;background:var(--blue)';
-      else if(isSel) numStyle='font-size:11px;color:#fff;font-weight:700;background:var(--indigo)';
-      cells+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')" style="position:absolute;box-sizing:border-box;left:${left}%;top:${top}px;width:${100/cols}%;height:${cellH}px;border:0.5px solid var(--border);cursor:pointer">`+
-        `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin:3px;border-radius:50%;${numStyle}">${dn}</span></div>`;
-    } else {
-      cells+=`<div style="position:absolute;box-sizing:border-box;left:${left}%;top:${top}px;width:${100/cols}%;height:${cellH}px;border:0.5px solid var(--border);background:var(--bg)"></div>`;
-    }
-  }}
-
-  // 기간바 lane 배치 (겹치면 아래 줄로)
-  const lanes={}; let bars='';
+  const segs={}, lanes={};
   evs.forEach(ev=>{
     let d=ev.s;
     while(d<=ev.e){
@@ -8256,14 +8234,44 @@ function renderCal(){
       while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
       lanes[w].push({lane,s:sD,e:eD});
       if(lane<maxBars){
-        const bl=sD/cols*100, bw=(eD-sD+1)/cols*100, bt=w*cellH+headH+lane*(barH+barGap);
-        bars+=`<div onclick="selectCalDay('${ev.date}')" title="${ev.label}" style="position:absolute;left:calc(${bl}% + 2px);top:${bt}px;width:calc(${bw}% - 4px);height:${barH}px;background:${ev.c};color:${ev.t};border-radius:4px;font-size:10px;line-height:${barH}px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${ev.label}</div>`;
+        if(!segs[w]) segs[w]=[];
+        segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,date:ev.date});
       }
       d=segEnd+1;
     }
   });
 
-  html+=`<div style="position:relative;height:${rows*cellH}px;margin-top:2px">${cells}${bars}</div>`;
+  // 요일 헤더 (일요일 시작)
+  const dows=['일','월','화','수','목','금','토'];
+  let html=`<div style="display:grid;grid-template-columns:repeat(7,1fr);column-gap:5px;margin-bottom:4px">`+
+    dows.map((d,i)=>`<div class="cal-dow" style="color:${i===0?'#D4453A':i===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')+`</div>`;
+
+  // 둥근 날짜 타일 + 라운드 형광펜 바 (주 단위)
+  for(let w=0;w<rows;w++){
+    let tiles='';
+    for(let c=0;c<cols;c++){
+      const dn=w*cols+c-firstDow+1;
+      if(dn>=1&&dn<=daysInMonth){
+        const dateStr=`${y}-${pad(m+1)}-${pad(dn)}`;
+        const isToday=dateStr===todayStr, isSel=selectedCalDate===dateStr;
+        let numCol=(c===0?'#D4453A':c===6?'#378ADD':'var(--text2)'), bg='';
+        if(isToday){ numCol='#fff'; bg='background:var(--blue);'; }
+        else if(isSel){ numCol='#fff'; bg='background:var(--indigo);'; }
+        const hover=(isToday||isSel)?'':` onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''"`;
+        tiles+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')"${hover} style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;color:${numCol};cursor:pointer;${bg}">${dn}</div>`;
+      } else {
+        tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
+      }
+    }
+    let bars='';
+    (segs[w]||[]).forEach(s=>{
+      bars+=`<div onclick="selectCalDay('${s.date}')" title="${s.label}" style="grid-column:${s.cs}/${s.ce};grid-row:${s.lane+1};background:${s.c};color:${s.t};border-radius:7px;font-size:10px;line-height:16px;padding:0 7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;pointer-events:auto">${s.label}</div>`;
+    });
+    html+=`<div style="position:relative;margin-bottom:5px">`+
+      `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">${tiles}</div>`+
+      `<div style="position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:repeat(7,1fr);column-gap:5px;row-gap:3px;grid-auto-rows:16px;padding-top:24px;pointer-events:none">${bars}</div>`+
+    `</div>`;
+  }
   grid.innerHTML=html;
 
   // 리스트 갱신
