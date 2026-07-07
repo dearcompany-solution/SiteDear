@@ -8103,24 +8103,25 @@ async function refreshChat(){
 async function saveEventToSupabase(ev){
   try{
     const clientKey = currentUser?.role==='admin' ? (activeClientId||'all') : (currentUser?.id||'');
-    await fetch(`${SUPABASE_URL}/rest/v1/calendar_events`,{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/calendar_events`,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_ANON_KEY,
         'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),
-        'Prefer':'resolution=merge-duplicates,return=minimal'
+        'Prefer':'return=minimal'
       },
       body:JSON.stringify({
-        client_key:   id,
-        password:     pw,
-        company_name: name,
-        manager:      mgr,
-        store_url:    url,
-        memo:         memo,
-        is_active:    true
+        client_key:  clientKey,
+        event_date:  ev.date,
+        end_date:    ev.date_end || ev.date,
+        type:        ev.type || 'task',
+        title:       ev.title,
+        description: ev.desc || '',
+        manager:     ev.manager || ''
       })
     });
+    if(!res.ok){ console.warn('일정 저장 응답 오류:', res.status, await res.text()); }
   }catch(e){ console.warn('일정 저장 실패:',e); }
 }
 
