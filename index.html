@@ -8269,12 +8269,19 @@ function openAddEventModal(){
     <div style="display:flex;flex-direction:column;gap:13px">
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">유형</label>
-        <select id="ef-type" class="fi">
-          <option value="meet">🤝 미팅</option>
-          <option value="report">📊 리포트</option>
-          <option value="notice">📢 공지</option>
-          <option value="task">✅ 작업</option>
-        </select>
+        <div id="ef-type-wrap" style="position:relative">
+          <input type="hidden" id="ef-type" value="meet">
+          <button type="button" id="ef-type-btn" onclick="efTypeToggle(event)" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:14px;color:#2C2C2A;cursor:pointer;outline:none;transition:border-color .15s,box-shadow .15s">
+            <span id="ef-type-label">🤝 미팅</span>
+            <span id="ef-type-caret" style="font-size:10px;color:var(--text3);transition:transform .2s">▼</span>
+          </button>
+          <div id="ef-type-list" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:1000;box-sizing:border-box">
+            <div class="ef-type-opt" data-v="meet"   onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">🤝 미팅</div>
+            <div class="ef-type-opt" data-v="report" onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">📊 리포트</div>
+            <div class="ef-type-opt" data-v="notice" onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">📢 공지</div>
+            <div class="ef-type-opt" data-v="task"   onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">✅ 작업</div>
+          </div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
@@ -8308,6 +8315,35 @@ function openAddEventModal(){
     <button class="btn btn-bl" onclick="addEvent()">✅ 저장</button>`;
   document.getElementById('modalOverlay').classList.add('open');
 }
+function efTypeToggle(e){
+  if(e) e.stopPropagation();
+  const list=document.getElementById('ef-type-list');
+  const caret=document.getElementById('ef-type-caret');
+  if(!list) return;
+  const open=list.style.display==='block';
+  list.style.display=open?'none':'block';
+  if(caret) caret.style.transform=open?'':'rotate(180deg)';
+  document.querySelectorAll('.ef-type-opt').forEach(o=>{
+    const cur=o.dataset.v===document.getElementById('ef-type').value;
+    o.style.background=cur?'#EEEDFE':'transparent';
+    o.style.color=cur?'#534AB7':'#2C2C2A';
+    o.style.fontWeight=cur?'600':'400';
+    o.onmouseover=function(){ if(!cur) this.style.background='#F1EFF9'; };
+    o.onmouseout=function(){ this.style.background=cur?'#EEEDFE':'transparent'; };
+  });
+}
+function efTypePick(el){
+  document.getElementById('ef-type').value=el.dataset.v;
+  document.getElementById('ef-type-label').textContent=el.textContent;
+  document.getElementById('ef-type-list').style.display='none';
+  const caret=document.getElementById('ef-type-caret'); if(caret) caret.style.transform='';
+}
+document.addEventListener('click', function(e){
+  const wrap=document.getElementById('ef-type-wrap');
+  const list=document.getElementById('ef-type-list');
+  if(wrap && list && !wrap.contains(e.target)){ list.style.display='none'; const c=document.getElementById('ef-type-caret'); if(c)c.style.transform=''; }
+});
+
 async function addEvent(){
   const dateStart = document.getElementById('ef-date-start').value;
   const dateEnd   = document.getElementById('ef-date-end').value || dateStart;
