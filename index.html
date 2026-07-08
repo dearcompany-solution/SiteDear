@@ -9593,8 +9593,8 @@ async function loadDataStatus(){
 
 function dsCell(row){
   if(row.stopped)      return {bg:'#F1EFE8', color:'#5F5E5A', txt:'⏸️', title:'운영중지(수동)'};
-  if(!row.operating)   return {bg:'#F7F7F5', color:'#B4B2A9', txt:'—', title:'미운영'};
   if(row.has_selected) return {bg:'#E1F5EE', color:'#0F6E56', txt:'✓', title:'업로드 완료 ('+(row.latest_month||'')+')'};
+  if(!row.operating)   return {bg:'#F7F7F5', color:'#B4B2A9', txt:'—', title:'미운영'};
   return {bg:'#FCEBEB', color:'#A32D2D', txt:'!', title:'누락 — 업로드 필요 (최신:'+(row.latest_month||'없음')+')'};
 }
 
