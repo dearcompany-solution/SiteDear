@@ -950,7 +950,6 @@ let currentReportMonth = (JSON.parse(sessionStorage.getItem('currentDateRange'))
 // ── 데이터가 있는 가장 최근 달로 기본 기간 자동 설정 ──
 async function applyLatestDataDateRange(ck, force){
   if(!ck) return;
-  if(!force && sessionStorage.getItem('currentDateRange')) return;
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const tables=['daily_reports','store_sales','meta_reports','google_reports','ebay_ads'];
   let maxDate=null;
@@ -964,11 +963,18 @@ async function applyLatestDataDateRange(ck, force){
       }
     }catch(e){}
   }
-  if(!maxDate) return;
+ if(!maxDate) return;
   const y=maxDate.slice(0,4), m=maxDate.slice(5,7);
+  const latestMonth=`${y}-${m}`;
+  // force가 아니면: 이미 최신 데이터 달 이상을 보고 있으면 그대로 유지 (사용자가 보던 달 존중)
+  if(!force){
+    const stored=JSON.parse(sessionStorage.getItem('currentDateRange')||'null');
+    const storedMonth = stored&&stored.from ? stored.from.slice(0,7) : '';
+    if(storedMonth && storedMonth>=latestMonth) return;
+  }
   const lastDay=String(new Date(Number(y),Number(m),0).getDate()).padStart(2,'0');
   currentDateRange={from:`${y}-${m}-01`, to:`${y}-${m}-${lastDay}`};
-  currentReportMonth=`${y}-${m}`;
+  currentReportMonth=latestMonth;
   sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
   const label=document.getElementById('drangeLabel');
   if(label) label.textContent=`${currentDateRange.from.replace(/-/g,'.')} ~ ${currentDateRange.to.replace(/-/g,'.')}`;
@@ -1274,7 +1280,7 @@ function initApp(restorePage){
     renderAdminNav();
     setSb('DEARCOMPANY 관리자','dearcompany','관리자');
     const page = restorePage || 'admin';
-    loadClientsFromSupabase().then(()=>{
+    loadClientsFromSupabase().then(async ()=>{
       // 업체 선택 복원 후 사이드바 업데이트
       if(activeClientId){
         const c = ACCOUNTS.find(a=>a.id===activeClientId);
@@ -1282,6 +1288,7 @@ function initApp(restorePage){
           setSb(c.company, c.id, '광고 운영 중');
           const lbl = document.getElementById('sbLbl');
           if(lbl) lbl.innerHTML = `선택된 업체 <span onclick="clearClientSelect()" style="cursor:pointer;color:var(--red);font-size:10px;margin-left:6px;padding:1px 6px;background:var(--red-l);border-radius:10px">✕ 해제</span>`;
+          await applyLatestDataDateRange(activeClientId);
         }
       }
       go(page, null);
