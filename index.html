@@ -937,6 +937,7 @@ let adminPage=1;
 let charts={};
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let selectedCalDate=null;
+let calAutoJumped=false;
 const _now = new Date();
 const _y = _now.getFullYear();
 const _m = String(_now.getMonth()+1).padStart(2,'0');
@@ -1606,6 +1607,7 @@ function renderContent(id){
   calYear=new Date().getFullYear();
   calMonth=new Date().getMonth();
   selectedCalDate=null;
+  calAutoJumped=false;
   c.innerHTML=htmlCal();
   setTimeout(renderCal,50);
   setTimeout(()=>{ loadCalEvents(); },50);
@@ -8160,6 +8162,16 @@ async function loadCalEvents(){
       desc:     r.description||'',
       manager:  r.manager||''
     }));
+
+    // 최초 진입 시: 일정(데이터)이 있는 최신 달로 자동 이동
+    if(!calAutoJumped){
+      calAutoJumped=true;
+      if(calEvents.length){
+        let latest='';
+        calEvents.forEach(e=>{ const d=(e.date||'').slice(0,7); if(d && d>latest) latest=d; });
+        if(latest){ calYear=+latest.slice(0,4); calMonth=+latest.slice(5,7)-1; }
+      }
+    }
 
     // 캘린더 화면이 열려있으면 새로고침
     const calEl = document.getElementById('calGrid');
