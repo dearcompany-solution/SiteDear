@@ -2841,6 +2841,7 @@ async function loadTaskCalendar(){
       let latest=null;
       _calTasks.forEach(r=>{ const d=(r.done_date||r.upload_date||'').slice(0,7); if(d && (!latest||d>latest)) latest=d; });
       if(latest){ _calYear=+latest.slice(0,4); _calMonth=+latest.slice(5,7); }
+      else if(typeof currentReportMonth==='string' && /^\d{4}-\d{2}/.test(currentReportMonth)){ _calYear=+currentReportMonth.slice(0,4); _calMonth=+currentReportMonth.slice(5,7); }
       else { const n=new Date(Date.now()+9*3600*1000); _calYear=n.getFullYear(); _calMonth=n.getMonth()+1; }
     }
     renderTaskCalendar();
@@ -8163,14 +8164,15 @@ async function loadCalEvents(){
       manager:  r.manager||''
     }));
 
-    // 최초 진입 시: 일정(데이터)이 있는 최신 달로 자동 이동
+   // 최초 진입 시: 일정 있으면 최신 달, 없으면 대시보드 기간(광고 데이터 달)로 이동
     if(!calAutoJumped){
       calAutoJumped=true;
+      let target='';
       if(calEvents.length){
-        let latest='';
-        calEvents.forEach(e=>{ const d=(e.date||'').slice(0,7); if(d && d>latest) latest=d; });
-        if(latest){ calYear=+latest.slice(0,4); calMonth=+latest.slice(5,7)-1; }
+        calEvents.forEach(e=>{ const d=(e.date||'').slice(0,7); if(d && d>target) target=d; });
       }
+      if(!target && typeof currentReportMonth==='string' && /^\d{4}-\d{2}/.test(currentReportMonth)) target=currentReportMonth.slice(0,7);
+      if(target){ calYear=+target.slice(0,4); calMonth=+target.slice(5,7)-1; }
     }
 
     // 캘린더 화면이 열려있으면 새로고침
