@@ -1171,6 +1171,44 @@ function checkDataAndGuide(data, period){
     return `c${hex}@clients.sitedear.app`;
   }
 
+  // ── 로그인 잠금 (브루트포스 방지) ──
+  let _lockTimer = null;
+  async function lockRpc(fn, body){
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+        body: JSON.stringify(body||{})
+      });
+      if(!res.ok) return null;
+      const t = await res.text();
+      return t ? JSON.parse(t) : null;
+    }catch(e){ return null; }
+  }
+  function clearLockMsg(){
+    if(_lockTimer){ clearInterval(_lockTimer); _lockTimer=null; }
+    const el=document.getElementById('lerr'); if(el) el.style.display='none';
+  }
+  function showLockMsg(st){
+    const el=document.getElementById('lerr'); if(!el) return;
+    if(_lockTimer){ clearInterval(_lockTimer); _lockTimer=null; }
+    el.style.display='block';
+    if(st.requires_admin){
+      el.innerHTML = '🔒 계정이 잠겼습니다.<br>반복된 로그인 실패로 관리자 확인이 필요합니다. 담당자에게 문의해주세요.';
+      return;
+    }
+    let s = Math.max(0, parseInt(st.seconds_left||0, 10));
+    const tick = ()=>{
+      if(s<=0){ clearLockMsg(); return; }
+      const m=String(Math.floor(s/60)).padStart(2,'0'), ss=String(s%60).padStart(2,'0');
+      el.innerHTML = '⏸ 로그인이 일시 중지되었습니다. 5회 연속 실패로 30분간 잠겼습니다.<br>'
+        + '<b style="font-size:15px;letter-spacing:1px">'+m+':'+ss+'</b> 후 자동 해제됩니다.';
+      s--;
+    };
+    tick();
+    _lockTimer = setInterval(tick, 1000);
+  }
+
   let _loginBusy = false;
   async function doLogin(){
   if(_loginBusy) return;                 // 중복 클릭/Enter 방지
@@ -1192,18 +1230,36 @@ function checkDataAndGuide(data, period){
   errEl.style.display = 'none';
 
   try {
+    // ── 잠금 상태 확인 (잠겨있으면 인증 시도 자체를 생략) ──
+    const _lk = await lockRpc('check_login_lock', {p_key:id});
+    if(_lk && _lk.locked){
+      showLockMsg(_lk);
+      if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = _btnText; }
+      _loginBusy = false;
+      return;
+    }
+
     const { data, error } = await sbAuth.auth.signInWithPassword({
       email: clientKeyToEmail(id),
       password: pw
     });
     if(error || !data || !data.session){
-      errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다.";
-      errEl.style.display = 'block';
+      const _st = await lockRpc('register_login_fail', {p_key:id});
+      if(_st && _st.locked){
+        showLockMsg(_st);
+      } else {
+        const _left = (_st && _st.remaining!=null) ? _st.remaining : null;
+        errEl.textContent = "아이디 또는 비밀번호가 올바르지 않습니다."
+          + (_left!=null && _left<=3 ? ` (${_left}회 더 실패하면 로그인이 30분간 중지됩니다)` : '');
+        errEl.style.display = 'block';
+      }
       if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = _btnText; }
       _loginBusy = false;
       return;
     }
     AUTH_TOKEN = data.session.access_token;
+    lockRpc('register_login_success', {p_key:id});
+    clearLockMsg();
     const _meta0 = (data.user && data.user.app_metadata) || {};
     // 비활성(로그인 차단) 업체인지 확인 — 관리자는 예외
     if((_meta0.role||'client') !== 'admin'){
@@ -1428,6 +1484,7 @@ function renderAdminNav(){
     <div class="ni" id="ni-kpi-target" onclick="go('kpi-target',this)"><span class="ic">🎯</span>KPI 목표</div>
     <div class="ni" id="ni-work-log" onclick="go('work-log',this)"><span class="ic">📝</span>작업 로그</div>
     <div class="ni" id="ni-datastatus" onclick="go('datastatus',this)"><span class="ic">📊</span>데이터 현황</div>
+    <div class="ni" id="ni-loginlock" onclick="go('loginlock',this)"><span class="ic">🔐</span>로그인 잠금 관리<span class="nbadge nb-r" id="lockBadge" style="display:none">0</span></div>
     <div class="nsec">소통</div>
     <div class="ni" id="ni-msg" onclick="go('msg',this)"><span class="ic">💬</span>메시지<span class="nbadge nb-b" id="msgBadge">2</span></div>
     <div class="ni" id="ni-cal" onclick="go('cal',this)"><span class="ic">📅</span>일정 (공지)</div>
@@ -1456,6 +1513,7 @@ const pageTitles={
  admin:   ['클라이언트 관리',''],
   register:['계정 등록',''],
   datastatus:['데이터 업로드 현황','업체별 매체 데이터 최신화 상태'],
+  loginlock:['로그인 잠금 관리','로그인 실패 · 계정 잠금 현황'],
 };
 function go(id,el){
   const adminOnly=['admin','register','datastatus'];
@@ -1653,6 +1711,13 @@ function renderContent(id){
       break;
     case 'register':
       c.innerHTML=htmlRegister();
+      document.getElementById('dateRow').style.display='none';
+      document.getElementById('adminActions').style.display='none';
+      document.getElementById('defaultActions').style.display='none';
+      break;
+    case 'loginlock':
+      c.innerHTML=htmlLoginLock();
+      setTimeout(()=>{ loadLoginLocks(); },50);
       document.getElementById('dateRow').style.display='none';
       document.getElementById('adminActions').style.display='none';
       document.getElementById('defaultActions').style.display='none';
@@ -9547,6 +9612,87 @@ document.addEventListener('click', function(e){
   const list=document.getElementById('dsMonthList');
   if(wrap && list && !wrap.contains(e.target)){ list.style.display='none'; const c=document.getElementById('dsMonthCaret'); if(c)c.style.transform=''; }
 });
+
+/* ── 로그인 잠금 관리 (관리자 전용) ── */
+function htmlLoginLock(){
+  return `
+  <div class="content">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 14px;background:#FCEBEB;border:1px solid #F09595;border-radius:10px">
+      <span style="font-size:14px">🔒</span>
+      <span style="font-size:13px;color:#A32D2D;font-weight:600">이 메뉴는 관리자 로그인 시에만 확인 가능합니다.</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--muted)">5회 실패 → 30분 자동잠금 · 이후 또 5회 실패 → 관리자 승인 필요</div>
+      <button onclick="loadLoginLocks()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:13px;font-weight:500;color:#2C2C2A;cursor:pointer">↻ 새로고침</button>
+    </div>
+    <div id="lockTableWrap" style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--text3);font-size:13px">불러오는 중…</div>
+  </div>`;
+}
+async function loadLoginLocks(){
+  const wrap=document.getElementById('lockTableWrap'); if(!wrap) return;
+  let rows=[];
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_login_locks`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)},
+      body:'{}'
+    });
+    if(!res.ok){ wrap.innerHTML='<div style="padding:8px;color:var(--red);font-size:13px">불러오기 실패 (권한을 확인해주세요)</div>'; return; }
+    rows=await res.json();
+  }catch(e){ wrap.innerHTML='<div style="padding:8px;color:var(--red);font-size:13px">불러오기 실패 (네트워크)</div>'; return; }
+  if(!Array.isArray(rows)) rows=[];
+  const lockedCnt=rows.filter(r=>r.requires_admin||(r.locked_until&&new Date(r.locked_until)>new Date())).length;
+  const badge=document.getElementById('lockBadge');
+  if(badge){ badge.textContent=lockedCnt; badge.style.display=lockedCnt?'':'none'; }
+  if(!rows.length){
+    wrap.innerHTML='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px">🟢 로그인 실패 기록이 없습니다</div>';
+    return;
+  }
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=s=>{ if(!s) return '-'; const d=new Date(s); return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  wrap.style.padding='0'; wrap.style.overflow='hidden'; wrap.style.textAlign='left';
+  wrap.innerHTML=`
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="background:var(--surface)">
+        <th style="text-align:left;padding:10px 14px;font-weight:600;color:var(--text2)">업체</th>
+        <th style="text-align:left;padding:10px 8px;font-weight:600;color:var(--text2)">실패</th>
+        <th style="text-align:left;padding:10px 8px;font-weight:600;color:var(--text2)">상태</th>
+        <th style="text-align:left;padding:10px 8px;font-weight:600;color:var(--text2)">마지막 시도</th>
+        <th style="text-align:right;padding:10px 14px;font-weight:600;color:var(--text2)">조치</th>
+      </tr>
+      ${rows.map(r=>{
+        const until=r.locked_until?new Date(r.locked_until):null;
+        const timed=until&&until>new Date();
+        let st,cnt;
+        if(r.requires_admin){ st='<span style="font-size:11px;background:#FCEBEB;color:#A32D2D;border-radius:5px;padding:2px 7px;font-weight:600">승인 필요</span>'; cnt='<span style="color:var(--red);font-weight:600">잠김</span>'; }
+        else if(timed){ st=`<span style="font-size:11px;background:#FAEEDA;color:#854F0B;border-radius:5px;padding:2px 7px;font-weight:600">30분 잠금 · ${pad(until.getHours())}:${pad(until.getMinutes())} 해제</span>`; cnt='<span style="color:#854F0B;font-weight:600">잠김</span>'; }
+        else { st='<span style="font-size:11px;background:#E1F5EE;color:#0F6E56;border-radius:5px;padding:2px 7px;font-weight:600">정상</span>'; cnt=`${r.fail_count||0}회`; }
+        const act=(r.requires_admin||timed)
+          ? `<button onclick="adminUnlockLogin('${String(r.client_key).replace(/'/g,"\\'")}')" style="padding:5px 11px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-size:12px;font-weight:600;cursor:pointer">🔓 해제</button>`
+          : '<span style="color:var(--text3)">—</span>';
+        return `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:11px 14px;font-weight:600">${r.company_name||r.client_key}</td>
+          <td style="padding:11px 8px">${cnt}</td>
+          <td style="padding:11px 8px">${st}</td>
+          <td style="padding:11px 8px;color:var(--text2)">${fmt(r.last_attempt_at)}</td>
+          <td style="padding:11px 14px;text-align:right">${act}</td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+}
+async function adminUnlockLogin(key){
+  if(!confirm(`"${key}" 계정의 로그인 잠금을 해제할까요?`)) return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_unlock_login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)},
+      body:JSON.stringify({p_key:key})
+    });
+    if(!res.ok){ toast('❌ 해제 실패 (권한을 확인해주세요)'); return; }
+  }catch(e){ toast('❌ 해제 실패'); return; }
+  toast('🔓 잠금이 해제되었습니다');
+  loadLoginLocks();
+}
 
 function htmlDataStatus(){
   return `
