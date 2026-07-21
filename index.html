@@ -9763,14 +9763,19 @@ function htmlDbReport(){
   return `
   <div class="content">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:8px;position:relative">
+      <div style="display:flex;align-items:center;gap:10px;position:relative;flex-wrap:wrap">
+        <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--white)">
+          <button type="button" id="dbTab-day" onclick="dbSetPeriod('day')" style="border:none;background:var(--blue);color:#fff;font-weight:700;font-size:13px;padding:8px 16px;cursor:pointer">일별</button>
+          <button type="button" id="dbTab-week" onclick="dbSetPeriod('week')" style="border:none;border-left:1px solid var(--border);background:var(--white);color:var(--text2);font-weight:500;font-size:13px;padding:8px 16px;cursor:pointer">주별</button>
+          <button type="button" id="dbTab-month" onclick="dbSetPeriod('month')" style="border:none;border-left:1px solid var(--border);background:var(--white);color:var(--text2);font-weight:500;font-size:13px;padding:8px 16px;cursor:pointer">월별</button>
+        </div>
         <button onclick="dbShiftDate(-1)" style="border:1px solid var(--border);background:var(--white);border-radius:8px;width:32px;height:32px;cursor:pointer">‹</button>
         <input type="hidden" id="dbDate" value="${dbToday()}">
         <button type="button" onclick="dbDateToggle(event)" style="display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none">
           <span style="color:var(--text3)">📅</span><span id="dbDateLabel">${dbToday()}</span><span style="color:var(--text3);font-size:11px">▾</span>
         </button>
         <button onclick="dbShiftDate(1)" style="border:1px solid var(--border);background:var(--white);border-radius:8px;width:32px;height:32px;cursor:pointer">›</button>
-        <div id="dbDatePop" style="display:none;position:absolute;top:42px;left:40px;z-index:60;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:252px"></div>
+        <div id="dbDatePop" style="display:none;position:absolute;top:44px;left:0;z-index:60;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:252px"></div>
       </div>
       <button onclick="dbOpenModal()" class="btn btn-bl btn-sm">+ 데이터 등록</button>
     </div>
@@ -9778,7 +9783,12 @@ function htmlDbReport(){
     <div id="dbModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.45);align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px">
       <div style="background:var(--white);border-radius:14px;max-width:900px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:16px;font-weight:700">📈 DB 취합 입력 <span id="dbModalDate" style="font-size:13px;font-weight:400;color:var(--text2)"></span></div>
+          <div style="display:flex;align-items:center;gap:10px;position:relative">
+            <div style="font-size:16px;font-weight:700">📈 DB 취합 입력</div>
+            <input type="hidden" id="dbmDate" value="${dbToday()}">
+            <button type="button" onclick="dbmToggle(event)" style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none"><span style="color:var(--text3)">📅</span><span id="dbmDateLabel">${dbToday()}</span><span style="color:var(--text3);font-size:10px">▾</span></button>
+            <div id="dbmPop" style="display:none;position:absolute;top:40px;left:0;z-index:2100;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:252px"></div>
+          </div>
           <span onclick="dbCloseModal()" style="font-size:20px;color:var(--text3);cursor:pointer;line-height:1">✕</span>
         </div>
         <div id="dbModalBody"></div>
@@ -9794,45 +9804,96 @@ function htmlDbReport(){
   </div>`;
 }
 async function initDbReport(){ await loadDbAccounts(); await loadDbAnalysis(); }
-function dbShiftDate(days){ const el=document.getElementById('dbDate'); if(!el||!el.value) return; const d=new Date(el.value); d.setDate(d.getDate()+days); dbDateSet(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); loadDbAnalysis(); }
+let _dbPeriod='day';
 let _dbDP={y:2026,m:0};
-function dbDateSet(ds){ const inp=document.getElementById('dbDate'); if(inp) inp.value=ds; const lbl=document.getElementById('dbDateLabel'); if(lbl) lbl.textContent=ds; }
-function dbDateToggle(ev){ if(ev) ev.stopPropagation(); const pop=document.getElementById('dbDatePop'); if(!pop) return; if(pop.style.display==='block'){ pop.style.display='none'; return; } const cur=(document.getElementById('dbDate')||{}).value||dbToday(); const d=new Date(cur); _dbDP={y:d.getFullYear(),m:d.getMonth()}; dbDateRender(); pop.style.display='block'; }
-function dbDateMove(dir,ev){ if(ev) ev.stopPropagation(); _dbDP.m+=dir; if(_dbDP.m<0){_dbDP.m=11;_dbDP.y--;} if(_dbDP.m>11){_dbDP.m=0;_dbDP.y++;} dbDateRender(); }
-function dbDateToday(ev){ if(ev) ev.stopPropagation(); const t=new Date(); dbDatePick(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`); }
+let _dbCal={pop:'dbDatePop',pick:'dbDatePick'};
+function dbPad(n){ return String(n).padStart(2,'0'); }
+function dbFmt(d){ return `${d.getFullYear()}-${dbPad(d.getMonth()+1)}-${dbPad(d.getDate())}`; }
+function dbRange(){
+  const ds=(document.getElementById('dbDate')||{}).value||dbToday();
+  const d=new Date(ds);
+  if(_dbPeriod==='week'){
+    const dow=(d.getDay()+6)%7;
+    const from=new Date(d); from.setDate(d.getDate()-dow);
+    const to=new Date(from); to.setDate(from.getDate()+6);
+    return {from:dbFmt(from),to:dbFmt(to),label:`${from.getMonth()+1}/${from.getDate()} ~ ${to.getMonth()+1}/${to.getDate()}`};
+  }
+  if(_dbPeriod==='month'){
+    const from=new Date(d.getFullYear(),d.getMonth(),1);
+    const to=new Date(d.getFullYear(),d.getMonth()+1,0);
+    return {from:dbFmt(from),to:dbFmt(to),label:`${d.getFullYear()}년 ${d.getMonth()+1}월`};
+  }
+  return {from:ds,to:ds,label:ds};
+}
+function dbSetPeriod(p){
+  _dbPeriod=p;
+  ['day','week','month'].forEach(k=>{
+    const b=document.getElementById('dbTab-'+k); if(!b) return;
+    if(k===p){ b.style.background='var(--blue)'; b.style.color='#fff'; b.style.fontWeight='700'; }
+    else{ b.style.background='var(--white)'; b.style.color='var(--text2)'; b.style.fontWeight='500'; }
+  });
+  dbDateSet((document.getElementById('dbDate')||{}).value||dbToday());
+  loadDbAnalysis();
+}
+function dbShiftDate(dir){
+  const el=document.getElementById('dbDate'); if(!el||!el.value) return;
+  const d=new Date(el.value);
+  if(_dbPeriod==='week') d.setDate(d.getDate()+dir*7);
+  else if(_dbPeriod==='month') d.setMonth(d.getMonth()+dir);
+  else d.setDate(d.getDate()+dir);
+  dbDateSet(dbFmt(d)); loadDbAnalysis();
+}
+function dbDateSet(ds){
+  const inp=document.getElementById('dbDate'); if(inp) inp.value=ds;
+  const lbl=document.getElementById('dbDateLabel'); if(lbl) lbl.textContent=dbRange().label;
+}
+function dbDateToggle(ev){ if(ev) ev.stopPropagation(); const pop=document.getElementById('dbDatePop'); if(!pop) return; if(pop.style.display==='block'){ pop.style.display='none'; return; } const cur=(document.getElementById('dbDate')||{}).value||dbToday(); const d=new Date(cur); _dbDP={y:d.getFullYear(),m:d.getMonth()}; _dbCal={pop:'dbDatePop',pick:'dbDatePick'}; dbCalDraw(); pop.style.display='block'; }
 function dbDatePick(ds){ dbDateSet(ds); const pop=document.getElementById('dbDatePop'); if(pop) pop.style.display='none'; loadDbAnalysis(); }
-function dbDateRender(){
-  const pop=document.getElementById('dbDatePop'); if(!pop) return;
-  const pad=n=>String(n).padStart(2,'0');
+function dbCalMove(dir,ev){ if(ev) ev.stopPropagation(); _dbDP.m+=dir; if(_dbDP.m<0){_dbDP.m=11;_dbDP.y--;} if(_dbDP.m>11){_dbDP.m=0;_dbDP.y++;} dbCalDraw(); }
+function dbCalToday(ev){ if(ev) ev.stopPropagation(); window[_dbCal.pick](dbFmt(new Date())); }
+function dbCalDraw(){
+  const pop=document.getElementById(_dbCal.pop); if(!pop) return;
   const y=_dbDP.y, m=_dbDP.m;
-  const sel=(document.getElementById('dbDate')||{}).value||'';
-  const t=new Date(); const todayStr=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+  const selInput=(_dbCal.pop==='dbmPop')?'dbmDate':'dbDate';
+  const sel=(document.getElementById(selInput)||{}).value||'';
+  const todayStr=dbFmt(new Date());
+  const r=(_dbCal.pop==='dbDatePop'&&_dbPeriod!=='day')?dbRange():null;
   const daysInMonth=new Date(y,m+1,0).getDate(), firstDow=new Date(y,m,1).getDay(), prevDays=new Date(y,m,0).getDate();
   const dows=['일','월','화','수','목','금','토'];
   let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <button type="button" onclick="dbDateMove(-1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">‹</button>
+      <button type="button" onclick="dbCalMove(-1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">‹</button>
       <span style="font-size:13px;font-weight:600">${y}년 ${m+1}월</span>
-      <button type="button" onclick="dbDateMove(1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">›</button>
+      <button type="button" onclick="dbCalMove(1,event)" style="width:26px;height:26px;border:1px solid var(--border);background:var(--white);border-radius:8px;cursor:pointer">›</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">`+
     dows.map((d,i)=>`<div style="text-align:center;font-size:11px;padding:3px 0;color:${i===0?'#D4453A':i===6?'#378ADD':'var(--text3)'}">${d}</div>`).join('')+
     `</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
   for(let i=0;i<firstDow;i++){ html+=`<div style="height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);opacity:.4">${prevDays-firstDow+1+i}</div>`; }
   for(let d=1;d<=daysInMonth;d++){
-    const ds=`${y}-${pad(m+1)}-${pad(d)}`, col=(firstDow+d-1)%7, isSel=ds===sel, isToday=ds===todayStr;
+    const ds=`${y}-${dbPad(m+1)}-${dbPad(d)}`, col=(firstDow+d-1)%7, isSel=ds===sel, isToday=ds===todayStr;
+    const inRange=!!(r&&ds>=r.from&&ds<=r.to&&!isSel);
     let st='height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:12px;cursor:pointer;box-sizing:border-box;';
     if(isSel) st+='background:var(--blue);color:#fff;font-weight:700;';
+    else if(inRange) st+='background:var(--blue-l);color:var(--blue);font-weight:600;';
     else if(isToday) st+='border:1px solid var(--blue);color:var(--blue);';
     else st+=`color:${col===0?'#D4453A':col===6?'#378ADD':'var(--text)'};`;
-    const hov=isSel?'':` onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''"`;
-    html+=`<div onclick="dbDatePick('${ds}')"${hov} style="${st}">${d}</div>`;
+    const hov=(isSel||inRange)?'':` onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''"`;
+    html+=`<div onclick="${_dbCal.pick}('${ds}')"${hov} style="${st}">${d}</div>`;
   }
   html+=`</div><div style="display:flex;justify-content:flex-end;margin-top:8px">
-      <button type="button" onclick="dbDateToday(event)" style="font-size:12px;padding:5px 12px;border:1px solid var(--blue);background:var(--white);color:var(--blue);border-radius:9px;cursor:pointer;font-weight:600">오늘</button>
+      <button type="button" onclick="dbCalToday(event)" style="font-size:12px;padding:5px 12px;border:1px solid var(--blue);background:var(--white);color:var(--blue);border-radius:9px;cursor:pointer;font-weight:600">오늘</button>
     </div>`;
   pop.innerHTML=html;
 }
-document.addEventListener('click',function(e){ const pop=document.getElementById('dbDatePop'); if(pop&&pop.style.display==='block'&&!pop.contains(e.target)&&!(e.target.closest&&e.target.closest('button')&&e.target.closest('button').getAttribute('onclick')&&e.target.closest('button').getAttribute('onclick').includes('dbDateToggle'))){ pop.style.display='none'; } });
+document.addEventListener('click',function(e){
+  [['dbDatePop','dbDateToggle'],['dbmPop','dbmToggle']].forEach(pair=>{
+    const pop=document.getElementById(pair[0]);
+    if(pop&&pop.style.display==='block'&&!pop.contains(e.target)){
+      const btn=e.target.closest&&e.target.closest('button');
+      if(!(btn&&btn.getAttribute('onclick')&&btn.getAttribute('onclick').includes(pair[1]))) pop.style.display='none';
+    }
+  });
+});
 
 async function loadDbAccounts(){
   const ck=dbClientKey(); _dbAccounts=[]; if(!ck) return;
@@ -9847,15 +9908,22 @@ async function dbFetchDate(date){
 
 async function loadDbAnalysis(){
   const wrap=document.getElementById('dbAnalysis'); if(!wrap) return;
-  const ck=dbClientKey(); const date=(document.getElementById('dbDate')||{}).value; if(!ck||!date) return;
-  const byAcc=await dbFetchDate(date);
+  const ck=dbClientKey(); if(!ck) return;
+  const r=dbRange();
+  let rows=[];
+  try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=gte.${r.from}&report_date=lte.${r.to}&order=report_date`,{headers:dbHeaders()}); if(res.ok) rows=await res.json(); }catch(e){}
+  const byAcc={}; rows.forEach(x=>{ const k=x.account_id; if(!byAcc[k]) byAcc[k]={meta:0,power:0,powerlink:0,powercontents:0,db_count:0}; ['meta','power','powerlink','powercontents','db_count'].forEach(f=>{ byAcc[k][f]+=+x[f]||0; }); });
   let total=0,dbc=0,meta=0,naver=0;
-  _dbAccounts.forEach(a=>{ const r=byAcc[a.id]; if(!r) return; total+=dbTotalOf(r); dbc+=+r.db_count||0; meta+=+r.meta||0; naver+=dbNaverOf(r); });
+  _dbAccounts.forEach(a=>{ const v=byAcc[a.id]; if(!v) return; total+=dbTotalOf(v); dbc+=+v.db_count||0; meta+=+v.meta||0; naver+=dbNaverOf(v); });
   const avgCpa=dbc>0?Math.round(total/dbc):0;
-  const since=new Date(new Date(date).getTime()-13*864e5); const sinceStr=`${since.getFullYear()}-${String(since.getMonth()+1).padStart(2,'0')}-${String(since.getDate()).padStart(2,'0')}`;
-  let trend=[];
-  try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=gte.${sinceStr}&report_date=lte.${date}&order=report_date`,{headers:dbHeaders()}); if(res.ok) trend=await res.json(); }catch(e){}
-  const tmap={}; trend.forEach(r=>{ const d=r.report_date; if(!tmap[d]) tmap[d]={spend:0,db:0}; tmap[d].spend+=dbTotalOf(r); tmap[d].db+=+r.db_count||0; });
+  let trend=rows, tTitle=`일별 추이 · ${r.label}`;
+  if(_dbPeriod==='day'){
+    tTitle='일별 추이 · 최근 14일';
+    const since=new Date(new Date(r.to).getTime()-13*864e5); const sinceStr=dbFmt(since);
+    trend=[];
+    try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=gte.${sinceStr}&report_date=lte.${r.to}&order=report_date`,{headers:dbHeaders()}); if(res.ok) trend=await res.json(); }catch(e){}
+  }
+  const tmap={}; trend.forEach(x=>{ const d=x.report_date; if(!tmap[d]) tmap[d]={spend:0,db:0}; tmap[d].spend+=dbTotalOf(x); tmap[d].db+=+x.db_count||0; });
   const tdates=Object.keys(tmap).sort();
   const hasAccounts=_dbAccounts.length>0;
   wrap.innerHTML=`
@@ -9866,7 +9934,7 @@ async function loadDbAnalysis(){
     </div>
     <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:600">일별 추이 · 최근 14일</div>
+        <div style="font-size:13px;font-weight:600">${tTitle}</div>
         <div style="display:flex;gap:14px;font-size:11px;color:var(--text2)">
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#85B7EB;vertical-align:0"></span> 총 소진액</span>
           <span><span style="display:inline-block;width:10px;height:2px;background:#D85A30;vertical-align:2px"></span> DB 건수</span>
@@ -9906,13 +9974,18 @@ async function loadDbAnalysis(){
 }
 
 async function dbOpenModal(){
-  const date=(document.getElementById('dbDate')||{}).value;
-  const md=document.getElementById('dbModalDate'); if(md) md.textContent='· '+date;
-  const byAcc=await dbFetchDate(date);
+  const r=dbRange();
+  const md=(_dbPeriod==='day')?r.from:dbToday();
+  const inp=document.getElementById('dbmDate'); if(inp) inp.value=md;
+  const lbl=document.getElementById('dbmDateLabel'); if(lbl) lbl.textContent=md;
+  const byAcc=await dbFetchDate(md);
   renderDbInputs(byAcc);
   const m=document.getElementById('dbModal'); if(m) m.style.display='flex';
 }
 function dbCloseModal(){ const m=document.getElementById('dbModal'); if(m) m.style.display='none'; }
+function dbmToggle(ev){ if(ev) ev.stopPropagation(); const pop=document.getElementById('dbmPop'); if(!pop) return; if(pop.style.display==='block'){ pop.style.display='none'; return; } const cur=(document.getElementById('dbmDate')||{}).value||dbToday(); const d=new Date(cur); _dbDP={y:d.getFullYear(),m:d.getMonth()}; _dbCal={pop:'dbmPop',pick:'dbmPick'}; dbCalDraw(); pop.style.display='block'; }
+function dbmPick(ds){ const inp=document.getElementById('dbmDate'); if(inp) inp.value=ds; const lbl=document.getElementById('dbmDateLabel'); if(lbl) lbl.textContent=ds; const pop=document.getElementById('dbmPop'); if(pop) pop.style.display='none'; dbReloadModalInputs(); }
+async function dbReloadModalInputs(){ const md=(document.getElementById('dbmDate')||{}).value; if(!md) return; const byAcc=await dbFetchDate(md); renderDbInputs(byAcc); }
 function dbInputCell(accId,field,val){
   return `<td style="padding:6px 6px"><input type="number" id="db-${accId}-${field}" value="${val!=null&&val!==''?val:''}" placeholder="0" oninput="dbLiveCalc()" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;text-align:right;box-sizing:border-box"></td>`;
 }
@@ -9986,20 +10059,20 @@ async function dbAddAccount(group){
     const res=await fetch(`${SUPABASE_URL}/rest/v1/db_accounts`,{method:'POST',headers:{...dbHeaders(),'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({client_key:dbClientKey(),name:name.trim(),group_type:group,sort_order:_dbAccounts.filter(a=>a.group_type===group).length})});
     if(!res.ok){ toast('❌ 계정 추가 실패 (중복 이름/권한 확인)'); return; }
   }catch(e){ toast('❌ 계정 추가 실패'); return; }
-  await loadDbAccounts(); dbOpenModal(); loadDbAnalysis(); toast('✅ 계정이 추가되었습니다');
+  await loadDbAccounts(); dbReloadModalInputs(); loadDbAnalysis(); toast('✅ 계정이 추가되었습니다');
 }
 async function dbRenameAccount(id,cur){
   const name=prompt('계정 이름 수정', cur||''); if(!name||!name.trim()) return;
   try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_accounts?id=eq.${id}`,{method:'PATCH',headers:{...dbHeaders(),'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:name.trim()})}); if(!res.ok){ toast('❌ 수정 실패'); return; } }catch(e){ toast('❌ 수정 실패'); return; }
-  await loadDbAccounts(); dbOpenModal(); loadDbAnalysis(); toast('✏️ 수정되었습니다');
+  await loadDbAccounts(); dbReloadModalInputs(); loadDbAnalysis(); toast('✏️ 수정되었습니다');
 }
 async function dbDeleteAccount(id){
   if(!confirm('이 계정과 관련된 모든 취합 데이터가 삭제됩니다. 계속할까요?')) return;
   try{ await fetch(`${SUPABASE_URL}/rest/v1/db_accounts?id=eq.${id}`,{method:'DELETE',headers:dbHeaders()}); }catch(e){}
-  await loadDbAccounts(); dbOpenModal(); loadDbAnalysis(); toast('🗑️ 삭제되었습니다');
+  await loadDbAccounts(); dbReloadModalInputs(); loadDbAnalysis(); toast('🗑️ 삭제되었습니다');
 }
 async function dbLoadYesterday(){
-  const ck=dbClientKey(); const date=(document.getElementById('dbDate')||{}).value; if(!ck||!date) return;
+  const ck=dbClientKey(); const date=(document.getElementById('dbmDate')||{}).value; if(!ck||!date) return;
   const y=new Date(date); y.setDate(y.getDate()-1); const ys=`${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`;
   let rows=[];
   try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${ys}`,{headers:dbHeaders()}); if(res.ok) rows=await res.json(); }catch(e){}
@@ -10008,7 +10081,7 @@ async function dbLoadYesterday(){
   dbLiveCalc(); toast('📋 어제 값을 불러왔습니다 (저장하려면 저장 버튼)');
 }
 async function saveDbReport(){
-  const ck=dbClientKey(); const date=(document.getElementById('dbDate')||{}).value;
+  const ck=dbClientKey(); const date=(document.getElementById('dbmDate')||{}).value;
   if(!ck||!date){ toast('날짜를 확인해주세요'); return; }
   if(!_dbAccounts.length){ toast('먼저 계정을 추가해주세요'); return; }
   const rows=_dbAccounts.map(a=>{
