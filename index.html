@@ -3062,10 +3062,8 @@ function drawCalGrid(firstDow, days, events){
       let lane=0;
       while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
       lanes[w].push({lane,s:sD,e:eD});
-      if(lane<maxBars){
-        if(!segs[w]) segs[w]=[];
-        segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,gi:ev.gi,status:ev.status});
-      }
+      if(!segs[w]) segs[w]=[];
+      segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,gi:ev.gi,status:ev.status});
       d=segEnd+1;
     }
   });
@@ -3073,6 +3071,8 @@ function drawCalGrid(firstDow, days, events){
   // 둥근 날짜 타일 + 라운드 형광펜 바 (주 단위)
   let html='';
   for(let w=0;w<rows;w++){
+    const _lm = lanes[w] ? Math.max(...lanes[w].map(x=>x.lane)) : -1;
+    const cellH = Math.max(80, 30 + (_lm+1)*19);
     let tiles='';
     for(let c=0;c<cols;c++){
       const dn=w*cols+c-firstDow+1;
@@ -3082,9 +3082,9 @@ function drawCalGrid(firstDow, days, events){
         const numSpan=isToday
           ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700">${dn}</span>`
           : `<span style="color:${baseCol}">${dn}</span>`;
-        tiles+=`<div style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px">${numSpan}</div>`;
+        tiles+=`<div style="min-height:${cellH}px;border-radius:10px;padding:5px 7px;font-size:12px">${numSpan}</div>`;
       } else {
-        tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
+        tiles+=`<div style="min-height:${cellH}px;border-radius:10px"></div>`;
       }
     }
     let bars='';
@@ -8337,10 +8337,8 @@ function renderCal(){
       let lane=0;
       while(lanes[w].some(x=>x.lane===lane && !(eD<x.s||sD>x.e))) lane++;
       lanes[w].push({lane,s:sD,e:eD});
-      if(lane<maxBars){
-        if(!segs[w]) segs[w]=[];
-        segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,date:ev.date});
-      }
+      if(!segs[w]) segs[w]=[];
+      segs[w].push({lane,cs:sD+1,ce:eD+2,label:ev.label,c:ev.c,t:ev.t,date:ev.date});
       d=segEnd+1;
     }
   });
@@ -8352,6 +8350,8 @@ function renderCal(){
 
   // 둥근 날짜 타일 + 라운드 형광펜 바 (주 단위)
   for(let w=0;w<rows;w++){
+    const _lm = lanes[w] ? Math.max(...lanes[w].map(x=>x.lane)) : -1;
+    const cellH = Math.max(80, 30 + (_lm+1)*19);
     let tiles='';
     for(let c=0;c<cols;c++){
       const dn=w*cols+c-firstDow+1;
@@ -8363,9 +8363,9 @@ function renderCal(){
         if(isToday) numSpan=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700">${dn}</span>`;
         else if(isSel) numSpan=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--indigo);color:#fff;font-weight:700">${dn}</span>`;
         else numSpan=`<span style="color:${baseCol}">${dn}</span>`;
-        tiles+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')" onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''" style="min-height:80px;border-radius:10px;padding:5px 7px;font-size:12px;cursor:pointer">${numSpan}</div>`;
+        tiles+=`<div class="ncell" data-date="${dateStr}" onclick="selectCalDay('${dateStr}')" onmouseover="this.style.background='var(--blue-l)'" onmouseout="this.style.background=''" style="min-height:${cellH}px;border-radius:10px;padding:5px 7px;font-size:12px;cursor:pointer">${numSpan}</div>`;
       } else {
-        tiles+=`<div style="min-height:80px;border-radius:10px"></div>`;
+        tiles+=`<div style="min-height:${cellH}px;border-radius:10px"></div>`;
       }
     }
     let bars='';
