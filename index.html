@@ -922,6 +922,19 @@ canvas{max-height:210px}
 ════════════════════════════════════════ */
 const ACCOUNTS=[];
 const MANAGERS=['이채환','김승진','이종선','공지수'];
+// 매체 목록 + 고정 색상 [배경,글자] + 유형 아이콘
+const MEDIA_LIST=[
+  {key:'naver', label:'네이버', bg:'#C0DD97', tx:'#173404'},
+  {key:'meta',  label:'메타',   bg:'#B5D4F4', tx:'#042C53'},
+  {key:'gfa',   label:'GFA',    bg:'#CECBF6', tx:'#26215C'},
+  {key:'store', label:'스토어', bg:'#F5C4B3', tx:'#4A1B0C'},
+  {key:'google',label:'구글',   bg:'#F7C1C1', tx:'#501313'},
+  {key:'ebay',  label:'이베이', bg:'#D3D1C7', tx:'#2C2C2A'}
+];
+const TYPE_ICON={meet:'🤝',report:'📊',notice:'📢',task:'✅'};
+function mediaColor(m){ const x=MEDIA_LIST.find(v=>v.key===m); return x?[x.bg,x.tx]:null; }
+function mediaLabel(m){ const x=MEDIA_LIST.find(v=>v.key===m); return x?x.label:''; }
+function barLabel(ev){ return (TYPE_ICON[ev.type]?TYPE_ICON[ev.type]+' ':'')+(ev.title||ev.label||'일정'); }
 
 let calEvents=[];
 
@@ -2904,11 +2917,11 @@ async function loadTaskCalendar(){
       const key = (r.title||'')+'|'+(r.event_date||'').slice(0,7);
       const sd = (r.event_date||'').slice(0,10);
       const ed = (r.end_date||r.event_date||'').slice(0,10);
-      if(!map[key]){ map[key] = { title:r.title||'작업', s:sd, e:ed, desc:r.description||'', result:r.result||'', platform:r.platform||r.type||'', status:r.status||'', manager:r.manager||'', ids:[r.id] }; }
+      if(!map[key]){ map[key] = { title:r.title||'작업', s:sd, e:ed, desc:r.description||'', result:r.result||'', platform:r.platform||r.type||'', status:r.status||'', manager:r.manager||'', media:r.media||'', type:r.type||'', ids:[r.id] }; }
       else { if(sd && sd<map[key].s) map[key].s=sd; if(ed && ed>map[key].e) map[key].e=ed; map[key].ids.push(r.id);
              if(r.description) map[key].desc=r.description; if(r.result) map[key].result=r.result; }
     });
-    _calTasks = Object.values(map).map(t=>({ upload_date:t.s, done_date:t.e, title:t.title, content:t.desc, result:t.result, platform:t.platform, status:t.status, manager:t.manager, ids:t.ids }));
+    _calTasks = Object.values(map).map(t=>({ upload_date:t.s, done_date:t.e, title:t.title, content:t.desc, result:t.result, platform:t.platform, status:t.status, manager:t.manager, media:t.media, type:t.type, ids:t.ids }));
     if(_calYear===null){
       let latest=null;
       _calTasks.forEach(r=>{ const d=(r.done_date||r.upload_date||'').slice(0,7); if(d && (!latest||d>latest)) latest=d; });
@@ -2978,8 +2991,8 @@ function renderTaskCalendar(){
     if(e0<monthStart || s0>monthEnd) return;
     const sd=Math.max(1, s0>=monthStart ? +s0.slice(8,10) : 1);
     const ed=Math.min(daysInMonth, e0<=monthEnd ? +e0.slice(8,10) : daysInMonth);
-    const col=COLORS[i%COLORS.length];
-    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:r.title||'작업',status:r.status||'',gi:i});
+    const col=mediaColor(r.media)||COLORS[i%COLORS.length];
+    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:(TYPE_ICON[r.type]?TYPE_ICON[r.type]+' ':'')+(r.title||'작업'),status:r.status||'',gi:i});
   });
 
   const listSorted=[..._calTasks].filter(r=>{
@@ -2992,7 +3005,7 @@ function renderTaskCalendar(){
     const e0=(r.done_date||'').slice(5,10).replace('-','/');
     const badge = (e0 && e0!==s0) ? `${s0}~${e0}` : s0;
     const gi=_calTasks.indexOf(r);
-    const col=COLORS[gi%COLORS.length];
+    const col=mediaColor(r.media)||COLORS[gi%COLORS.length];
     const stColor = r.status==='완료'||r.done_date ? '#0F6E56' : '#854F0B';
     const stBg    = r.status==='완료'||r.done_date ? '#E1F5EE' : '#FAEEDA';
     const stTxt   = r.status || (r.done_date ? '완료' : '진행중');
@@ -8204,7 +8217,8 @@ async function saveEventToSupabase(ev){
         type:        ev.type || 'task',
         title:       ev.title,
         description: ev.desc || '',
-        manager:     ev.manager || ''
+        manager:     ev.manager || '',
+        media:       ev.media || null
       })
     });
     if(res.ok){ const rows=await res.json(); if(Array.isArray(rows)&&rows[0]&&rows[0].id!=null) ev.id=rows[0].id; }
@@ -8233,7 +8247,8 @@ async function loadCalEvents(){
       type:     r.type,
       title:    r.title,
       desc:     r.description||'',
-      manager:  r.manager||''
+      manager:  r.manager||'',
+      media:    r.media||''
     }));
 
    // 최초 진입 시: 일정 있으면 최신 달, 없으면 대시보드 기간(광고 데이터 달)로 이동
@@ -8305,8 +8320,8 @@ function renderCal(){
     if(e0<monthStart || s0>monthEnd) return;
     const sd=s0>=monthStart? +s0.slice(8,10) : 1;
     const ed=e0<=monthEnd? +e0.slice(8,10) : daysInMonth;
-    const col=barOf(e.type);
-    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:e.title||'일정',date:s0});
+    const col=mediaColor(e.media)||barOf(e.type);
+    evs.push({s:sd,e:ed,c:col[0],t:col[1],label:barLabel(e),date:s0});
   });
 
   // 주별 레인 배치
@@ -8437,6 +8452,7 @@ function openAddEventModal(ev){
   const initTitle = ev ? (ev.title||'') : '';
   const initDesc  = ev ? (ev.desc||'') : '';
   const initMgr   = ev ? (ev.manager||'') : '';
+  const initMedia = ev ? (ev.media||'') : '';
   document.getElementById('modalTitle').textContent = ev ? '📅 일정 수정' : '📅 일정 추가';
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:13px">
@@ -8454,6 +8470,13 @@ function openAddEventModal(ev){
             <div class="ef-type-opt" data-v="notice" onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">📢 공지</div>
             <div class="ef-type-opt" data-v="task"   onclick="efTypePick(this)" style="padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer">✅ 작업</div>
           </div>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">매체 <span style="font-weight:400;color:var(--text3)">· 색으로 구분됩니다</span></label>
+        <input type="hidden" id="ef-media" value="${initMedia}">
+        <div id="ef-media-pills" style="display:flex;flex-wrap:wrap;gap:6px">
+          ${MEDIA_LIST.map(mm=>`<button type="button" data-v="${mm.key}" onclick="efMediaPick(this)" style="font-size:12px;background:${mm.bg};color:${mm.tx};border-radius:20px;padding:6px 13px;border:2px solid ${initMedia===mm.key?mm.tx:'transparent'};cursor:pointer;font-weight:${initMedia===mm.key?'700':'500'}">${mm.label}</button>`).join('')}
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -8593,7 +8616,7 @@ async function updateEventToSupabase(id, ev){
     const res=await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(id)}`,{
       method:'PATCH',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'return=minimal'},
-      body:JSON.stringify({ event_date:ev.date, end_date:ev.date_end||ev.date, type:ev.type||'task', title:ev.title, description:ev.desc||'', manager:ev.manager||'' })
+      body:JSON.stringify({ event_date:ev.date, end_date:ev.date_end||ev.date, type:ev.type||'task', title:ev.title, description:ev.desc||'', manager:ev.manager||'', media:ev.media||null })
     });
     if(!res.ok){ console.warn('일정 수정 오류:', res.status, await res.text()); return false; }
     return true;
@@ -8618,7 +8641,7 @@ var efTaskIds=null;
 function editTask(idx){
   const t=_calTasks[idx]; if(!t) return;
   const ov=document.getElementById('taskDetailOverlay'); if(ov) ov.remove();
-  const ev={ id:(t.ids&&t.ids[0])||null, type:t.platform||'task', date:t.upload_date, date_end:t.done_date||t.upload_date, title:t.title, desc:t.content||'', manager:t.manager||'' };
+  const ev={ id:(t.ids&&t.ids[0])||null, type:t.platform||'task', date:t.upload_date, date_end:t.done_date||t.upload_date, title:t.title, desc:t.content||'', manager:t.manager||'', media:t.media||'' };
   openAddEventModal(ev);
   efTaskIds=(t.ids||[]).slice();
   const footer=document.getElementById('modalFooter');
@@ -8635,9 +8658,10 @@ async function saveTaskEdit(){
   const type=document.getElementById('ef-type').value;
   const desc=document.getElementById('ef-desc').value;
   const manager=document.getElementById('ef-mgr').value;
+  const media=(document.getElementById('ef-media')||{}).value || '';
   const ids=(efTaskIds||[]).slice(); efTaskIds=null;
   if(!ids.length){ toast('❌ 대상을 찾을 수 없습니다'); return; }
-  const ok=await updateEventToSupabase(ids[0],{date:dateStart,date_end:dateEnd,type,title,desc,manager});
+  const ok=await updateEventToSupabase(ids[0],{date:dateStart,date_end:dateEnd,type,title,desc,manager,media});
   if(!ok){ toast('❌ 수정 실패 (권한/네트워크 확인)'); return; }
   for(let i=1;i<ids.length;i++){
     try{ await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?id=eq.${encodeURIComponent(ids[i])}`,{method:'DELETE',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}}); }catch(e){}
@@ -8688,6 +8712,17 @@ function efTypeToggle(e){
     o.onmouseout=function(){ this.style.background=cur?'#EEEDFE':'transparent'; };
   });
 }
+function efMediaPick(el){
+  const v=el.dataset.v;
+  const inp=document.getElementById('ef-media');
+  const cur=inp.value===v;
+  inp.value=cur?'':v;  // 같은 걸 다시 누르면 선택 해제
+  document.querySelectorAll('#ef-media-pills button').forEach(b=>{
+    const on=b.dataset.v===inp.value;
+    b.style.border='2px solid '+(on?b.style.color:'transparent');
+    b.style.fontWeight=on?'700':'500';
+  });
+}
 function efTypePick(el){
   document.getElementById('ef-type').value=el.dataset.v;
   document.getElementById('ef-type-label').textContent=el.textContent;
@@ -8709,19 +8744,20 @@ async function addEvent(){
   const type    = document.getElementById('ef-type').value;
   const desc    = document.getElementById('ef-desc').value;
   const manager = document.getElementById('ef-mgr').value;
+  const media   = (document.getElementById('ef-media')||{}).value || '';
   if(efEditId!=null){
     // 수정
-    const ok=await updateEventToSupabase(efEditId,{date:dateStart,date_end:dateEnd,type,title,desc,manager});
+    const ok=await updateEventToSupabase(efEditId,{date:dateStart,date_end:dateEnd,type,title,desc,manager,media});
     if(!ok){ toast('❌ 수정 실패 (권한/네트워크 확인)'); return; }
     const it=calEvents.find(e=>String(e.id)===String(efEditId));
-    if(it){ it.date=dateStart; it.date_end=dateEnd; it.type=type; it.title=title; it.desc=desc; it.manager=manager; }
+    if(it){ it.date=dateStart; it.date_end=dateEnd; it.type=type; it.title=title; it.desc=desc; it.manager=manager; it.media=media; }
     efEditId=null;
     closeModal();
     renderCal();
     toast('✏️ 일정이 수정되었습니다');
   } else {
     // 추가
-    const newEv = { id: Date.now()+Math.random(), date: dateStart, date_end: dateEnd, type, title, desc, manager };
+    const newEv = { id: Date.now()+Math.random(), date: dateStart, date_end: dateEnd, type, title, desc, manager, media };
     calEvents.push(newEv);
     await saveEventToSupabase(newEv);
     closeModal();
