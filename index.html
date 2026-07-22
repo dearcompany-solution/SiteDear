@@ -9782,14 +9782,30 @@ function htmlDbReport(){
     <div id="dbAnalysis"></div>
     <div id="dbModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.45);align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px">
       <div style="background:var(--white);border-radius:14px;max-width:900px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <div style="display:flex;align-items:center;gap:10px;position:relative">
             <div style="font-size:16px;font-weight:700">📈 DB 취합 입력</div>
             <input type="hidden" id="dbmDate" value="${dbToday()}">
             <button type="button" onclick="dbmToggle(event)" style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none"><span style="color:var(--text3)">📅</span><span id="dbmDateLabel">${dbToday()}</span><span style="color:var(--text3);font-size:10px">▾</span></button>
             <div id="dbmPop" style="display:none;position:absolute;top:40px;left:0;z-index:2100;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:252px"></div>
           </div>
-          <span onclick="dbCloseModal()" style="font-size:20px;color:var(--text3);cursor:pointer;line-height:1">✕</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" onclick="dbMoveToggle()" style="border:1px solid var(--border);background:var(--white);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--text2);cursor:pointer">📆 날짜 변경</button>
+            <button type="button" onclick="dbDeleteDay()" style="border:1px solid #E3B9B4;background:var(--white);color:var(--red,#D4453A);border-radius:8px;padding:6px 10px;font-size:12.5px;cursor:pointer">🗑 이 날짜 삭제</button>
+            <span onclick="dbCloseModal()" style="font-size:20px;color:var(--text3);cursor:pointer;line-height:1">✕</span>
+          </div>
+        </div>
+        <div id="dbMovePanel" style="display:none;background:#E6F1FB;border:1px solid #B5D4F4;border-radius:10px;padding:12px 14px;margin-bottom:14px;position:relative">
+          <div style="font-size:12.5px;color:#185FA5;margin-bottom:8px"><b id="dbMoveSrc"></b> 에 저장된 데이터 전체를 아래 날짜로 이동합니다</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12.5px;color:#185FA5">이동할 날짜</span>
+            <input type="hidden" id="dbmvDate" value="">
+            <button type="button" onclick="dbmvToggle(event)" style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--white);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:#2C2C2A;cursor:pointer;outline:none"><span style="color:var(--text3)">📅</span><span id="dbmvDateLabel">-</span><span style="color:var(--text3);font-size:10px">▾</span></button>
+            <button type="button" onclick="dbMoveDay()" class="btn btn-bl btn-sm">이동 →</button>
+            <button type="button" onclick="dbMoveToggle()" style="border:1px solid var(--border);background:var(--white);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer">취소</button>
+            <div id="dbmvPop" style="display:none;position:absolute;top:76px;left:14px;z-index:2200;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:252px"></div>
+          </div>
+          <div style="font-size:11.5px;color:#185FA5;margin-top:8px">이동할 날짜에 이미 데이터가 있으면 덮어쓸지 한 번 더 확인합니다.</div>
         </div>
         <div id="dbModalBody"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
@@ -9854,7 +9870,7 @@ function dbCalToday(ev){ if(ev) ev.stopPropagation(); window[_dbCal.pick](dbFmt(
 function dbCalDraw(){
   const pop=document.getElementById(_dbCal.pop); if(!pop) return;
   const y=_dbDP.y, m=_dbDP.m;
-  const selInput=(_dbCal.pop==='dbmPop')?'dbmDate':'dbDate';
+  const selInput=(_dbCal.pop==='dbmPop')?'dbmDate':(_dbCal.pop==='dbmvPop')?'dbmvDate':'dbDate';
   const sel=(document.getElementById(selInput)||{}).value||'';
   const todayStr=dbFmt(new Date());
   const r=(_dbCal.pop==='dbDatePop'&&_dbPeriod!=='day')?dbRange():null;
@@ -9886,7 +9902,7 @@ function dbCalDraw(){
   pop.innerHTML=html;
 }
 document.addEventListener('click',function(e){
-  [['dbDatePop','dbDateToggle'],['dbmPop','dbmToggle']].forEach(pair=>{
+  [['dbDatePop','dbDateToggle'],['dbmPop','dbmToggle'],['dbmvPop','dbmvToggle']].forEach(pair=>{
     const pop=document.getElementById(pair[0]);
     if(pop&&pop.style.display==='block'&&!pop.contains(e.target)){
       const btn=e.target.closest&&e.target.closest('button');
@@ -9986,6 +10002,53 @@ function dbCloseModal(){ const m=document.getElementById('dbModal'); if(m) m.sty
 function dbmToggle(ev){ if(ev) ev.stopPropagation(); const pop=document.getElementById('dbmPop'); if(!pop) return; if(pop.style.display==='block'){ pop.style.display='none'; return; } const cur=(document.getElementById('dbmDate')||{}).value||dbToday(); const d=new Date(cur); _dbDP={y:d.getFullYear(),m:d.getMonth()}; _dbCal={pop:'dbmPop',pick:'dbmPick'}; dbCalDraw(); pop.style.display='block'; }
 function dbmPick(ds){ const inp=document.getElementById('dbmDate'); if(inp) inp.value=ds; const lbl=document.getElementById('dbmDateLabel'); if(lbl) lbl.textContent=ds; const pop=document.getElementById('dbmPop'); if(pop) pop.style.display='none'; dbReloadModalInputs(); }
 async function dbReloadModalInputs(){ const md=(document.getElementById('dbmDate')||{}).value; if(!md) return; const byAcc=await dbFetchDate(md); renderDbInputs(byAcc); }
+function dbMoveToggle(){
+  const p=document.getElementById('dbMovePanel'); if(!p) return;
+  if(p.style.display==='block'){ p.style.display='none'; return; }
+  const src=(document.getElementById('dbmDate')||{}).value||dbToday();
+  const b=document.getElementById('dbMoveSrc'); if(b) b.textContent=src;
+  const mv=document.getElementById('dbmvDate'); if(mv&&(!mv.value||mv.value===src)) mv.value=dbToday()===src?dbFmt(new Date()):dbToday();
+  const ml=document.getElementById('dbmvDateLabel'); if(ml) ml.textContent=mv?mv.value:'-';
+  p.style.display='block';
+}
+function dbmvToggle(ev){ if(ev) ev.stopPropagation(); const pop=document.getElementById('dbmvPop'); if(!pop) return; if(pop.style.display==='block'){ pop.style.display='none'; return; } const cur=(document.getElementById('dbmvDate')||{}).value||dbToday(); const d=new Date(cur); _dbDP={y:d.getFullYear(),m:d.getMonth()}; _dbCal={pop:'dbmvPop',pick:'dbmvPick'}; dbCalDraw(); pop.style.display='block'; }
+function dbmvPick(ds){ const inp=document.getElementById('dbmvDate'); if(inp) inp.value=ds; const lbl=document.getElementById('dbmvDateLabel'); if(lbl) lbl.textContent=ds; const pop=document.getElementById('dbmvPop'); if(pop) pop.style.display='none'; }
+async function dbMoveDay(){
+  const ck=dbClientKey();
+  const src=(document.getElementById('dbmDate')||{}).value;
+  const dst=(document.getElementById('dbmvDate')||{}).value;
+  if(!ck||!src||!dst){ toast('날짜를 확인해주세요'); return; }
+  if(src===dst){ toast('이동할 날짜가 현재 날짜와 같습니다'); return; }
+  let rows=[];
+  try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${src}`,{headers:dbHeaders()}); if(res.ok) rows=await res.json(); }catch(e){}
+  if(!rows.length){ toast('이동할 데이터가 없습니다 (먼저 저장된 날짜인지 확인)'); return; }
+  let dstRows=[];
+  try{ const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${dst}`,{headers:dbHeaders()}); if(res.ok) dstRows=await res.json(); }catch(e){}
+  const msg=dstRows.length?(dst+' 에 이미 데이터가 있습니다.\n'+src+' 데이터로 덮어쓰며 이동할까요?'):(src+' → '+dst+' 로 데이터를 이동할까요?');
+  if(!confirm(msg)) return;
+  const moved=rows.map(r=>({client_key:r.client_key,account_id:r.account_id,report_date:dst,meta:+r.meta||0,power:+r.power||0,powerlink:+r.powerlink||0,powercontents:+r.powercontents||0,db_count:+r.db_count||0}));
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?on_conflict=account_id,report_date`,{method:'POST',headers:{...dbHeaders(),'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(moved)});
+    if(!res.ok){ toast('❌ 이동 실패 (권한/네트워크 확인)'); return; }
+    await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${src}`,{method:'DELETE',headers:dbHeaders()});
+  }catch(e){ toast('❌ 이동 실패'); return; }
+  const inp=document.getElementById('dbmDate'); if(inp) inp.value=dst;
+  const lbl=document.getElementById('dbmDateLabel'); if(lbl) lbl.textContent=dst;
+  const p=document.getElementById('dbMovePanel'); if(p) p.style.display='none';
+  toast('📆 '+src+' → '+dst+' 이동 완료');
+  dbReloadModalInputs(); loadDbAnalysis();
+}
+async function dbDeleteDay(){
+  const ck=dbClientKey(); const date=(document.getElementById('dbmDate')||{}).value;
+  if(!ck||!date){ toast('날짜를 확인해주세요'); return; }
+  if(!confirm(date+' 에 저장된 모든 계정의 데이터를 삭제할까요?\n(날짜를 잘못 선택해 저장한 경우 사용하세요)')) return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${date}`,{method:'DELETE',headers:dbHeaders()});
+    if(!res.ok){ toast('❌ 삭제 실패 (권한/네트워크 확인)'); return; }
+  }catch(e){ toast('❌ 삭제 실패'); return; }
+  toast('🗑️ '+date+' 데이터가 삭제되었습니다');
+  dbReloadModalInputs(); loadDbAnalysis();
+}
 function dbInputCell(accId,field,val){
   return `<td style="padding:6px 6px"><input type="number" id="db-${accId}-${field}" value="${val!=null&&val!==''?val:''}" placeholder="0" oninput="dbLiveCalc()" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;text-align:right;box-sizing:border-box"></td>`;
 }
