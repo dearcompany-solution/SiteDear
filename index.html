@@ -10029,7 +10029,7 @@ async function dbMoveDay(){
   const moved=rows.map(r=>({client_key:r.client_key,account_id:r.account_id,report_date:dst,meta:+r.meta||0,power:+r.power||0,powerlink:+r.powerlink||0,powercontents:+r.powercontents||0,db_count:+r.db_count||0}));
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/db_reports?on_conflict=account_id,report_date`,{method:'POST',headers:{...dbHeaders(),'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(moved)});
-    if(!res.ok){ toast('❌ 이동 실패 (권한/네트워크 확인)'); return; }
+    if(!res.ok){ toast('❌ 이동 실패 (권한/네트워크 확인)'); console.warn('이동 실패:', res.status, await res.text()); return; }
     await fetch(`${SUPABASE_URL}/rest/v1/db_reports?client_key=eq.${encodeURIComponent(ck)}&report_date=eq.${src}`,{method:'DELETE',headers:dbHeaders()});
   }catch(e){ toast('❌ 이동 실패'); return; }
   const inp=document.getElementById('dbmDate'); if(inp) inp.value=dst;
