@@ -2665,10 +2665,14 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
     const _insFrom=currentDateRange?.from||'';
     const _insTo=currentDateRange?.to||'';
     let url=`${SUPABASE_URL}/rest/v1/manager_feedbacks?client_key=eq.${encodeURIComponent(ck)}&tags=like.*${encodeURIComponent(tagKeyword)}*&order=created_at.desc&limit=20`;
-    if(_insFrom) url+=`&created_at=gte.${_insFrom}T00:00:00`;
+    if(_insFrom){
+      const f=new Date(_insFrom);
+      url+=`&created_at=gte.${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-01T00:00:00`;
+    }
     if(_insTo){
-      const toD=new Date(_insTo);toD.setDate(toD.getDate()+2);
-      url+=`&created_at=lte.${toD.toISOString().slice(0,10)}T23:59:59`;
+      const t=new Date(_insTo);
+      const le=new Date(t.getFullYear(),t.getMonth()+1,0);
+      url+=`&created_at=lte.${le.getFullYear()}-${String(le.getMonth()+1).padStart(2,'0')}-${String(le.getDate()).padStart(2,'0')}T23:59:59`;
     }
     if(!isAdmin) url+=`&status=eq.approved`;
     else url+=`&status=in.(approved,pending,rejected)`;
@@ -2741,7 +2745,7 @@ async function loadInsights2(page, tagKeyword, opElId, chElId){
         } else {
           borderStyle=`border-color:${color}`;
         }
-        return `<div class="mgr-ins-item" style="${borderStyle}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${aiBadge}${approvedBadge}${statusBadge}</div><div class="mgr-ins-item-text" style="${textStyle}">${r.text}</div>${isAdmin?actions:''}</div>`;
+        return `<div class="mgr-ins-item" style="${borderStyle}"><div class="mgr-ins-item-date">${ds} · ${r.author||'관리자'}${aiBadge}${approvedBadge}${statusBadge}</div><div class="mgr-ins-item-text" style="white-space:pre-wrap;word-break:break-word;${textStyle}">${r.text}</div>${isAdmin?actions:''}</div>`;
       }).join('');
     };
     renderCol(opinions,opElId,'#6366F1','opinion','등록된 의견이 없습니다');
