@@ -8425,13 +8425,13 @@ function renderEvList(dateFilter, filterYear, filterMonth){
   let evs;
   if(dateFilter){
     // 해당 날짜에 걸치는 일정(기간 포함)
-    evs=calEvents.filter(e=>{const s=(e.date||'').slice(0,10),en=((e.date_end||e.date)||'').slice(0,10);return s&&s<=dateFilter&&dateFilter<=en;}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    evs=calEvents.filter(e=>{const s=(e.date||'').slice(0,10),en=((e.date_end||e.date)||'').slice(0,10);return s&&s<=dateFilter&&dateFilter<=en;}).sort((a,b)=>(a.type==='notice'?0:1)-(b.type==='notice'?0:1)||(a.date||'').localeCompare(b.date||''));
   } else {
     // 해당 월 전체 날짜순 정렬
     const y=filterYear||calYear;
     const m=filterMonth||(calMonth+1);
     const prefix=`${y}-${String(m).padStart(2,'0')}`;
-    evs=calEvents.filter(e=>e.date&&e.date.startsWith(prefix)).sort((a,b)=>a.date.localeCompare(b.date));
+    evs=calEvents.filter(e=>e.date&&e.date.startsWith(prefix)).sort((a,b)=>(a.type==='notice'?0:1)-(b.type==='notice'?0:1)||a.date.localeCompare(b.date));
   }
   if(!evs.length){
     el.innerHTML=`<div class="ev-empty"><div class="ei">📅</div><p>일정이 없습니다</p></div>`;
