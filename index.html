@@ -5786,8 +5786,10 @@ function saveOneFile(fileObj, client) {
           for(let ri=headerIdx+1;ri<lines.length;ri++){
             const c=csvSplit(lines[ri]);
             if(!c[0]||!c[0].match(/^\d{4}/)) continue;
+            const dm=c[0].match(/^(\d{4})[.\-\/](\d{1,2})/);
+            const rowMonth=dm?dm[1]+'-'+String(+dm[2]).padStart(2,'0'):monthVal;
             stRows.push({
-              client_key:client, month:monthVal,
+              client_key:client, month:rowMonth,
               date:c[0], weekday:c[1]||'', time_slot:c[2]||'',
               buyers:Math.round(pNum(c[3])), orders:Math.round(pNum(c[4])),
               mobile_ratio_orders:+pPct(c[5]).toFixed(4),
@@ -5802,11 +5804,19 @@ function saveOneFile(fileObj, client) {
             });
           }
           if(!stRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — 데이터 없음`); return; }
+          const fileMonths=[...new Set(stRows.map(r=>r.month))].sort();
+          if(fileMonths.length>1||fileMonths[0]!==monthVal){
+            const baseLabel=fnMatch?'파일명':'선택한 달';
+            const ok=confirm(`⚠️ ${baseLabel}과 파일 내용의 날짜가 다릅니다.\n\n${baseLabel} 기준: ${monthVal}\n내용 날짜 기준: ${fileMonths.join(', ')}\n\n[확인] → 내용 날짜(${fileMonths.join(', ')}) 기준으로 저장\n[취소] → 업로드하지 않음`);
+            if(!ok){ fileObj.status='취소됨'; renderUploadTab(); toast(`🚫 ${fileObj.name} — 업로드를 취소했습니다`); return; }
+          }
           (async()=>{
             try{
               const h2={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
-              const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales?client_key=eq.${encodeURIComponent(client)}&month=eq.${monthVal}`,{method:'DELETE',headers:h2});
-              if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+              for(const fm of fileMonths){
+                const delRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales?client_key=eq.${encodeURIComponent(client)}&month=eq.${fm}`,{method:'DELETE',headers:h2});
+                if(!delRes.ok) throw new Error('DELETE 실패: '+await delRes.text());
+              }
               await new Promise(r=>setTimeout(r,300));
               for(let i=0;i<stRows.length;i+=100){
                 const postRes=await fetch(`${SUPABASE_URL}/rest/v1/store_sales`,{method:'POST',headers:{...h2,'Prefer':'return=minimal'},body:JSON.stringify(stRows.slice(i,i+100))});
@@ -5816,7 +5826,7 @@ function saveOneFile(fileObj, client) {
               }
               fileObj.status='저장완료'; fileObj.savedCount=stRows.length;
               renderUploadTab(); toast(`✅ ${fileObj.name} — ${stRows.length}개 저장 완료!`);
-              saveUploadLog(client, fileObj.name, 'store_sales', monthVal, stRows.length);
+              saveUploadLog(client, fileObj.name, 'store_sales', fileMonths.join(','), stRows.length);
             }catch(err){ fileObj.status='저장실패'; renderUploadTab(); toast('❌ 스토어 판매 저장 실패: '+err.message); }
           })();
           return;
