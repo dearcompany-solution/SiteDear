@@ -983,7 +983,7 @@ async function applyLatestDataDateRange(ck, force){
   if(!force){
     const stored=JSON.parse(sessionStorage.getItem('currentDateRange')||'null');
     const storedMonth = stored&&stored.from ? stored.from.slice(0,7) : '';
-    if(storedMonth && storedMonth>=latestMonth) return;
+    if(storedMonth === latestMonth) return;
   }
   const lastDay=String(new Date(Number(y),Number(m),0).getDate()).padStart(2,'0');
   currentDateRange={from:`${y}-${m}-01`, to:`${y}-${m}-${lastDay}`};
@@ -1305,6 +1305,7 @@ function checkDataAndGuide(data, period){
       sessionStorage.setItem('currentPage', currentUser.role === 'admin' ? 'admin' : 'combined');
     }
     errEl.style.display = 'none';
+    sessionStorage.removeItem('currentDateRange');   // 로그인 시 항상 최신 데이터 달로 시작
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appShell').style.display = 'block';
     initApp();
