@@ -2113,11 +2113,14 @@ function htmlNaver(){
           ['👁️','총 노출수',fmtn(combinedImp),'#3B82F6'],
           ['👆','총 클릭수',fmtn(combinedClick),'#3B82F6'],
           ['📊','CTR',(combinedCtr?combinedCtr.toFixed(2)+'%':'0%'),'#F59E0B'],
-          ['🎯','전환수',fmtn(combinedConv)+'건','#EF4444'],
+          ['🎯',(combinedRev>0?'전환수':'전환수(DB)'),fmtn(combinedConv)+'건','#EF4444']
+        ].concat(combinedRev>0?[
           ['💵','전환매출',fmt(combinedRev),'#FF6B35'],
           ['📈','ROAS',(combinedRoas?combinedRoas.toFixed(2)+'%':'0%'),'#03C75A'],
           ['💹','ROI',(combinedRoi?combinedRoi.toFixed(2)+'%':'0%'),combinedRoi>=0?'#03C75A':'#EF4444']
-        ];
+        ]:[
+          ['💵','DB당 비용',(combinedConv>0?fmt(combinedCost/combinedConv):'—'),'#FF6B35']
+        ]);
         return `<div class="sum-bar" style="margin-bottom:16px">
           ${items.map(([ic,lbl,val,c])=>`<div class="sum-item" style="border-bottom:2px solid ${c};padding:10px 12px"><div class="sum-lbl" style="font-size:10px">${ic} ${lbl}</div><div class="sum-val" style="font-size:16px">${val}</div></div>`).join('')}
         </div>`;
@@ -5554,8 +5557,12 @@ function saveOneFile(fileObj, client) {
 
         // ── 비용 컬럼 자동 탐색 (컬럼명 변형 대응) ──
         const costCol  = cols.find(c => ['총비용(VAT포함,원)','총비용(VAT포함)','총비용(원)','총비용'].includes(c)) || '총비용';
-        const convCol  = cols.find(c => ['총 전환수','전환수','구매완료 전환수'].includes(c)) || '총 전환수';
-        const revCol   = cols.find(c => ['총 전환매출액(원)','전환매출액(원)','총 전환매출액','전환매출액','구매완료 전환매출액(원)'].includes(c)) || '총 전환매출액(원)';
+        const convCol  = cols.find(c => ['총 전환수','전환수','구매완료 전환수','총전환수','전환수(회)'].includes(c))
+                      || cols.find(c => c && c.includes('전환수') && !c.includes('매출') && !c.includes('직접') && !c.includes('간접') && !c.includes('율'))
+                      || '총 전환수';
+        const revCol   = cols.find(c => ['총 전환매출액(원)','전환매출액(원)','총 전환매출액','전환매출액','구매완료 전환매출액(원)'].includes(c))
+                      || cols.find(c => c && c.includes('전환매출'))
+                      || '총 전환매출액(원)';
         const ctrCol   = cols.find(c => ['클릭률(%)','클릭률','CTR'].includes(c)) || '클릭률(%)';
         const cpcCol   = cols.find(c => ['평균 CPC','평균CPC','CPC'].includes(c)) || '평균 CPC';
         const rankCol  = cols.find(c => ['평균노출순위','평균 노출순위'].includes(c)) || '평균노출순위';
@@ -5619,8 +5626,11 @@ function saveOneFile(fileObj, client) {
             const rawDate = row['일별'] || '';
             const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
             if (!dateStr || dateStr.length < 8) continue;
+            const USED_N=['일별','캠페인유형','캠페인','유형','노출수','클릭수','직접전환수','간접전환수','총 전환율(%)','전환율','직접전환매출액(원)','간접전환매출액(원)','구매완료 전환수','구매완료 전환매출액(원)','총 광고수익률(%)','광고수익률',costCol,convCol,revCol,ctrCol,cpcCol,rankCol,devCol];
+            const nExtras={};
+            cols.forEach(cn=>{ if(!cn||USED_N.includes(cn)) return; const v=row[cn]; if(v!==undefined&&v!=='') nExtras[cn]=v; });
             rows.push({
-              data_type: 'daily', client_key: client, month, date: dateStr,
+              data_type: 'daily', client_key: client, month: dateStr.slice(0,7), date: dateStr,
               campaign_type: row['캠페인유형'] || '',
               campaign:      row['캠페인'] || '',
               device:        row[devCol] || '',
@@ -5640,6 +5650,7 @@ function saveOneFile(fileObj, client) {
               purchase_rev:  parseNum(row['구매완료 전환매출액(원)'] || 0),
               avg_rank:      parseNum(row[rankCol] || 0),
               roas:          parseNum(row['총 광고수익률(%)'] || row['광고수익률'] || 0),
+              raw:           Object.keys(nExtras).length?nExtras:null,
             });
           }
         }
@@ -6572,6 +6583,13 @@ if (hdrIdx === -1) {
             const isKeyword = hdrRow.some(v => ['검색어','키워드명','키워드'].includes(v));
             const isGFADaily = hdrRow.includes('날짜') && sheetName==='NAVER GFA';
             const kwCol     = hdrRow.find(v => ['검색어','키워드명','키워드'].includes(v)) || '검색어';
+            const convCol2  = hdrRow.find(v => ['총 전환수','전환수','구매완료 전환수','총전환수','전환수(회)'].includes(v))
+                          || hdrRow.find(v => typeof v==='string' && v.includes('전환수') && !v.includes('매출') && !v.includes('직접') && !v.includes('간접') && !v.includes('율'))
+                          || '총 전환수';
+            const revCol2   = hdrRow.find(v => ['총 전환매출액(원)','전환매출액(원)','전환매출액','총 전환매출액','구매완료 전환매출액(원)'].includes(v))
+                          || hdrRow.find(v => typeof v==='string' && v.includes('전환매출'))
+                          || '총 전환매출액(원)';
+            const USED_X=['일별','캠페인유형','PC/모바일 매체','PC/모바일','노출수','클릭수','총비용(VAT포함,원)','총비용(VAT포함)','총비용',convCol2,revCol2];
 
             // 헤더 행 기준으로 JSON 변환
             const dataRows = sheetArr.slice(hdrIdx + 1);
@@ -6586,15 +6604,18 @@ if (hdrIdx === -1) {
                   ? rawDate.toISOString().slice(0,10)
                   : String(rawDate||'').replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
                 if (!dateStr || dateStr.length < 8) return;
+                const xExtras={};
+                hdrRow.forEach(cn=>{ if(!cn||USED_X.includes(cn)) return; const v=r[cn]; if(v!==undefined&&v!=='') xExtras[String(cn)]=String(v); });
                 allRows.push({
-                  data_type: 'daily', client_key: client, month, date: dateStr,
+                  data_type: 'daily', client_key: client, month: dateStr.slice(0,7), date: dateStr,
                   campaign_type: String(r['캠페인유형'] || ''),
                   device: String(r['PC/모바일 매체'] || r['PC/모바일'] || ''),
                   imp:   parseNum(r['노출수']),
                   click: parseNum(r['클릭수']),
                   cost:  parseNum(r['총비용(VAT포함,원)'] || r['총비용(VAT포함)'] || r['총비용']),
-                  conv:  parseNum(r['총 전환수'] || r['전환수']),
-                  rev:   parseNum(r['총 전환매출액(원)'] || r['전환매출액(원)'] || r['전환매출액'])
+                  conv:  parseNum(r[convCol2]),
+                  rev:   parseNum(r[revCol2]),
+                  raw:   Object.keys(xExtras).length?xExtras:null
                 });
               } else if (isHourly) {
                 const t = String(r['시간대별'] || r['시간대'] || '');
