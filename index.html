@@ -5543,7 +5543,7 @@ function saveOneFile(fileObj, client) {
         const isStoreSales    = cols.includes('결제자수') && cols.includes('시간대');
         const isStoreProduct  = cols.includes('상품카테고리(대)') && cols.includes('상품명');
         const hasGFA      = cols.includes('게재 위치') || (cols.includes('기간') && cols.includes('광고 계정 이름'));
-        const hasMeta     = cols.includes('캠페인 이름') && cols.includes('광고 세트 이름') && cols.includes('지출 금액 (KRW)');
+        const hasMeta     = cols.includes('캠페인 이름') && cols.includes('지출 금액 (KRW)');
         const hasGoogle   = cols.includes('캠페인') && cols.includes('캠페인 유형') && cols.includes('비용') && cols.includes('전환수');
         const hasGoogleAdgroup = cols.includes('광고그룹') && cols.includes('광고그룹 상태') && cols.includes('비용');
         const hasEbayProduct = cols.includes('기준일') && cols.includes('판매건수') && cols.includes('판매금액') && cols.includes('대카테고리');
@@ -6288,6 +6288,12 @@ function saveOneFile(fileObj, client) {
         // META 파일 처리
         if(hasMeta){
           const metaRows = [];
+          // 업체마다 META 광고관리자 다운로드 컬럼명이 조금씩 다를 수 있어(예: "구매"→"웹사이트 구매",
+          // "구매 전환값"→"웹사이트 구매 전환값" 등) 정확히 일치하는 이름이 없으면 키워드 포함으로 찾는다.
+          const findCol=(mustInc,mustExc=[])=>cols.find(c=>mustInc.every(k=>c.includes(k))&&!mustExc.some(e=>c.includes(e)));
+          const COL_PURCHASE      = findCol(['구매'],['ROAS','전환값','당비용']) || '구매';
+          const COL_PURCHASE_ROAS = findCol(['구매','ROAS']) || '구매 ROAS(광고 지출 대비 수익률)';
+          const COL_PURCHASE_REV  = findCol(['구매','전환값']) || '구매 전환값';
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i]; if(!line.trim()) continue;
             const _ms=l=>{const r=[];let c='',q=false;for(let j=0;j<l.length;j++){const ch=l[j];if(ch==='"'){q=!q;}else if(ch===','&&!q){r.push(c);c='';}else{c+=ch;}}r.push(c);return r.map(v=>v.trim().replace(/^\"+|\"+$/g,'').replace(/\"\"/g,'"'));};
@@ -6297,7 +6303,7 @@ function saveOneFile(fileObj, client) {
             const dateStr = (row['일']||'').replace(/\./g,'-').slice(0,10);
             if(!dateStr || dateStr.length<8) continue;
             const rowMonth = dateStr.slice(0,7);
-            const USED_COLS=['일','캠페인 이름','광고 세트 이름','광고 이름','노출','클릭(전체)','CPC(전체)','도달','빈도','지출 금액 (KRW)','CTR(전체)','CPM(1,000회 노출당 비용)','구매','구매 ROAS(광고 지출 대비 수익률)','구매 전환값','보고 시작','보고 종료','통화','광고 계정 이름','계정 이름'];
+            const USED_COLS=['일','캠페인 이름','광고 세트 이름','광고 이름','노출','클릭(전체)','CPC(전체)','도달','빈도','지출 금액 (KRW)','CTR(전체)','CPM(1,000회 노출당 비용)','구매','구매 ROAS(광고 지출 대비 수익률)','구매 전환값','보고 시작','보고 종료','통화','광고 계정 이름','계정 이름',COL_PURCHASE,COL_PURCHASE_ROAS,COL_PURCHASE_REV];
             const extras={};
             cols.forEach(cn=>{ if(!cn||USED_COLS.includes(cn)) return; const v=row[cn]; if(v!==undefined&&v!=='') extras[cn]=v; });
             metaRows.push({
@@ -6315,9 +6321,9 @@ function saveOneFile(fileObj, client) {
               cost:         parseNum(row['지출 금액 (KRW)']),
               ctr:          parseNum(row['CTR(전체)']),
               cpm:          parseNum(row['CPM(1,000회 노출당 비용)']),
-              purchase:     Math.round(parseNum(row['구매'])),
-              purchase_roas:parseNum(row['구매 ROAS(광고 지출 대비 수익률)']),
-              purchase_rev: parseNum(row['구매 전환값']),
+              purchase:     Math.round(parseNum(row[COL_PURCHASE])),
+              purchase_roas:parseNum(row[COL_PURCHASE_ROAS]),
+              purchase_rev: parseNum(row[COL_PURCHASE_REV]),
               raw:          Object.keys(extras).length?extras:null,
             });
           }
