@@ -9243,7 +9243,38 @@ function htmlAdmin(){
   ${activeClientId?`<div class="sec-lbl" style="margin-top:18px"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:''}`;
 }
 
+let _metaLinkMap=null;
+async function loadMetaLinks(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_ad_accounts?select=account_name,act_id,is_active`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)}});
+    const map={};
+    if(res.ok){ (await res.json()).forEach(r=>{ if(r.is_active) map[r.account_name]=r.act_id; }); }
+    _metaLinkMap=map;
+  }catch(e){ _metaLinkMap={}; }
+}
+async function metaLinkClient(clientId){
+  const cur=_metaLinkMap&&_metaLinkMap[clientId];
+  const input=prompt('메타 광고계정 번호를 입력하세요 (act_ 뒤 숫자만)\n비워두고 확인하면 연결 해제됩니다', cur?cur.replace('act_',''):'');
+  if(input===null) return;
+  const num=String(input).trim().replace(/^act_/,'').replace(/[^0-9]/g,'');
+  const h={'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
+  if(!num){
+    if(cur&&confirm('메타 API 연결을 해제할까요?\n(자동 수집만 중단되고, 이미 수집된 데이터는 그대로 남습니다)')){
+      try{ await fetch(`${SUPABASE_URL}/rest/v1/meta_ad_accounts?account_name=eq.${encodeURIComponent(clientId)}`,{method:'DELETE',headers:h}); }catch(e){}
+      toast('🔌 메타 연결이 해제되었습니다');
+      await loadMetaLinks(); renderAdminTable();
+    }
+    return;
+  }
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_ad_accounts?on_conflict=account_name`,{method:'POST',headers:{...h,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({account_name:clientId,act_id:'act_'+num,manager:'디어컴퍼니',is_active:true})});
+    if(!res.ok){ toast('❌ 연결 실패 (이미 다른 업체에 연결된 번호인지 확인)'); console.warn(await res.text()); return; }
+  }catch(e){ toast('❌ 연결 실패'); return; }
+  toast('🔗 메타 API 연결됨 — 다음 자동 동기화부터 수집됩니다');
+  await loadMetaLinks(); renderAdminTable();
+}
 function renderAdminTable(){
+  if(_metaLinkMap===null){ _metaLinkMap={}; loadMetaLinks().then(()=>renderAdminTable()); }
   const q = adminSearch.trim().toLowerCase();
   let list = ACCOUNTS.filter(a=>a.role==='client');
   if(q) list = list.filter(a=>
@@ -9290,6 +9321,7 @@ function renderAdminTable(){
       <th>아이디</th>
       <th>검색광고 ID</th>
       <th>GFA ID</th>
+      <th style="width:110px">메타 API</th>
       <th>메모</th>
       <th style="width:80px">상태</th>
       <th style="width:110px">관리</th>
@@ -9309,6 +9341,11 @@ function renderAdminTable(){
           ${c.naver_gfa_id
             ? (sameId ? `<span style="color:var(--text3);font-size:11px">검색광고와 동일</span>` : `<span style="color:var(--blue);font-weight:600">${c.naver_gfa_id}</span>`)
             : `<span style="color:var(--text3);font-size:11px">—</span>`}
+        </td>
+        <td onclick="event.stopPropagation();metaLinkClient('${c.id}')" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px" title="클릭해서 연결/수정/해제">
+          ${(_metaLinkMap&&_metaLinkMap[c.id])
+            ? `<span style="color:#1877F2;font-weight:600">🔵 ${_metaLinkMap[c.id].replace('act_','')}</span>`
+            : `<span style="border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text3)">🔗 연결</span>`}
         </td>
         <td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
         <td><div style="display:flex;align-items:center;gap:4px"><div class="sdot"></div><span style="font-size:11px">운영중</span></div></td>
