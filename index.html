@@ -6286,6 +6286,9 @@ function saveOneFile(fileObj, client) {
             const dateStr = (row['일']||'').replace(/\./g,'-').slice(0,10);
             if(!dateStr || dateStr.length<8) continue;
             const rowMonth = dateStr.slice(0,7);
+            const USED_COLS=['일','캠페인 이름','광고 세트 이름','광고 이름','노출','클릭(전체)','CPC(전체)','도달','빈도','지출 금액 (KRW)','CTR(전체)','CPM(1,000회 노출당 비용)','구매','구매 ROAS(광고 지출 대비 수익률)','구매 전환값','보고 시작','보고 종료','통화','광고 계정 이름','계정 이름'];
+            const extras={};
+            cols.forEach(cn=>{ if(!cn||USED_COLS.includes(cn)) return; const v=row[cn]; if(v!==undefined&&v!=='') extras[cn]=v; });
             metaRows.push({
               client_key:   client,
               month:        rowMonth,
@@ -6304,6 +6307,7 @@ function saveOneFile(fileObj, client) {
               purchase:     Math.round(parseNum(row['구매'])),
               purchase_roas:parseNum(row['구매 ROAS(광고 지출 대비 수익률)']),
               purchase_rev: parseNum(row['구매 전환값']),
+              raw:          Object.keys(extras).length?extras:null,
             });
           }
           if(!metaRows.length){ fileObj.status='저장실패'; renderUploadTab(); toast(`⚠️ ${fileObj.name} — META 데이터 없음`); return; }
@@ -13342,16 +13346,33 @@ async function loadMetaTab(tabId){
     const campMap={};
     rows.forEach(r=>{const c=r.campaign_name||'기타';if(!campMap[c])campMap[c]=[];campMap[c].push(r);});
     const camps=Object.keys(campMap).sort((a,b)=>agg(campMap[b]).cost-agg(campMap[a]).cost);
-    const trs=camps.map((c,i)=>{const a=agg(campMap[c]);return `<tr style="background:${i%2===0?'var(--surface)':'var(--white)'}">
-      <td style="font-size:12.5px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c}">${c}</td>
+    const pn=v=>{ if(v==null||v==='') return NaN; return parseFloat(String(v).replace(/[^0-9.\-]/g,'')); };
+    const RATIO_RE=/(CTR|CPC|CPM|CPA|ROAS|빈도|율|당 비용|당비용|1,000회)/i;
+    const allExtra={};
+    rows.forEach(r=>{ const x=r.raw; if(!x) return; Object.keys(x).forEach(k=>{ allExtra[k]=1; }); });
+    const foundAll=Object.keys(allExtra);
+    const extraCols=foundAll.filter(k=>{ if(RATIO_RE.test(k)) return false; const sr=rows.find(r=>r.raw&&r.raw[k]!==undefined&&r.raw[k]!==''); return sr&&!isNaN(pn(sr.raw[k])); }).slice(0,6);
+    const exSum=(arr,k)=>arr.reduce((sm,r)=>{ const v=r.raw?pn(r.raw[k]):NaN; return sm+(isNaN(v)?0:v); },0);
+    const hasPurchase=total.purchase>0||total.purchase_rev>0;
+    const hasReach=total.reach>0;
+    let thead=`<th>캠페인</th><th>광고비</th><th>노출</th><th>클릭</th><th>CTR</th><th>CPC</th><th>CPM</th>`;
+    if(hasPurchase) thead+=`<th>구매</th><th>전환값</th><th>ROAS</th>`;
+    extraCols.forEach(k=>{ thead+=`<th>${k}</th>`; });
+    if(hasReach) thead+=`<th>도달*</th><th>빈도*</th>`;
+    const trs=camps.map((c,i2)=>{const a=agg(campMap[c]);
+      let td=`<td style="font-size:12.5px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c}">${c}</td>
       <td style="font-family:monospace;font-size:12px">${fmt(a.cost)}</td><td style="font-family:monospace;font-size:12px">${fmtn(a.imp)}</td>
-      <td style="font-family:monospace;font-size:12px">${fmtn(a.click)}</td><td style="font-family:monospace;font-size:12px">${fmtn(a.reach)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtn(a.click)}</td>
       <td style="font-family:monospace;font-size:12px">${a.ctr.toFixed(2)}%</td><td style="font-family:monospace;font-size:12px">${fmt(a.cpc)}</td>
-      <td style="font-family:monospace;font-size:12px">${fmt(a.cpm)}</td><td style="font-family:monospace;font-size:12px">${a.frequency.toFixed(2)}</td>
-      <td style="font-family:monospace;font-size:12px">${fmtn(a.purchase)}건</td>
-      <td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(a.cost,a.purchase_rev)}">${calcR(a.cost,a.purchase_rev)}</td>
-    </tr>`;}).join('');
-    document.getElementById('mt-tab-campaign').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📊 캠페인별 성과</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>캠페인</th><th>광고비</th><th>노출</th><th>클릭</th><th>도달</th><th>CTR</th><th>CPC</th><th>CPM</th><th>빈도</th><th>구매</th><th>ROAS</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+      <td style="font-family:monospace;font-size:12px">${fmt(a.cpm)}</td>`;
+      if(hasPurchase) td+=`<td style="font-family:monospace;font-size:12px">${fmtn(a.purchase)}건</td><td style="font-family:monospace;font-size:12px">${fmt(a.purchase_rev)}</td><td style="font-family:monospace;font-size:12px;font-weight:700;color:${rc(a.cost,a.purchase_rev)}">${calcR(a.cost,a.purchase_rev)}</td>`;
+      extraCols.forEach(k=>{ td+=`<td style="font-family:monospace;font-size:12px">${fmtn(Math.round(exSum(campMap[c],k)))}</td>`; });
+      if(hasReach) td+=`<td style="font-family:monospace;font-size:12px">${fmtn(a.reach)}</td><td style="font-family:monospace;font-size:12px">${a.frequency.toFixed(2)}</td>`;
+      return `<tr style="background:${i2%2===0?'var(--surface)':'var(--white)'}">${td}</tr>`;}).join('');
+    const chipAll=['광고비','노출','클릭'].concat(hasPurchase?['구매','구매 전환값']:[]).concat(hasReach?['도달','빈도']:[]).concat(foundAll);
+    const chips=chipAll.map(k=>`<span style="font-size:11px;border:1px solid var(--border);border-radius:10px;padding:2px 8px;color:var(--text2)">${k}</span>`).join(' ');
+    const note=hasReach?`<div style="padding:8px 20px;font-size:11.5px;color:var(--text3);border-top:1px solid var(--border)">* 도달·빈도는 일별 합산 기준 참고값입니다 — 메타 관리자의 기간 도달·빈도와 다를 수 있으며, API 연동 후 정확값으로 대체됩니다</div>`:'';
+    document.getElementById('mt-tab-campaign').innerHTML=kpiHtml+`<div class="card" style="padding:0;overflow:hidden"><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">📊 캠페인별 성과</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${chips}</div></div><div style="overflow-x:auto"><table class="tbl"><thead><tr>${thead}</tr></thead><tbody>${trs}</tbody></table></div>${note}</div>`;
   }
 
   if(tabId==='adset'){
