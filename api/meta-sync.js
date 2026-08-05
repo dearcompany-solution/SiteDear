@@ -1,16 +1,13 @@
 // api/meta-sync.js — 메타 광고 데이터 자동 동기화 + 과거 백필
 //
 // [사용법]
-//  매일 크론(기존과 동일)   : /api/meta-sync?all=1&days=7
-//  ★ 전체 기간 싹 다        : /api/meta-sync?secret=XXX&alltime=1
+//  매일 크론                : /api/meta-sync?all=1&days=14
+//  전체 기간 싹 다          : /api/meta-sync?secret=XXX&alltime=1
 //     └ done:true 가 나올 때까지 같은 주소를 반복 호출하면 이어서 진행됩니다.
-//       이미 성공한 달은 자동으로 건너뜁니다.
 //  한 달만                  : /api/meta-sync?secret=XXX&month=2026-05
 //  여러 달                  : /api/meta-sync?secret=XXX&from=2026-01&to=2026-05
 //  특정 계정만              : ...&account=act_869721212821467
-//  임의 구간                : ...&since=2026-03-05&until=2026-03-20
 //  이미 받은 달도 다시      : ...&force=1
-//  롤업 생략(속도 우선)      : ...&rollup=0
 
 export default async function handler(req, res) {
   const q = req.query || {};
@@ -67,7 +64,6 @@ export default async function handler(req, res) {
 
   const clampChunk = c => ({ ...c, since: c.since < MIN_DATE ? MIN_DATE : c.since, until: c.until > TODAY ? TODAY : c.until });
 
-  // ---------- 모드 결정 ----------
   let chunks = [];
   let mode = 'daily';
 
@@ -96,7 +92,6 @@ export default async function handler(req, res) {
     if (!chunks.length) return res.status(200).json({ done: true, message: '처리할 기간 없음' });
   }
 
-  // ---------- 계정 목록 ----------
   let accounts = [];
   try {
     let url = `${SB}/rest/v1/meta_ad_accounts?is_active=eq.true&select=account_name,act_id`;
@@ -110,7 +105,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ done: true, message: '동기화할 계정 없음' });
   }
 
-  // ---------- 공통 ----------
   function flatten(row) {
     const flat = {};
     (row.actions || []).forEach(a => { flat['action_' + a.action_type] = Number(a.value) || 0; });
@@ -135,7 +129,6 @@ export default async function handler(req, res) {
 
   const FIELDS = 'date_start,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,impressions,reach,frequency,clicks,ctr,cpc,cpm,actions,action_values';
 
-  // 계정 개설월 ~ 이번 달 (메타 통계는 약 37개월까지만 조회 가능)
   async function accountMonths(acc) {
     let start = null;
     try {
@@ -220,12 +213,11 @@ export default async function handler(req, res) {
     return log;
   }
 
-  // ---------- 작업 목록 ----------
   let tasks = [];
   if (mode === 'alltime') {
     for (const acc of accounts) {
       const ms = await accountMonths(acc);
-      ms.reverse(); // 최신 달부터 채운다
+      ms.reverse();
       for (const c of ms) tasks.push({ ch: c, acc });
     }
   } else {
@@ -234,7 +226,6 @@ export default async function handler(req, res) {
 
   const totalTasks = tasks.length;
 
-  // 이미 성공한 구간은 건너뛴다 (alltime 기본 동작, force=1이면 무시)
   let skipped = 0;
   if (mode === 'alltime' && !FORCE) {
     try {
@@ -249,7 +240,6 @@ export default async function handler(req, res) {
     } catch (e) {}
   }
 
-  // ---------- 실행 ----------
   const results = [];
   let doneCount = 0;
   let stoppedByRateLimit = false;
