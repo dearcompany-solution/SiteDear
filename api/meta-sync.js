@@ -179,7 +179,7 @@ export default async function handler(req, res) {
       }
       log.rows_upserted = rows.length;
 
-      if (WANT_ROLLUP) {
+      if (WANT_ROLLUP && Date.now() - t0 < BUDGET_MS) {
         const rollUrl = `https://graph.facebook.com/${V}/${acc.act_id}/insights?level=ad&time_range={"since":"${ch.since}","until":"${ch.until}"}&fields=${FIELDS}&limit=500&access_token=${TOKEN}`;
         const roll = await fetchAll(rollUrl);
         const rollRows = roll.filter(d => d.ad_id).map(d => {
@@ -245,7 +245,7 @@ export default async function handler(req, res) {
   let stoppedByRateLimit = false;
 
   for (const t of tasks) {
-    if (doneCount > 0 && Date.now() - t0 > BUDGET_MS) break;
+    if (Date.now() - t0 > BUDGET_MS) break;
     if (doneCount > 0 && PAUSE_MS) await sleep(PAUSE_MS);
 
     const log = await syncOne(t.acc, t.ch);
