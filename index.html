@@ -9312,12 +9312,13 @@ async function metaSyncRun(mode, actId){
   try{
     for(let round=0; round<60; round++){
       if(_msStopFlag){ stat.textContent=`중지됨 · ${doneAll}건 저장`; break; }
-      let url=`/api/meta-sync?secret=${encodeURIComponent(secret)}&budget=40`;
+      let url=`/api/meta-sync?secret=${encodeURIComponent(secret)}&budget=25`;
       url += (mode==='all') ? '&alltime=1' : '&days=14';
       if(target) url+=`&account=${encodeURIComponent(target)}`;
 
       const r=await fetch(url);
       if(r.status===401){ _msSecret=null; stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
+      if(r.status===504||r.status===502){ stat.textContent=`시간 초과 — 재시도 중 (${doneAll}건 저장됨)`; await new Promise(s=>setTimeout(s,3000)); continue; }
       const j=await r.json();
       if(j.error){ stat.textContent=j.error; toast('❌ '+j.error); break; }
 
