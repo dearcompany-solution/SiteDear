@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const FORCE = q.force === '1';
 
   const iso = d => d.toISOString().slice(0, 10);
-  const TODAY = iso(new Date());
+  const TODAY = iso(new Date(Date.now() - 864e5));
   const MIN_DATE = '2022-01-01';
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const isRateLimit = m => /blocked|rate limit|too many|reduce the amount|user request limit/i.test(String(m || ''));
@@ -233,8 +233,12 @@ export default async function handler(req, res) {
       const logs = await r.json();
       if (Array.isArray(logs)) {
         const doneSet = new Set(logs.map(l => `${l.act_id}|${l.date_from}|${l.date_to}`));
+        const thisMonth = TODAY.slice(0, 7);
         const before = tasks.length;
-        tasks = tasks.filter(t => !doneSet.has(`${t.acc.act_id}|${t.ch.since}|${t.ch.until}`));
+        tasks = tasks.filter(t => {
+          if (t.ch.label === thisMonth) return true;
+          return !doneSet.has(`${t.acc.act_id}|${t.ch.since}|${t.ch.until}`);
+        });
         skipped = before - tasks.length;
       }
     } catch (e) {}
