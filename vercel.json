@@ -10,5 +10,5 @@
     }
   ],
   "functions": { "api/meta-sync.js": { "maxDuration": 60 } },
-  "crons": [{ "path": "/api/meta-sync?all=1&days=7", "schedule": "0 22 * * *" }]
+  "crons": [{ "path": "/api/meta-sync?all=1&days=14", "schedule": "0 22 * * *" }]
 }
