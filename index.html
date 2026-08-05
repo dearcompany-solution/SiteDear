@@ -519,7 +519,7 @@ input[type='month'].fi{background-image:none;padding-right:14px;cursor:pointer}
 .cl-mgr{font-size:12px;color:var(--text2);margin-top:4px}
   .cl-table{width:100%;border-collapse:collapse;font-size:13px}
 .cl-table th{background:var(--surface);font-size:11.5px;font-weight:600;color:var(--text2);padding:9px 12px;text-align:left;border-bottom:2px solid var(--border)}
-.cl-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.cl-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 .cl-table tr:hover td{background:var(--blue-l)}
 .cl-table tr.sel-row td{background:var(--blue-l);font-weight:600}
 .cl-table td .act-btns{display:flex;gap:5px}
@@ -9421,16 +9421,16 @@ function renderAdminTable(){
   let rowNum=(adminPage-1)*adminPageSize+1;
   Object.keys(groups).forEach(team=>{
     html+=`<div style="font-size:12px;font-weight:700;color:var(--blue);padding:10px 4px 4px;margin-top:8px">👤 ${team} 팀 (${groups[team].length}개)</div>`;
-    html+=`<table class="cl-table"><thead><tr>
-      <th style="width:40px">No</th>
-      <th>업체명</th>
-      <th>아이디</th>
-      <th>검색광고 ID</th>
-      <th>GFA ID</th>
-      <th style="width:110px">메타 API</th>
-      <th>메모</th>
+    html+=`<table class="cl-table" style="table-layout:fixed;width:100%"><thead><tr>
+      <th style="width:44px">No</th>
+      <th style="width:15%">업체명</th>
+      <th style="width:15%">아이디</th>
+      <th style="width:15%">검색광고 ID</th>
+      <th style="width:15%">GFA ID</th>
+      <th style="width:150px">메타 API</th>
+      <th style="width:12%">메모</th>
       <th style="width:80px">상태</th>
-      <th style="width:110px">관리</th>
+      <th style="width:96px">관리</th>
     </tr></thead><tbody>`;
     groups[team].forEach(c=>{
       const sameId = c.naver_search_id && c.naver_search_id===c.naver_gfa_id;
@@ -9448,9 +9448,9 @@ function renderAdminTable(){
             ? (sameId ? `<span style="color:var(--text3);font-size:11px">검색광고와 동일</span>` : `<span style="color:var(--blue);font-weight:600">${c.naver_gfa_id}</span>`)
             : `<span style="color:var(--text3);font-size:11px">—</span>`}
         </td>
-        <td onclick="event.stopPropagation();metaLinkClient('${c.id}')" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px" title="클릭해서 연결/수정/해제">
+        <td onclick="event.stopPropagation();metaLinkClient('${c.id}')" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap" title="클릭해서 연결/수정/해제">
           ${(_metaLinkMap&&_metaLinkMap[c.id])
-            ? `<span style="color:#1877F2;font-weight:600">🔵 ${_metaLinkMap[c.id].replace('act_','')}</span><button class="btn btn-ol btn-sm" style="margin-left:5px;padding:1px 6px;font-size:11px" title="이 업체만 동기화" onclick="event.stopPropagation();metaSyncOne('${c.id}')">⟳</button>`
+            ? `<span style="color:#1877F2;font-weight:600">🔵 ${_metaLinkMap[c.id].replace('act_','')}</span><button class="btn btn-ol btn-sm" style="margin-left:5px;padding:0 5px;font-size:10px;line-height:16px;vertical-align:1px" title="이 업체만 동기화" onclick="event.stopPropagation();metaSyncOne('${c.id}')">⟳</button>`
             : `<span style="border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text3)">🔗 연결</span>`}
         </td>
         <td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
