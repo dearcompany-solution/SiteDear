@@ -13313,10 +13313,33 @@ async function loadMetaTab(tabId){
   const cacheKey=`_meta_${targetClient}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
     if(!window[cacheKey+'_loading']){
-      window[cacheKey+'_loading']=fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h}).then(r=>r.json()).then(data=>{
-        window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+      window[cacheKey+'_loading']=(async()=>{
+        let out=[];
+        try{
+          const ar=await fetch(`${SUPABASE_URL}/rest/v1/meta_ad_data?client_key=eq.${encodeURIComponent(targetClient)}&date=gte.${fromDate}&date=lte.${toDate}&select=*&order=date.asc`,{headers:h});
+          if(ar.ok){
+            const ad=await ar.json();
+            if(Array.isArray(ad)&&ad.length){
+              out=ad.map(d=>({client_key:d.client_key,month:(d.date||'').slice(0,7),date:d.date,
+                campaign_name:d.campaign_name||'',adset_name:d.adset_name||'',ad_name:d.ad_name||'',
+                imp:+d.impressions||0,click:+d.clicks||0,cpc:d.cpc!=null?+d.cpc:null,reach:+d.reach||0,frequency:+d.frequency||0,
+                cost:+d.spend||0,ctr:d.ctr!=null?+d.ctr:null,cpm:d.cpm!=null?+d.cpm:null,
+                purchase:+d.purchases||0,purchase_roas:(+d.spend>0?+(((+d.purchase_value||0)/(+d.spend))*100).toFixed(2):0),purchase_rev:+d.purchase_value||0,
+                raw:(+d.leads>0?{'잠재고객(DB)':+d.leads}:null)}));
+              out._api=true;
+            }
+          }
+        }catch(e){}
+        if(!out.length){
+          try{
+            const r=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+            const data=await r.json();
+            out=Array.isArray(data)?data.filter(x=>!x.date||(x.date>=fromDate&&x.date<=toDate)):[];
+          }catch(e){ out=[]; }
+        }
+        window[cacheKey]=out;
         delete window[cacheKey+'_loading'];
-      });
+      })();
     }
     await window[cacheKey+'_loading'];
   }
@@ -13345,7 +13368,7 @@ async function loadMetaTab(tabId){
   const ax={grid:{color:'#dce6f0'},ticks:{color:'#8a96ae',font:{size:10,family:'IBM Plex Mono'}}};
 
   // KPI HTML 공통 (sum-bar 한줄 컴팩트)
-  const kpiHtml=`<div class="sum-bar" style="margin-bottom:16px">
+  const kpiHtml=`${rows._api?`<div style="margin-bottom:8px"><span style="font-size:11px;background:#E7F0FD;color:#1877F2;border-radius:10px;padding:3px 10px;font-weight:600">🔄 메타 API 자동 수집 데이터 · 매일 아침 7시 갱신</span></div>`:''}<div class="sum-bar" style="margin-bottom:16px">
     <div class="sum-item" style="border-bottom:2px solid #1877F2;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">💰 광고비</div><div class="sum-val" style="font-size:16px">${fmt(total.cost)}</div></div>
     <div class="sum-item" style="border-bottom:2px solid #E1306C;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👁️ 노출</div><div class="sum-val" style="font-size:16px">${fmtn(total.imp)}</div></div>
     <div class="sum-item" style="border-bottom:2px solid #8B5CF6;padding:10px 12px"><div class="sum-lbl" style="font-size:10px">👆 클릭</div><div class="sum-val" style="font-size:16px">${fmtn(total.click)}</div></div>
@@ -14703,9 +14726,28 @@ async function loadRptGFATab(){
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
   const cacheKey=`_meta_${targetClient}_${fromMonth}_${toMonth}`;
   if(!window[cacheKey]){
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
-    const data=await res.json();
-    window[cacheKey]=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+    let out=[];
+    try{
+      const ar=await fetch(`${SUPABASE_URL}/rest/v1/meta_ad_data?client_key=eq.${encodeURIComponent(targetClient)}&date=gte.${fromDate}&date=lte.${toDate}&select=*&order=date.asc`,{headers:h});
+      if(ar.ok){
+        const ad=await ar.json();
+        if(Array.isArray(ad)&&ad.length){
+          out=ad.map(d=>({client_key:d.client_key,month:(d.date||'').slice(0,7),date:d.date,
+            campaign_name:d.campaign_name||'',adset_name:d.adset_name||'',ad_name:d.ad_name||'',
+            imp:+d.impressions||0,click:+d.clicks||0,cpc:d.cpc!=null?+d.cpc:null,reach:+d.reach||0,frequency:+d.frequency||0,
+            cost:+d.spend||0,ctr:d.ctr!=null?+d.ctr:null,cpm:d.cpm!=null?+d.cpm:null,
+            purchase:+d.purchases||0,purchase_roas:(+d.spend>0?+(((+d.purchase_value||0)/(+d.spend))*100).toFixed(2):0),purchase_rev:+d.purchase_value||0,
+            raw:(+d.leads>0?{'잠재고객(DB)':+d.leads}:null)}));
+          out._api=true;
+        }
+      }
+    }catch(e){}
+    if(!out.length){
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/meta_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`,{headers:h});
+      const data=await res.json();
+      out=Array.isArray(data)?data.filter(r=>!r.date||(r.date>=fromDate&&r.date<=toDate)):[];
+    }
+    window[cacheKey]=out;
   }
   const rows=window[cacheKey];
   if(!rows.length){el.innerHTML=`<div class="empty"><div class="ei">🔵</div><p>META 데이터가 없습니다</p></div>`;return;}
