@@ -9244,9 +9244,107 @@ function htmlAdmin(){
       <button class="btn btn-bl btn-sm" onclick="openBulkRegister()" style="white-space:nowrap">📤 엑셀 일괄등록</button>
     </div>
   </div>
+  <div class="card" id="metaSyncPanel" style="padding:10px 14px;margin-bottom:12px;border:1.5px solid rgba(24,119,242,.35)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600">🔄 메타 API 동기화</span>
+      <span id="msBadge" style="font-size:11px;background:#E7F0FD;color:#1877F2;border-radius:10px;padding:2px 9px;font-weight:600">연결 확인 중…</span>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <select id="msTarget" style="height:30px;font-size:12px;min-width:130px"></select>
+        <button class="btn btn-ol btn-sm" onclick="metaSyncRun('recent')">최근 14일</button>
+        <button class="btn btn-bl btn-sm" onclick="metaSyncRun('all')">전체 기간 받기</button>
+        <button class="btn btn-ol btn-sm" id="msStop" style="display:none" onclick="metaSyncStop()">중지</button>
+      </div>
+    </div>
+    <div id="msProgWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="msBar" style="width:0;height:100%;background:#1877F2;transition:width .3s"></div></div>
+        <span id="msStat" style="font-size:11.5px;color:var(--text2);white-space:nowrap"></span>
+      </div>
+      <div id="msLog" style="margin-top:7px;font-size:11px;color:var(--text3);line-height:1.6"></div>
+    </div>
+  </div>
   <div id="adminTableWrap"></div>
   <div id="adminPager" class="pg-bar"></div>
   ${activeClientId?`<div class="sec-lbl" style="margin-top:18px"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:''}`;
+}
+
+/* ════ 메타 API 동기화 패널 ════ */
+let _msSecret=null, _msRunning=false, _msStopFlag=false;
+
+function metaSyncUpdateBadge(){
+  const b=document.getElementById('msBadge'); if(!b) return;
+  const total=ACCOUNTS.filter(a=>a.role==='client').length;
+  const keys=_metaLinkMap?Object.keys(_metaLinkMap):[];
+  b.textContent=`연결 ${keys.length} / 전체 ${total}`;
+  const sel=document.getElementById('msTarget');
+  if(sel&&!_msRunning){
+    const prev=sel.value;
+    let o=`<option value="">전체 (${keys.length}개 계정)</option>`;
+    keys.forEach(k=>{ o+=`<option value="${_metaLinkMap[k]}">${k}</option>`; });
+    sel.innerHTML=o;
+    if(prev) sel.value=prev;
+  }
+}
+
+function metaSyncSecret(){
+  if(_msSecret) return _msSecret;
+  const v=prompt('CRON_SECRET 값을 입력하세요 (버셀 환경변수 값)');
+  if(v&&v.trim()) _msSecret=v.trim();
+  return _msSecret;
+}
+
+function metaSyncStop(){ _msStopFlag=true; }
+
+async function metaSyncRun(mode, actId){
+  if(_msRunning){ toast('이미 동기화가 진행 중입니다'); return; }
+  const secret=metaSyncSecret(); if(!secret) return;
+  const sel=document.getElementById('msTarget');
+  const target=actId||(sel?sel.value:'');
+  const bar=document.getElementById('msBar'), stat=document.getElementById('msStat'), log=document.getElementById('msLog');
+  const stopBtn=document.getElementById('msStop'), wrap=document.getElementById('msProgWrap');
+  if(!bar||!stat) return;
+
+  _msRunning=true; _msStopFlag=false;
+  wrap.style.display='block'; stopBtn.style.display='inline-flex';
+  bar.style.width='0'; log.innerHTML=''; stat.textContent='수집 중…';
+
+  let lines=[], doneAll=0, totalAll=0;
+  try{
+    for(let round=0; round<60; round++){
+      if(_msStopFlag){ stat.textContent=`중지됨 · ${doneAll}건 저장`; break; }
+      let url=`/api/meta-sync?secret=${encodeURIComponent(secret)}&budget=40`;
+      url += (mode==='all') ? '&alltime=1' : '&days=14';
+      if(target) url+=`&account=${encodeURIComponent(target)}`;
+
+      const r=await fetch(url);
+      if(r.status===401){ _msSecret=null; stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
+      const j=await r.json();
+      if(j.error){ stat.textContent=j.error; toast('❌ '+j.error); break; }
+
+      (j.results||[]).forEach(x=>{
+        doneAll++;
+        lines.unshift(x.status==='success'
+          ? `${x.period} ${x.account} ${(x.rows||0).toLocaleString()}행`
+          : `${x.period} ${x.account} 실패`);
+      });
+      totalAll=Math.max(totalAll, doneAll+(j.remaining||0));
+      bar.style.width=(totalAll?Math.round(doneAll/totalAll*100):100)+'%';
+      stat.textContent=`${doneAll} / ${totalAll||doneAll}`;
+      log.innerHTML=lines.slice(0,6).join(' · ');
+
+      if(j.done){ bar.style.width='100%'; stat.textContent=`완료 · ${doneAll}건`; toast('✅ 메타 동기화 완료'); break; }
+      if(j.message&&j.message.indexOf('요청량')>=0){ stat.textContent='메타 요청량 제한'; toast('⏸ 메타 요청량 제한 — 15~30분 뒤 다시 눌러주세요'); break; }
+      await new Promise(s=>setTimeout(s,1200));
+    }
+  }catch(e){ stat.textContent='오류'; toast('❌ 동기화 오류: '+e.message); }
+  _msRunning=false;
+  stopBtn.style.display='none';
+}
+
+function metaSyncOne(clientId){
+  const act=_metaLinkMap&&_metaLinkMap[clientId];
+  if(!act){ toast('메타 API 연결이 없는 업체입니다'); return; }
+  metaSyncRun('all', act);
 }
 
 let _metaLinkMap=null;
@@ -9281,6 +9379,7 @@ async function metaLinkClient(clientId){
 }
 function renderAdminTable(){
   if(_metaLinkMap===null){ _metaLinkMap={}; loadMetaLinks().then(()=>renderAdminTable()); }
+  setTimeout(metaSyncUpdateBadge,0);
   const q = adminSearch.trim().toLowerCase();
   let list = ACCOUNTS.filter(a=>a.role==='client');
   if(q) list = list.filter(a=>
@@ -9350,7 +9449,7 @@ function renderAdminTable(){
         </td>
         <td onclick="event.stopPropagation();metaLinkClient('${c.id}')" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px" title="클릭해서 연결/수정/해제">
           ${(_metaLinkMap&&_metaLinkMap[c.id])
-            ? `<span style="color:#1877F2;font-weight:600">🔵 ${_metaLinkMap[c.id].replace('act_','')}</span>`
+            ? `<span style="color:#1877F2;font-weight:600">🔵 ${_metaLinkMap[c.id].replace('act_','')}</span><button class="btn btn-ol btn-sm" style="margin-left:5px;padding:1px 6px;font-size:11px" title="이 업체만 동기화" onclick="event.stopPropagation();metaSyncOne('${c.id}')">⟳</button>`
             : `<span style="border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text3)">🔗 연결</span>`}
         </td>
         <td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.memo||'—'}</td>
