@@ -1,14 +1,16 @@
 // api/meta-sync.js — 메타 광고 데이터 자동 동기화 + 과거 백필
 //
 // [사용법]
-//  매일 크론(기존과 동일)     : /api/meta-sync?all=1&days=7
-//  한 달만 백필               : /api/meta-sync?secret=XXX&month=2026-05
-//  여러 달 백필               : /api/meta-sync?secret=XXX&from=2026-01&to=2026-05
-//  특정 계정만                : ...&account=act_869721212821467
-//  임의 구간                  : ...&since=2026-03-05&until=2026-03-20
-//  롤업 생략(속도 우선)        : ...&rollup=0
-//
-// 시간이 부족하면 처리한 데까지 저장하고 next 안내를 돌려준다. 그 URL을 다시 호출하면 이어서 진행된다.
+//  매일 크론(기존과 동일)   : /api/meta-sync?all=1&days=7
+//  ★ 전체 기간 싹 다        : /api/meta-sync?secret=XXX&alltime=1
+//     └ done:true 가 나올 때까지 같은 주소를 반복 호출하면 이어서 진행됩니다.
+//       이미 성공한 달은 자동으로 건너뜁니다.
+//  한 달만                  : /api/meta-sync?secret=XXX&month=2026-05
+//  여러 달                  : /api/meta-sync?secret=XXX&from=2026-01&to=2026-05
+//  특정 계정만              : ...&account=act_869721212821467
+//  임의 구간                : ...&since=2026-03-05&until=2026-03-20
+//  이미 받은 달도 다시      : ...&force=1
+//  롤업 생략(속도 우선)      : ...&rollup=0
 
 export default async function handler(req, res) {
   const q = req.query || {};
@@ -25,10 +27,14 @@ export default async function handler(req, res) {
   const t0 = Date.now();
   const BUDGET_MS = Math.min(Math.max(parseInt(q.budget || '45', 10), 10), 280) * 1000;
   const WANT_ROLLUP = q.rollup !== '0';
+  const PAUSE_MS = Math.min(Math.max(parseInt(q.pause || '1500', 10), 0), 10000);
+  const FORCE = q.force === '1';
 
   const iso = d => d.toISOString().slice(0, 10);
   const TODAY = iso(new Date());
   const MIN_DATE = '2022-01-01';
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const isRateLimit = m => /blocked|rate limit|too many|reduce the amount|user request limit/i.test(String(m || ''));
 
   function monthChunk(m) {
     const [y, mo] = String(m).split('-').map(Number);
@@ -41,8 +47,7 @@ export default async function handler(req, res) {
   }
 
   function monthRange(a, b) {
-    const s = monthChunk(a), e = monthChunk(b);
-    if (!s || !e) return [];
+    if (!monthChunk(a) || !monthChunk(b)) return [];
     const out = [];
     let [y, m] = a.split('-').map(Number);
     const [ey, em] = b.split('-').map(Number);
@@ -55,11 +60,20 @@ export default async function handler(req, res) {
     return out;
   }
 
-  // ---------- 처리할 기간(chunk) 목록 결정 ----------
+  function monthsAgo(n) {
+    const d = new Date();
+    return iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - n, 1))).slice(0, 7);
+  }
+
+  const clampChunk = c => ({ ...c, since: c.since < MIN_DATE ? MIN_DATE : c.since, until: c.until > TODAY ? TODAY : c.until });
+
+  // ---------- 모드 결정 ----------
   let chunks = [];
   let mode = 'daily';
 
-  if (q.month) {
+  if (q.alltime === '1') {
+    mode = 'alltime';
+  } else if (q.month) {
     mode = 'backfill';
     const c = monthChunk(q.month);
     if (!c) return res.status(400).json({ error: 'month 형식 오류 (예: 2026-05)' });
@@ -74,19 +88,13 @@ export default async function handler(req, res) {
   } else {
     const days = Math.min(Math.max(parseInt(q.days || '7', 10), 1), 92);
     const d = new Date();
-    chunks = [{
-      label: `최근 ${days}일`,
-      since: iso(new Date(d.getTime() - (days - 1) * 864e5)),
-      until: TODAY
-    }];
+    chunks = [{ label: `최근 ${days}일`, since: iso(new Date(d.getTime() - (days - 1) * 864e5)), until: TODAY }];
   }
 
-  // 미래/과거 범위 정리
-  chunks = chunks
-    .map(c => ({ ...c, since: c.since < MIN_DATE ? MIN_DATE : c.since, until: c.until > TODAY ? TODAY : c.until }))
-    .filter(c => c.since <= c.until);
-
-  if (!chunks.length) return res.status(200).json({ done: true, message: '처리할 기간 없음' });
+  if (mode !== 'alltime') {
+    chunks = chunks.map(clampChunk).filter(c => c.since <= c.until);
+    if (!chunks.length) return res.status(200).json({ done: true, message: '처리할 기간 없음' });
+  }
 
   // ---------- 계정 목록 ----------
   let accounts = [];
@@ -102,7 +110,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ done: true, message: '동기화할 계정 없음' });
   }
 
-  // ---------- 공통 함수 ----------
+  // ---------- 공통 ----------
   function flatten(row) {
     const flat = {};
     (row.actions || []).forEach(a => { flat['action_' + a.action_type] = Number(a.value) || 0; });
@@ -127,7 +135,20 @@ export default async function handler(req, res) {
 
   const FIELDS = 'date_start,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,impressions,reach,frequency,clicks,ctr,cpc,cpm,actions,action_values';
 
-  // 계정 1개 × 기간 1개 처리
+  // 계정 개설월 ~ 이번 달 (메타 통계는 약 37개월까지만 조회 가능)
+  async function accountMonths(acc) {
+    let start = null;
+    try {
+      const r = await fetch(`https://graph.facebook.com/${V}/${acc.act_id}?fields=created_time&access_token=${TOKEN}`);
+      const j = await r.json();
+      if (j && j.created_time) start = String(j.created_time).slice(0, 7);
+    } catch (e) {}
+    const floor = monthsAgo(36);
+    if (!start || start < floor) start = floor;
+    if (q.from && q.from > start) start = q.from;
+    return monthRange(start, TODAY.slice(0, 7)).map(clampChunk).filter(c => c.since <= c.until);
+  }
+
   async function syncOne(acc, ch) {
     const log = {
       act_id: acc.act_id, account_name: acc.account_name,
@@ -156,7 +177,6 @@ export default async function handler(req, res) {
         };
       });
 
-      // 기존 API 데이터만 삭제(업로드 데이터는 보존) 후 재삽입
       const del = await fetch(`${SB}/rest/v1/meta_ad_data?act_id=eq.${encodeURIComponent(acc.act_id)}&date=gte.${ch.since}&date=lte.${ch.until}&source=eq.api`, { method: 'DELETE', headers: sbHeaders });
       if (!del.ok) throw new Error('기존 데이터 삭제 실패: ' + await del.text());
 
@@ -166,7 +186,6 @@ export default async function handler(req, res) {
       }
       log.rows_upserted = rows.length;
 
-      // 기간 전체 롤업(정확한 도달·빈도) — 백필이면 월 단위로 쌓인다
       if (WANT_ROLLUP) {
         const rollUrl = `https://graph.facebook.com/${V}/${acc.act_id}/insights?level=ad&time_range={"since":"${ch.since}","until":"${ch.until}"}&fields=${FIELDS}&limit=500&access_token=${TOKEN}`;
         const roll = await fetchAll(rollUrl);
@@ -201,15 +220,44 @@ export default async function handler(req, res) {
     return log;
   }
 
-  // ---------- 작업 목록 만들고 시간예산 안에서 처리 ----------
-  const tasks = [];
-  for (const ch of chunks) for (const acc of accounts) tasks.push({ ch, acc });
+  // ---------- 작업 목록 ----------
+  let tasks = [];
+  if (mode === 'alltime') {
+    for (const acc of accounts) {
+      const ms = await accountMonths(acc);
+      ms.reverse(); // 최신 달부터 채운다
+      for (const c of ms) tasks.push({ ch: c, acc });
+    }
+  } else {
+    for (const ch of chunks) for (const acc of accounts) tasks.push({ ch, acc });
+  }
 
+  const totalTasks = tasks.length;
+
+  // 이미 성공한 구간은 건너뛴다 (alltime 기본 동작, force=1이면 무시)
+  let skipped = 0;
+  if (mode === 'alltime' && !FORCE) {
+    try {
+      const r = await fetch(`${SB}/rest/v1/meta_sync_log?status=eq.success&select=act_id,date_from,date_to&limit=5000`, { headers: sbHeaders });
+      const logs = await r.json();
+      if (Array.isArray(logs)) {
+        const doneSet = new Set(logs.map(l => `${l.act_id}|${l.date_from}|${l.date_to}`));
+        const before = tasks.length;
+        tasks = tasks.filter(t => !doneSet.has(`${t.acc.act_id}|${t.ch.since}|${t.ch.until}`));
+        skipped = before - tasks.length;
+      }
+    } catch (e) {}
+  }
+
+  // ---------- 실행 ----------
   const results = [];
   let doneCount = 0;
+  let stoppedByRateLimit = false;
 
   for (const t of tasks) {
     if (doneCount > 0 && Date.now() - t0 > BUDGET_MS) break;
+    if (doneCount > 0 && PAUSE_MS) await sleep(PAUSE_MS);
+
     const log = await syncOne(t.acc, t.ch);
     results.push({
       period: t.ch.label, account: t.acc.account_name,
@@ -217,27 +265,41 @@ export default async function handler(req, res) {
       rollup: log.rollup_rows ?? null, error: log.error_message || null
     });
     doneCount++;
+
+    if (log.status === 'error' && isRateLimit(log.error_message)) {
+      stoppedByRateLimit = true;
+      break;
+    }
   }
 
   const remaining = tasks.slice(doneCount);
   const out = {
-    done: remaining.length === 0,
+    done: remaining.length === 0 && !stoppedByRateLimit,
     mode,
-    periods: chunks.map(c => c.label),
     accounts: accounts.length,
+    total_periods: totalTasks,
+    already_done: skipped,
     processed: doneCount,
     remaining: remaining.length,
     elapsed_sec: Math.round((Date.now() - t0) / 1000),
     results
   };
 
-  if (remaining.length) {
+  if (stoppedByRateLimit) {
+    out.message = '메타 요청량 제한에 걸려 중단했습니다. 15~30분 뒤 같은 주소를 다시 호출하세요. 처리한 구간까지는 저장되었습니다.';
+  } else if (remaining.length) {
+    out.message = mode === 'alltime'
+      ? `${doneCount}건 저장했습니다. 같은 주소를 다시 호출하면 남은 ${remaining.length}건을 이어서 받습니다.`
+      : `시간이 부족해 ${doneCount}건까지 저장했습니다. 아래 next를 다시 호출하세요.`;
     const leftMonths = [...new Set(remaining.map(r => r.ch.label))];
-    out.message = `시간이 부족해 ${doneCount}건까지 저장했습니다. 아래 next를 다시 호출하면 이어서 진행됩니다.`;
-    out.next = leftMonths.length > 1
-      ? `/api/meta-sync?secret=YOUR_SECRET&from=${leftMonths[0]}&to=${leftMonths[leftMonths.length - 1]}`
-      : `/api/meta-sync?secret=YOUR_SECRET&month=${leftMonths[0]}`;
-    out.remaining_periods = leftMonths;
+    out.remaining_periods = leftMonths.slice(0, 12);
+    if (mode !== 'alltime') {
+      out.next = leftMonths.length > 1
+        ? `/api/meta-sync?secret=YOUR_SECRET&from=${leftMonths[leftMonths.length - 1]}&to=${leftMonths[0]}`
+        : `/api/meta-sync?secret=YOUR_SECRET&month=${leftMonths[0]}`;
+    }
+  } else if (mode === 'alltime') {
+    out.message = `전체 기간 수집 완료 (총 ${totalTasks}구간, 이번 실행 ${doneCount}건).`;
   }
 
   return res.status(200).json(out);
