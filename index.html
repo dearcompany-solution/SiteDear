@@ -9478,7 +9478,7 @@ function metaSyncUpdateBadge(){
   const keys=_metaLinkMap?Object.keys(_metaLinkMap):[];
   b.textContent=`연결 ${keys.length} / 전체 ${total}`;
   if(!_msRunning){
-    const items=[{value:'',label:`전체 (${linked}개 계정)`}];
+    const items=[{value:'',label:`전체 (${keys.length}개 계정)`}];
     if(_metaLinkMap) Object.keys(_metaLinkMap).forEach(k=>{ items.push({value:_metaLinkMap[k],label:k}); });
     sdselFill('msTargetSel', items);
   }
