@@ -14538,6 +14538,75 @@ const channels_set = [...new Set(daily.map(r=>`${r.campaign_type||''} (${r.devic
     }catch(e){ console.warn('일별차트 에러:', e); }
   },80);
 }
+/* ===== 네이버 API 공용 로더 (STEP 2) ===== */
+let _naverApiCache = {};
+function naverApiReset(){ _naverApiCache = {}; }
+
+function naverApiClient(){
+  const isAdmin = currentUser?.role === 'admin';
+  return isAdmin ? (activeClientId || '') : (currentUser?.id || '');
+}
+function naverApiRange(){
+  const from = currentDateRange?.from || (currentReportMonth + '-01');
+  let to = currentDateRange?.to || (currentReportMonth + '-31');
+  const y = +from.slice(0,4), m = +from.slice(5,7);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0,10);
+  if (to > last && to.slice(0,7) === from.slice(0,7)) to = last;
+  return { from, to };
+}
+
+async function naverApiFetch(table, cols, from, to, extra){
+  const client = naverApiClient();
+  if(!client) return [];
+  const key = [table, client, from, to, extra||''].join('|');
+  if(_naverApiCache[key]) return _naverApiCache[key];
+
+  const h = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY) };
+  const STEP = 1000;
+  let out = [];
+  for(let off = 0; off < 30000; off += STEP){
+    const url = `${SUPABASE_URL}/rest/v1/${table}?select=${cols}`
+      + `&client_key=eq.${encodeURIComponent(client)}`
+      + `&source=eq.api&date=gte.${from}&date=lte.${to}`
+      + (extra || '')
+      + `&order=date.asc&limit=${STEP}&offset=${off}`;
+    let part = [];
+    try{
+      const r = await fetch(url, { headers: h });
+      if(!r.ok){ console.warn('[naverApi]', table, r.status, await r.text()); break; }
+      part = await r.json();
+    }catch(e){ console.warn('[naverApi]', table, e); break; }
+    if(!Array.isArray(part) || !part.length) break;
+    out = out.concat(part);
+    if(part.length < STEP) break;
+  }
+  _naverApiCache[key] = out;
+  return out;
+}
+
+function naverApiCoverage(rows, from, to){
+  const have = new Set((rows||[]).map(r => r.date));
+  const need = [];
+  let d = new Date(from + 'T00:00:00Z');
+  const e = new Date(to + 'T00:00:00Z');
+  while(d <= e && need.length < 400){ need.push(d.toISOString().slice(0,10)); d = new Date(d.getTime() + 864e5); }
+  const miss = need.filter(x => !have.has(x));
+  const got = [...have].sort();
+  return { total: need.length, have: need.length - miss.length,
+           full: miss.length === 0, first: got[0] || null, last: got[got.length-1] || null };
+}
+
+function naverApiNotice(cov){
+  if(!cov || cov.full || !cov.have) return '';
+  return `<div style="background:#fff7e6;border:1px solid #f2c97d;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:12.5px;color:#8a6100;line-height:1.6">
+    ⚠️ 선택한 기간 <b>${cov.total}일</b> 중 <b>${cov.have}일</b>만 API 수집이 완료됐습니다
+    (${cov.first} ~ ${cov.last}). 나머지 날짜는 아래 수치에 포함되지 않았습니다.</div>`;
+}
+
+function naverApiBadge(n){
+  return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(3,199,90,.12);color:var(--naver);border:1px solid rgba(3,199,90,.3);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;margin-left:8px">● API 연동 ${n.toLocaleString()}행</span>`;
+}
+
 async function loadHourlyTab(){
   const el = document.getElementById('hourlyContent');
   if(!el) return;
