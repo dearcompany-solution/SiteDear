@@ -9,6 +9,16 @@
       ]
     }
   ],
-  "functions": { "api/meta-sync.js": { "maxDuration": 60 } },
-  "crons": [{ "path": "/api/meta-sync?all=1&days=14", "schedule": "0 22 * * *" }]
+  "functions": {
+    "api/meta-sync.js": { "maxDuration": 60 },
+    "api/naver-sync.js": { "maxDuration": 60 },
+    "api/naver-detail.js": { "maxDuration": 60 },
+    "api/naver-keywords.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/meta-sync?all=1&days=14",  "schedule": "0 22 * * *" },
+    { "path": "/api/naver-sync?days=14",        "schedule": "20 22 * * *" },
+    { "path": "/api/naver-detail?days=7",       "schedule": "40 22 * * *" },
+    { "path": "/api/naver-keywords",            "schedule": "0 23 * * 1" }
+  ]
 }
