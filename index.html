@@ -9263,9 +9263,112 @@ function htmlAdmin(){
       <div id="msLog" style="margin-top:7px;font-size:11px;color:var(--text3);line-height:1.6"></div>
     </div>
   </div>
+  <div class="card" id="naverSyncPanel" style="padding:10px 14px;margin-bottom:12px;border:1.5px solid rgba(3,199,90,.35)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600">🟢 네이버 검색광고 동기화</span>
+      <span id="nsBadge" style="font-size:11px;background:#E6F7EE;color:#03C75A;border-radius:10px;padding:2px 9px;font-weight:600">연결 확인 중…</span>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <select id="nsTarget" style="height:30px;font-size:12px;min-width:142px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
+        <button class="btn btn-ol btn-sm" onclick="naverSyncRun('recent')">최근 14일</button>
+        <button class="btn btn-sm" style="background:#03C75A;color:#fff;border-color:#03C75A" onclick="naverSyncRun('all')">12개월 받기</button>
+        <button class="btn btn-ol btn-sm" id="nsStop" style="display:none" onclick="naverSyncStop()">중지</button>
+      </div>
+    </div>
+    <div id="nsProgWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="nsBar" style="width:0;height:100%;background:#03C75A;transition:width .3s"></div></div>
+        <span id="nsStat" style="font-size:11.5px;color:var(--text2);white-space:nowrap"></span>
+      </div>
+      <div id="nsLog" style="margin-top:7px;font-size:11px;color:var(--text3);line-height:1.6"></div>
+    </div>
+  </div>
   <div id="adminTableWrap"></div>
   <div id="adminPager" class="pg-bar"></div>
   ${activeClientId?`<div class="sec-lbl" style="margin-top:18px"><span>선택된 클라이언트</span></div><div id="clientDetail"></div>`:''}`;
+}
+
+/* ════ 네이버 검색광고 동기화 패널 ════ */
+let _nsRunning=false, _nsStopFlag=false, _naverLinkMap=null;
+
+async function loadNaverLinks(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/naver_ad_accounts?is_active=eq.true&select=client_key,customer_id`,
+      {headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+(window._sbToken||SUPABASE_KEY)}});
+    const rows=await r.json();
+    const map={};
+    if(Array.isArray(rows)) rows.forEach(x=>{ map[x.client_key]=x.customer_id; });
+    _naverLinkMap=map;
+  }catch(e){ _naverLinkMap={}; }
+  naverSyncUpdateBadge();
+}
+
+function naverSyncUpdateBadge(){
+  const b=document.getElementById('nsBadge'); if(!b) return;
+  if(_naverLinkMap===null){ _naverLinkMap={}; loadNaverLinks(); return; }
+  const total=ACCOUNTS.filter(a=>a.role==='client').length;
+  const keys=Object.keys(_naverLinkMap);
+  b.textContent=`연결 ${keys.length} / 전체 ${total}`;
+  const sel=document.getElementById('nsTarget');
+  if(sel&&!_nsRunning){
+    const prev=sel.value;
+    let o=`<option value="">전체 (${keys.length}개 계정)</option>`;
+    keys.forEach(k=>{ o+=`<option value="${k}">${k}</option>`; });
+    sel.innerHTML=o;
+    if(prev) sel.value=prev;
+  }
+}
+
+function naverSyncStop(){ _nsStopFlag=true; }
+
+async function naverSyncRun(mode, clientKey){
+  if(_nsRunning){ toast('이미 동기화가 진행 중입니다'); return; }
+  const secret=metaSyncSecret(); if(!secret) return;
+  const sel=document.getElementById('nsTarget');
+  const target=clientKey||(sel?sel.value:'');
+  const bar=document.getElementById('nsBar'), stat=document.getElementById('nsStat'), log=document.getElementById('nsLog');
+  const stopBtn=document.getElementById('nsStop'), wrap=document.getElementById('nsProgWrap');
+  if(!bar||!stat) return;
+
+  _nsRunning=true; _nsStopFlag=false;
+  wrap.style.display='block'; stopBtn.style.display='inline-flex';
+  bar.style.width='0'; log.innerHTML=''; stat.textContent='수집 중…';
+
+  let lines=[], doneAll=0, totalAll=0;
+  try{
+    for(let round=0; round<80; round++){
+      if(_nsStopFlag){ stat.textContent=`중지됨 · ${doneAll}건 저장`; break; }
+      let url=`/api/naver-sync?secret=${encodeURIComponent(secret)}&budget=35`;
+      url += (mode==='all') ? '&months=12' : '&days=14';
+      if(target) url+=`&client=${encodeURIComponent(target)}`;
+
+      const r=await fetch(url);
+      if(r.status===401){ _msSecret=null; stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
+      if(r.status===504||r.status===502){ stat.textContent=`시간 초과 — 재시도 중 (${doneAll}건 저장됨)`; await new Promise(s=>setTimeout(s,3000)); continue; }
+      const j=await r.json();
+      if(j.error){ stat.textContent=j.error; toast('❌ '+j.error); break; }
+
+      (j.results||[]).forEach(x=>{
+        doneAll++;
+        lines.unshift(x.status==='success'
+          ? `${x.period} ${x.client} ${(x.rows||0).toLocaleString()}행`
+          : `${x.period} ${x.client} 실패`);
+      });
+      totalAll=Math.max(totalAll, doneAll+(j.remaining||0));
+      bar.style.width=(totalAll?Math.round(doneAll/totalAll*100):100)+'%';
+      stat.textContent=`${doneAll} / ${totalAll||doneAll}`;
+      log.innerHTML=lines.slice(0,6).join(' · ');
+
+      if(j.done){ bar.style.width='100%'; stat.textContent=`완료 · ${doneAll}건`; toast('✅ 네이버 동기화 완료'); break; }
+      await new Promise(s=>setTimeout(s,800));
+    }
+  }catch(e){ stat.textContent='오류'; toast('❌ 동기화 오류: '+e.message); }
+  _nsRunning=false;
+  stopBtn.style.display='none';
+}
+
+function naverSyncOne(clientKey){
+  if(!_naverLinkMap||!_naverLinkMap[clientKey]){ toast('네이버 API 연결이 없는 업체입니다'); return; }
+  naverSyncRun('all', clientKey);
 }
 
 /* ════ 메타 API 동기화 패널 ════ */
@@ -9381,6 +9484,7 @@ async function metaLinkClient(clientId){
 function renderAdminTable(){
   if(_metaLinkMap===null){ _metaLinkMap={}; loadMetaLinks().then(()=>renderAdminTable()); }
   setTimeout(metaSyncUpdateBadge,0);
+  setTimeout(naverSyncUpdateBadge,0);
   const q = adminSearch.trim().toLowerCase();
   let list = ACCOUNTS.filter(a=>a.role==='client');
   if(q) list = list.filter(a=>
