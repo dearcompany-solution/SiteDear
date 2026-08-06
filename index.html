@@ -9270,7 +9270,7 @@ function htmlAdmin(){
     .sdsel{position:relative;flex:1;min-width:0}
     .sdsel-btn{width:100%;height:30px;font-size:12px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--text);cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
     .sdsel-btn:after{content:'';position:absolute;right:10px;top:12px;width:7px;height:7px;border-right:1.6px solid #94A3B8;border-bottom:1.6px solid #94A3B8;transform:rotate(45deg);pointer-events:none}
-    .sdsel-list{position:absolute;top:34px;left:0;right:0;z-index:50;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);padding:4px;display:none;max-height:220px;overflow:auto}
+    .sdsel-list{position:fixed;z-index:9999;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:4px;display:none;max-height:260px;overflow:auto}
     .sdsel.open .sdsel-list{display:block}
     .sdsel-opt{padding:7px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sdsel-opt:hover{background:var(--bg2)}
@@ -9328,7 +9328,20 @@ function sdselToggle(id){
   const el=document.getElementById(id); if(!el) return;
   const wasOpen=el.classList.contains('open');
   document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open'));
-  if(!wasOpen) el.classList.add('open');
+  if(wasOpen) return;
+  const btn=el.querySelector('.sdsel-btn'), list=el.querySelector('.sdsel-list');
+  const r=btn.getBoundingClientRect();
+  list.style.left=r.left+'px';
+  list.style.width=r.width+'px';
+  const below=window.innerHeight-r.bottom;
+  if(below<180 && r.top>below){
+    list.style.top='auto';
+    list.style.bottom=(window.innerHeight-r.top+4)+'px';
+  }else{
+    list.style.bottom='auto';
+    list.style.top=(r.bottom+4)+'px';
+  }
+  el.classList.add('open');
 }
 function sdselFill(id, items, cur){
   const el=document.getElementById(id); if(!el) return;
@@ -9363,6 +9376,8 @@ function sdselDisable(id, on){
 document.addEventListener('click', e=>{
   if(!e.target.closest('.sdsel')) document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open'));
 });
+window.addEventListener('scroll', ()=>{ document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open')); }, true);
+window.addEventListener('resize', ()=>{ document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open')); });
 
 function _agoText(ts){
   if(!ts) return '';
