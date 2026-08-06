@@ -167,7 +167,8 @@ export default async function handler(req, res) {
       if (Array.isArray(rows)) {
         const has = new Set(rows.map(x => `${x.customer_id}|${x.date}`));
         const thisMonth = YESTERDAY.slice(0, 7);
-        tasks = tasks.filter(t => t.d.slice(0, 7) === thisMonth || !has.has(`${t.acc.customer_id}|${t.d}`));
+        const skipAll = q.skipdone === '1';
+        tasks = tasks.filter(t => (!skipAll && t.d.slice(0, 7) === thisMonth) || !has.has(`${t.acc.customer_id}|${t.d}`));
       }
     } catch (e) {}
   }
