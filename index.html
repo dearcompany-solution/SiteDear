@@ -14925,16 +14925,74 @@ async function loadKeywordTab(){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   try{
-    const kwResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_keyword_data`, {
-      method: 'POST',
-      headers: {...h, 'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        p_client_key: targetClient,
-        p_from_month: fromMonth,
-        p_to_month:   toMonth
-      })
-    }).then(r=>r.json());
-    let rows = Array.isArray(kwResult) ? kwResult : [];
+    const fromDate = currentDateRange?.from || (currentReportMonth + '-01');
+    const toDate   = currentDateRange?.to   || (currentReportMonth + '-31');
+    let rows = [];
+    window._kwCovNotice = '';
+
+    const det = await naverApiFetch('naver_detail_data',
+      'date,keyword_id,campaign_id,imp,clk,cost,conv,rank_sum', fromDate, toDate,
+      '&keyword_id=not.is.null');
+
+    if(det.length){
+      const ck = encodeURIComponent(naverApiClient());
+      const nameMap = {};
+      try{
+        const kw = await fetch(
+          `${SUPABASE_URL}/rest/v1/naver_keywords?client_key=eq.${ck}&select=keyword_id,keyword&limit=20000`,
+          { headers: h }).then(r=>r.ok?r.json():[]);
+        (Array.isArray(kw)?kw:[]).forEach(k=>{ if(k.keyword_id) nameMap[k.keyword_id]=k.keyword; });
+      }catch(e){}
+
+      const camps = await naverApiFetch('naver_ad_data',
+        'date,campaign_id,campaign_name,cost,conv_amt', fromDate, toDate);
+      const cnMap = {}, revMap = {}, costMap = {};
+      camps.forEach(c=>{
+        if(c.campaign_id) cnMap[c.campaign_id] = c.campaign_name || null;
+        const k = c.date + '|' + c.campaign_id;
+        revMap[k]  = (revMap[k]  || 0) + (+c.conv_amt || 0);
+        costMap[k] = (costMap[k] || 0) + (+c.cost || 0);
+      });
+
+      const kmap = {};
+      det.forEach(r=>{
+        const id = r.keyword_id;
+        if(!kmap[id]) kmap[id] = { keyword: nameMap[id] || ('ID ' + id),
+          campaign_name: cnMap[r.campaign_id] || null,
+          imp:0, click:0, cost:0, conv:0, rev:0, _rank:0 };
+        const o = kmap[id];
+        o.imp += +r.imp||0;  o.click += +r.clk||0;
+        o.cost += +r.cost||0; o.conv += +r.conv||0;
+        o._rank += +r.rank_sum||0;
+        const dk = r.date + '|' + r.campaign_id;
+        const share = costMap[dk] > 0 ? (+r.cost||0) / costMap[dk] : 0;
+        o.rev += (revMap[dk] || 0) * share;
+      });
+
+      rows = Object.values(kmap).map(o=>({
+        keyword: o.keyword, campaign_name: o.campaign_name,
+        imp: o.imp, click: o.click, cost: o.cost, conv: o.conv,
+        rev: Math.round(o.rev),
+        avg_rank: o.imp > 0 ? +(o._rank / o.imp).toFixed(1) : null
+      })).sort((a,b)=>b.cost-a.cost);
+
+      window._kwCovNotice = naverApiNotice(naverApiCoverage(det, fromDate, toDate));
+      const unnamed = rows.filter(r=>r.keyword.indexOf('ID ')===0).length;
+      if(unnamed) window._kwCovNotice += `<div style="background:#fff7e6;border:1px solid #f2c97d;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:12.5px;color:#8a6100">🔑 키워드 ${unnamed}개의 이름을 못 찾았습니다. <b>/api/naver-keywords</b> 를 실행해주세요.</div>`;
+      console.log('[키워드] API', rows.length + '개 / 이름없음', unnamed);
+    } else {
+      const kwResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_keyword_data`, {
+        method: 'POST',
+        headers: {...h, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          p_client_key: targetClient,
+          p_from_month: fromMonth,
+          p_to_month:   toMonth
+        })
+      }).then(r=>r.json());
+      rows = Array.isArray(kwResult) ? kwResult : [];
+      console.log('[키워드] 업로드 폴백', rows.length);
+    }
 
     if(!Array.isArray(rows)||!rows.length){
       el.innerHTML = `
