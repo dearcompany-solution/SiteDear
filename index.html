@@ -14559,7 +14559,7 @@ async function naverApiFetch(table, cols, from, to, extra){
   const client = naverApiClient();
   if(!client) return [];
   const key = [table, client, from, to, extra||''].join('|');
-  if(_naverApiCache[key]) return _naverApiCache[key];
+  if(_naverApiCache[key] && _naverApiCache[key].length) return _naverApiCache[key];
 
   const h = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + (AUTH_TOKEN || SUPABASE_ANON_KEY) };
   const STEP = 1000;
