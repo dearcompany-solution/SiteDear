@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   if (Array.isArray(camp.body) && camp.body.length) {
     const ids = camp.body.slice(0, 5).map(c => c.nccCampaignId);
     const stat = await call('/stats',
-      `ids=${encodeURIComponent(JSON.stringify(ids))}` +
+      ids.map(id => `ids=${encodeURIComponent(id)}`).join('&') +
       `&fields=${encodeURIComponent(JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']))}` +
       `&timeRange=${encodeURIComponent(JSON.stringify({ since: from, until: to }))}`
     );
