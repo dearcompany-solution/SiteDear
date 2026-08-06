@@ -1,4 +1,4 @@
-// api/naver-test.js — 네이버 검색광고 API 연결 테스트 (일회용)
+// api/naver-test.js — 네이버 검색광고 API 연결 테스트
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -13,26 +13,16 @@ export default async function handler(req, res) {
   const SECRET_KEY = process.env.NAVER_SECRET_KEY;
 
   if (!CUSTOMER_ID || !API_KEY || !SECRET_KEY) {
-    return res.status(500).json({
-      error: '환경변수 누락',
-      has_customer: !!CUSTOMER_ID,
-      has_apikey: !!API_KEY,
-      has_secret: !!SECRET_KEY
-    });
+    return res.status(500).json({ error: '환경변수 누락' });
   }
 
-  // 네이버는 요청마다 HMAC-SHA256 서명이 필요하다
   function headers(method, uri) {
     const ts = Date.now().toString();
-    const sign = crypto
-      .createHmac('sha256', SECRET_KEY)
-      .update(`${ts}.${method}.${uri}`)
-      .digest('base64');
+    const sign = crypto.createHmac('sha256', SECRET_KEY)
+      .update(`${ts}.${method}.${uri}`).digest('base64');
     return {
-      'X-Timestamp': ts,
-      'X-API-KEY': API_KEY,
-      'X-CUSTOMER': String(CUSTOMER_ID),
-      'X-Signature': sign,
+      'X-Timestamp': ts, 'X-API-KEY': API_KEY,
+      'X-CUSTOMER': String(CUSTOMER_ID), 'X-Signature': sign,
       'Content-Type': 'application/json'
     };
   }
@@ -46,31 +36,71 @@ export default async function handler(req, res) {
     return { status: r.status, body };
   }
 
+  const iso = d => d.toISOString().slice(0, 10);
   const out = { customer_id: CUSTOMER_ID };
 
-  // 1) 캠페인 목록 — 연결 자체가 되는지
+  // 전체 캠페인
   const camp = await call('/ncc/campaigns');
-  out.campaigns = {
-    status: camp.status,
-    count: Array.isArray(camp.body) ? camp.body.length : null,
-    sample: Array.isArray(camp.body)
-      ? camp.body.slice(0, 5).map(c => ({ id: c.nccCampaignId, name: c.name, type: c.campaignTp, status: c.status }))
-      : camp.body
-  };
+  if (!Array.isArray(camp.body)) {
+    out.campaigns = camp;
+    return res.status(200).json(out);
+  }
 
-  // 2) 최근 7일 성과 — 통계 조회가 되는지
-  const to = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  const from = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
-  if (Array.isArray(camp.body) && camp.body.length) {
-    const ids = camp.body.slice(0, 5).map(c => c.nccCampaignId);
-    const stat = await call('/stats',
-      ids.map(id => `ids=${encodeURIComponent(id)}`).join('&') +
-      `&fields=${encodeURIComponent(JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']))}` +
-      `&timeRange=${encodeURIComponent(JSON.stringify({ since: from, until: to }))}`
-    );
-    out.stats = { period: `${from} ~ ${to}`, status: stat.status, body: stat.body };
-  } else {
-    out.stats = '캠페인이 없어 통계 조회를 건너뜀';
+  out.campaign_count = camp.body.length;
+  out.by_status = camp.body.reduce((a, c) => {
+    a[c.status] = (a[c.status] || 0) + 1; return a;
+  }, {});
+
+  const allIds = camp.body.map(c => c.nccCampaignId);
+  const idParam = allIds.map(id => `ids=${encodeURIComponent(id)}`).join('&');
+  const fields = encodeURIComponent(JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']));
+
+  // 기간을 나눠 훑으며 데이터가 있는 구간을 찾는다
+  async function statFor(since, until) {
+    const s = await call('/stats',
+      `${idParam}&fields=${fields}` +
+      `&timeRange=${encodeURIComponent(JSON.stringify({ since, until }))}`);
+    const rows = (s.body && s.body.data) || [];
+    const sum = rows.reduce((a, r) => ({
+      imp: a.imp + (r.impCnt || 0),
+      clk: a.clk + (r.clkCnt || 0),
+      cost: a.cost + (r.salesAmt || 0)
+    }), { imp: 0, clk: 0, cost: 0 });
+    return { period: `${since} ~ ${until}`, status: s.status, rows: rows.length, ...sum };
+  }
+
+  // 최근 12개월을 월 단위로 확인
+  const probes = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const s = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const e = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 0));
+    const until = iso(e) > iso(now) ? iso(now) : iso(e);
+    probes.push(await statFor(iso(s), until));
+  }
+
+  out.monthly = probes;
+  out.found = probes.filter(p => p.cost > 0 || p.imp > 0);
+
+  // 데이터가 있는 달의 캠페인별 상세
+  if (out.found.length) {
+    const f = out.found[0];
+    const [since, until] = f.period.split(' ~ ');
+    const s = await call('/stats',
+      `${idParam}&fields=${fields}` +
+      `&timeRange=${encodeURIComponent(JSON.stringify({ since, until }))}`);
+    const nameMap = {};
+    camp.body.forEach(c => { nameMap[c.nccCampaignId] = c.name; });
+    out.detail = {
+      period: f.period,
+      rows: ((s.body && s.body.data) || [])
+        .filter(r => (r.salesAmt || 0) > 0 || (r.impCnt || 0) > 0)
+        .map(r => ({
+          campaign: nameMap[r.id] || r.id,
+          노출: r.impCnt, 클릭: r.clkCnt,
+          광고비: r.salesAmt, 전환: r.ccnt
+        }))
+    };
   }
 
   return res.status(200).json(out);
