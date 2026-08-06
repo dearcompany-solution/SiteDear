@@ -963,8 +963,16 @@ let currentReportMonth = (JSON.parse(sessionStorage.getItem('currentDateRange'))
 // ── 데이터가 있는 가장 최근 달로 기본 기간 자동 설정 ──
 async function applyLatestDataDateRange(ck, force){
   if(!ck) return;
+  // 새로고침(같은 탭 재방문)이면 사용자가 보던 기간을 그대로 유지
+  if(!force){
+    try{
+      const stored = JSON.parse(sessionStorage.getItem('currentDateRange') || 'null');
+      if(stored && stored.from && stored.to) return;
+    }catch(e){}
+  }
   const h={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
-  const tables=['daily_reports','store_sales','meta_reports','google_reports','ebay_ads'];
+  const tables=['daily_reports','store_sales','meta_reports','google_reports','ebay_ads',
+                'naver_ad_data','naver_detail_data','meta_ad_data'];
   let maxDate=null;
   for(const t of tables){
     try{
