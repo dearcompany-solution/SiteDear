@@ -1,4 +1,4 @@
-// api/naver-probe.js — statType / stat-report 탐색
+// api/naver-probe.js — 완성된 대용량 보고서 내려받아 컬럼 확인
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -19,50 +19,57 @@ export default async function handler(req, res) {
   async function call(uri, query) {
     const r = await fetch(BASE + uri + (query ? '?' + query : ''), { headers: hdr('GET', uri) });
     const t = await r.text();
-    let b; try { b = JSON.parse(t); } catch (e) { b = t.slice(0, 250); }
+    let b; try { b = JSON.parse(t); } catch (e) { b = t.slice(0, 400); }
     return { status: r.status, body: b };
   }
   async function post(uri, payload) {
     const r = await fetch(BASE + uri, { method: 'POST', headers: hdr('POST', uri), body: JSON.stringify(payload) });
     const t = await r.text();
-    let b; try { b = JSON.parse(t); } catch (e) { b = t.slice(0, 250); }
+    let b; try { b = JSON.parse(t); } catch (e) { b = t.slice(0, 300); }
     return { status: r.status, body: b };
   }
 
-  const since = q.since || '2026-08-01';
-  const until = q.until || '2026-08-05';
-  const tr = encodeURIComponent(JSON.stringify({ since, until }));
-  const F = encodeURIComponent(JSON.stringify(['impCnt','clkCnt','salesAmt','ccnt']));
+  const out = {};
+  const statDt = (q.date || '2026-08-05') + 'T00:00:00.000Z';
 
-  const camps = await call('/ncc/campaigns');
-  const ids = Array.isArray(camps.body) ? camps.body.map(c => c.nccCampaignId) : [];
-  const idP = ids.map(i => `ids=${encodeURIComponent(i)}`).join('&');
-  const out = { period: `${since} ~ ${until}`, campaigns: ids.length };
-
-  // statType 값들을 시도한다
-  const types = ['AD_DETAIL','AD_CONVERSION_DETAIL','CAMPAIGN_DETAIL','ADGROUP_DETAIL','KEYWORD_DETAIL','SHOPPINGKEYWORD_DETAIL','NPLA_SCH_KEYWORD'];
-  out.statType = {};
-  for (const t of types) {
-    const r = await call('/stats', `${idP}&fields=${F}&timeRange=${tr}&statType=${t}`);
-    const rows = (r.body && r.body.data) || [];
-    out.statType[t] = { status: r.status, rows: rows.length,
-      first: rows[0] || (r.body && r.body.data ? null : r.body) };
+  // 필요하면 새로 생성
+  if (q.make === '1') {
+    out.made = {};
+    for (const tp of ['AD_DETAIL','EXPKEYWORD','AD','AD_CONVERSION']) {
+      const r = await post('/stat-reports', { reportTp: tp, statDt });
+      out.made[tp] = { status: r.status, id: r.body && r.body.reportJobId };
+    }
   }
 
-  // 대용량 보고서로 만들 수 있는 종류를 시도한다
-  const reps = ['AD','AD_DETAIL','CAMPAIGN','ADGROUP','KEYWORD','AD_CONVERSION','EXPKEYWORD','TIME','MEDIA'];
-  out.statReport = {};
-  for (const tp of reps) {
-    const r = await post('/stat-reports', { reportTp: tp, statDt: `${until}T00:00:00.000Z` });
-    out.statReport[tp] = { status: r.status,
-      id: r.body && r.body.reportJobId ? r.body.reportJobId : null,
-      msg: r.body && r.body.reportJobId ? null : r.body };
-  }
-
-  // 생성 요청한 보고서 목록
+  // 목록 확인
   const list = await call('/stat-reports');
-  out.reportList = { status: list.status,
-    items: Array.isArray(list.body) ? list.body.map(x => ({ tp: x.reportTp, st: x.status, id: x.reportJobId })) : list.body };
+  out.list = Array.isArray(list.body)
+    ? list.body.map(x => ({ tp: x.reportTp, st: x.status, id: x.reportJobId, url: x.downloadUrl ? '있음' : '없음' }))
+    : list.body;
+
+  // BUILT 상태인 것들의 상세 정보와 실제 내용
+  out.detail = {};
+  if (Array.isArray(list.body)) {
+    for (const item of list.body.filter(x => x.status === 'BUILT').slice(0, 3)) {
+      const d = await call(`/stat-reports/${item.reportJobId}`);
+      const info = { tp: item.reportTp, status: d.status, keys: d.body && typeof d.body === 'object' ? Object.keys(d.body) : null };
+      const url = d.body && (d.body.downloadUrl || d.body.downloadURL);
+      if (url) {
+        try {
+          const uri = '/report-download';
+          const fr = await fetch(url, { headers: hdr('GET', uri) });
+          const txt = await fr.text();
+          const lines = txt.split('\n').filter(Boolean);
+          info.download_status = fr.status;
+          info.total_lines = lines.length;
+          info.first_lines = lines.slice(0, 3);
+        } catch (e) { info.download_err = String(e.message); }
+      } else {
+        info.body = d.body;
+      }
+      out.detail[item.reportTp] = info;
+    }
+  }
 
   return res.status(200).json(out);
 }
