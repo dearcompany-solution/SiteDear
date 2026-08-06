@@ -14623,16 +14623,44 @@ async function loadHourlyTab(){
   const h = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
 
   try{
-    const hourlyResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_hourly_data`, {
-      method: 'POST',
-      headers: {...h, 'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        p_client_key: targetClient,
-        p_from_date: fromDate,
-        p_to_date:   toDate
-      })
-    }).then(r=>r.json());
-    let rows = Array.isArray(hourlyResult) ? hourlyResult : [];
+    let rows = [];
+    window._hourlyCovNotice = '';
+
+    // ── API 우선 (naver_detail_data)
+    const detail = await naverApiFetch(
+      'naver_detail_data', 'date,hour,device,campaign_id,imp,clk,cost,conv', fromDate, toDate);
+
+    if(detail.length){
+      const camps = await naverApiFetch(
+        'naver_ad_data', 'date,campaign_id,campaign_type', fromDate, toDate);
+      const typeMap = {};
+      camps.forEach(c=>{ if(c.campaign_id) typeMap[c.campaign_id] = c.campaign_type || null; });
+
+      const DEV = { P:'PC', M:'모바일', PC:'PC', MO:'모바일' };
+      rows = detail.map(r=>({
+        date: r.date,
+        time_slot: String(r.hour ?? 0).padStart(2,'0') + '시',
+        device: DEV[r.device] || r.device || null,
+        campaign_type: typeMap[r.campaign_id] || null,
+        imp: +r.imp || 0, click: +r.clk || 0,
+        cost: +r.cost || 0, conv: +r.conv || 0, rev: 0
+      }));
+      window._hourlyCovNotice = naverApiNotice(naverApiCoverage(detail, fromDate, toDate));
+      console.log('[시간대별] API 데이터', rows.length + '행');
+    } else {
+      // ── 폴백: 업로드 데이터
+      const hourlyResult = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_hourly_data`, {
+        method: 'POST',
+        headers: {...h, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          p_client_key: targetClient,
+          p_from_date: fromDate,
+          p_to_date:   toDate
+        })
+      }).then(r=>r.json());
+      rows = Array.isArray(hourlyResult) ? hourlyResult : [];
+      console.log('[시간대별] 업로드 폴백', rows.length + '행');
+    }
     if(!rows.length){
       el.innerHTML=`<div class="empty"><div class="ei">🕐</div><p>시간대별 데이터가 없습니다.<br><span style="font-size:12px;color:var(--text3)">파일 관리에서 시간대별 파일을 업로드해주세요</span></p></div>`;
       return;
@@ -14678,7 +14706,7 @@ async function loadHourlyTab(){
     });
     const dowList=Object.values(dowMap);
 
-    el.innerHTML=`
+    el.innerHTML=(window._hourlyCovNotice||'')+`
       <!-- KPI 피크타임 요약 -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:16px">
         <div class="card" style="border-top:4px solid var(--blue);text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:140px">
