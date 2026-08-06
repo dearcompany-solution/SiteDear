@@ -158,8 +158,24 @@ export default async function handler(req, res) {
     return log;
   }
 
-  const tasks = [];
+  let tasks = [];
   for (const ch of chunks) for (const acc of accounts) tasks.push({ ch, acc });
+
+  // 이미 성공한 구간은 건너뛴다 (이번 달은 값이 변하므로 항상 다시 받음)
+  if (!q.force && chunks.length > 1) {
+    try {
+      const r = await fetch(`${SB}/rest/v1/naver_sync_log?status=eq.success&select=customer_id,date_from,date_to&limit=5000`, { headers: sbH });
+      const logs = await r.json();
+      if (Array.isArray(logs)) {
+        const doneSet = new Set(logs.map(l => `${l.customer_id}|${l.date_from}|${l.date_to}`));
+        const thisMonth = YESTERDAY.slice(0, 7);
+        tasks = tasks.filter(t => {
+          if (t.ch.label === thisMonth) return true;
+          return !doneSet.has(`${t.acc.customer_id}|${t.ch.since}|${t.ch.until}`);
+        });
+      }
+    } catch (e) {}
+  }
 
   const results = [];
   let done = 0;
