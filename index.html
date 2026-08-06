@@ -9244,16 +9244,18 @@ function htmlAdmin(){
       <button class="btn btn-bl btn-sm" onclick="openBulkRegister()" style="white-space:nowrap">📤 엑셀 일괄등록</button>
     </div>
   </div>
-  <div class="card" id="metaSyncPanel" style="padding:10px 14px;margin-bottom:12px;border:1.5px solid rgba(24,119,242,.35)">
+  <div id="syncPanelGrid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px;align-items:start">
+  <div class="card" id="metaSyncPanel" style="padding:10px 14px;margin-bottom:0;border:1.5px solid rgba(24,119,242,.35)">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:600">🔄 메타 API 동기화</span>
       <span id="msBadge" style="font-size:11px;background:#E7F0FD;color:#1877F2;border-radius:10px;padding:2px 9px;font-weight:600">연결 확인 중…</span>
-      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <select id="msTarget" style="height:30px;font-size:12px;min-width:142px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
+      <span id="msLast" style="margin-left:auto;font-size:10.5px;color:var(--text3)"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:9px">
+        <select id="msTarget" style="flex:1;min-width:0;height:30px;font-size:12px"></select>
         <button class="btn btn-ol btn-sm" onclick="metaSyncRun('recent')">최근 14일</button>
         <button class="btn btn-bl btn-sm" onclick="metaSyncRun('all')">전체 기간 받기</button>
         <button class="btn btn-ol btn-sm" id="msStop" style="display:none" onclick="metaSyncStop()">중지</button>
-      </div>
     </div>
     <div id="msProgWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
@@ -9265,18 +9267,20 @@ function htmlAdmin(){
   </div>
   <style>
     @keyframes sdflow{0%{background-position:0 0}100%{background-position:28px 0}}
+    @media(max-width:1100px){#syncPanelGrid{grid-template-columns:1fr!important}}
     .sd-flow{background-image:repeating-linear-gradient(115deg,var(--c) 0 10px,rgba(255,255,255,.45) 10px 20px);background-size:28px 100%;animation:sdflow .6s linear infinite}
   </style>
-  <div class="card" id="naverSyncPanel" style="padding:10px 14px;margin-bottom:12px;border:1.5px solid rgba(3,199,90,.35)">
+  <div class="card" id="naverSyncPanel" style="padding:10px 14px;margin-bottom:0;border:1.5px solid rgba(3,199,90,.35)">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:600">🟢 네이버 검색광고 동기화</span>
       <span id="nsBadge" style="font-size:11px;background:#E6F7EE;color:#03C75A;border-radius:10px;padding:2px 9px;font-weight:600">연결 확인 중…</span>
-      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <select id="nsTarget" style="height:30px;font-size:12px;min-width:142px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
+      <span id="nsLast" style="margin-left:auto;font-size:10.5px;color:var(--text3)"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:9px">
+        <select id="nsTarget" style="flex:1;min-width:0;height:30px;font-size:12px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
         <button class="btn btn-ol btn-sm" onclick="naverSyncRun('recent')">최근 14일</button>
         <button class="btn btn-sm" style="background:#03C75A;color:#fff;border-color:#03C75A" onclick="naverSyncRun('all')">12개월 받기</button>
         <button class="btn btn-ol btn-sm" id="nsStop" style="display:none" onclick="naverSyncStop()">중지</button>
-      </div>
     </div>
     <div id="nsProgWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
@@ -9285,6 +9289,7 @@ function htmlAdmin(){
       </div>
       <div id="nsLog" style="margin-top:7px;font-size:11px;color:var(--text3);line-height:1.6"></div>
     </div>
+  </div>
   </div>
   <div id="adminTableWrap"></div>
   <div id="adminPager" class="pg-bar"></div>
@@ -9309,6 +9314,27 @@ async function loadNaverLinks(){
 }
 
 let _nsLoading=false;
+
+function _agoText(ts){
+  if(!ts) return '';
+  const m=Math.floor((Date.now()-new Date(ts).getTime())/60000);
+  if(m<1) return '방금';
+  if(m<60) return `${m}분 전`;
+  if(m<1440) return `${Math.floor(m/60)}시간 전`;
+  return `${Math.floor(m/1440)}일 전`;
+}
+async function loadSyncLastRun(){
+  const H={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY)};
+  const put=(el,ts)=>{ const e=document.getElementById(el); if(e) e.textContent=ts?('최근 '+_agoText(ts)):''; };
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/meta_sync_log?status=eq.success&select=finished_at&order=finished_at.desc&limit=1`,{headers:H});
+    const j=await r.json(); put('msLast', Array.isArray(j)&&j[0]?j[0].finished_at:null);
+  }catch(e){}
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/naver_sync_log?status=eq.success&select=finished_at&order=finished_at.desc&limit=1`,{headers:H});
+    const j=await r.json(); put('nsLast', Array.isArray(j)&&j[0]?j[0].finished_at:null);
+  }catch(e){}
+}
 function naverSyncUpdateBadge(){
   const b=document.getElementById('nsBadge'); if(!b) return;
   if(_naverLinkMap===null){
@@ -9508,6 +9534,7 @@ function renderAdminTable(){
   if(_metaLinkMap===null){ _metaLinkMap={}; loadMetaLinks().then(()=>renderAdminTable()); }
   setTimeout(metaSyncUpdateBadge,0);
   setTimeout(naverSyncUpdateBadge,0);
+  setTimeout(loadSyncLastRun,0);
   const q = adminSearch.trim().toLowerCase();
   let list = ACCOUNTS.filter(a=>a.role==='client');
   if(q) list = list.filter(a=>
