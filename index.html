@@ -9348,7 +9348,7 @@ async function naverSyncRun(mode, clientKey){
       if(target) url+=`&client=${encodeURIComponent(target)}`;
 
       const r=await fetch(url);
-      if(r.status===401){ _msSecret=null; stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
+      if(r.status===401){ metaSyncClearSecret(); stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
       if(r.status===504||r.status===502){ stat.textContent=`시간 초과 — 재시도 중 (${doneAll}건 저장됨)`; await new Promise(s=>setTimeout(s,3000)); continue; }
       const j=await r.json();
       if(j.error){ stat.textContent=j.error; toast('❌ '+j.error); break; }
@@ -9397,9 +9397,18 @@ function metaSyncUpdateBadge(){
 
 function metaSyncSecret(){
   if(_msSecret) return _msSecret;
-  const v=prompt('CRON_SECRET 값을 입력하세요 (버셀 환경변수 값)');
-  if(v&&v.trim()) _msSecret=v.trim();
+  try{ const s=localStorage.getItem('sd_sync_secret'); if(s){ _msSecret=s; return _msSecret; } }catch(e){}
+  const v=prompt('CRON_SECRET 값을 입력하세요 (한 번만 입력하면 이 브라우저에 저장됩니다)');
+  if(v&&v.trim()){
+    _msSecret=v.trim();
+    try{ localStorage.setItem('sd_sync_secret', _msSecret); }catch(e){}
+  }
   return _msSecret;
+}
+function metaSyncClearSecret(){
+  _msSecret=null;
+  try{ localStorage.removeItem('sd_sync_secret'); }catch(e){}
+  toast('저장된 시크릿을 지웠습니다');
 }
 
 function metaSyncStop(){ _msStopFlag=true; }
@@ -9426,7 +9435,7 @@ async function metaSyncRun(mode, actId){
       if(target) url+=`&account=${encodeURIComponent(target)}`;
 
       const r=await fetch(url);
-      if(r.status===401){ _msSecret=null; stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
+      if(r.status===401){ metaSyncClearSecret(); stat.textContent='인증 실패'; toast('❌ 시크릿이 올바르지 않습니다'); break; }
       if(r.status===504||r.status===502){ stat.textContent=`시간 초과 — 재시도 중 (${doneAll}건 저장됨)`; await new Promise(s=>setTimeout(s,3000)); continue; }
       const j=await r.json();
       if(j.error){ stat.textContent=j.error; toast('❌ '+j.error); break; }
