@@ -9252,7 +9252,7 @@ function htmlAdmin(){
       <span id="msLast" style="margin-left:auto;font-size:10.5px;color:var(--text3)"></span>
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-top:9px">
-        <select id="msTarget" style="flex:1;min-width:0;height:30px;font-size:12px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
+        <div class="sdsel" id="msTargetSel"><button type="button" class="sdsel-btn" onclick="sdselToggle('msTargetSel')">전체</button><div class="sdsel-list"></div></div>
         <button class="btn btn-ol btn-sm" onclick="metaSyncRun('recent')">최근 14일</button>
         <button class="btn btn-bl btn-sm" onclick="metaSyncRun('all')">전체 기간 받기</button>
         <button class="btn btn-ol btn-sm" id="msStop" style="display:none" onclick="metaSyncStop()">중지</button>
@@ -9267,6 +9267,14 @@ function htmlAdmin(){
   </div>
   <style>
     @keyframes sdflow{0%{background-position:0 0}100%{background-position:28px 0}}
+    .sdsel{position:relative;flex:1;min-width:0}
+    .sdsel-btn{width:100%;height:30px;font-size:12px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+    .sdsel-btn:after{content:'';position:absolute;right:10px;top:12px;width:7px;height:7px;border-right:1.6px solid #94A3B8;border-bottom:1.6px solid #94A3B8;transform:rotate(45deg);pointer-events:none}
+    .sdsel-list{position:absolute;top:34px;left:0;right:0;z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);padding:4px;display:none;max-height:220px;overflow:auto}
+    .sdsel.open .sdsel-list{display:block}
+    .sdsel-opt{padding:7px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sdsel-opt:hover{background:var(--bg2)}
+    .sdsel-opt.on{background:var(--bg2);font-weight:600}
     @media(max-width:1100px){#syncPanelGrid{grid-template-columns:1fr!important}}
     .sd-flow{background-image:repeating-linear-gradient(115deg,var(--c) 0 10px,rgba(255,255,255,.45) 10px 20px);background-size:28px 100%;animation:sdflow .6s linear infinite}
   </style>
@@ -9277,7 +9285,7 @@ function htmlAdmin(){
       <span id="nsLast" style="margin-left:auto;font-size:10.5px;color:var(--text3)"></span>
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-top:9px">
-        <select id="nsTarget" style="flex:1;min-width:0;height:30px;font-size:12px;padding:0 26px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394A3B8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center"></select>
+        <div class="sdsel" id="nsTargetSel"><button type="button" class="sdsel-btn" onclick="sdselToggle('nsTargetSel')">전체</button><div class="sdsel-list"></div></div>
         <button class="btn btn-ol btn-sm" onclick="naverSyncRun('recent')">최근 14일</button>
         <button class="btn btn-sm" style="background:#03C75A;color:#fff;border-color:#03C75A" onclick="naverSyncRun('all')">12개월 받기</button>
         <button class="btn btn-ol btn-sm" id="nsStop" style="display:none" onclick="naverSyncStop()">중지</button>
@@ -9314,6 +9322,47 @@ async function loadNaverLinks(){
 }
 
 let _nsLoading=false;
+const _sdselVal={};
+
+function sdselToggle(id){
+  const el=document.getElementById(id); if(!el) return;
+  const wasOpen=el.classList.contains('open');
+  document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open'));
+  if(!wasOpen) el.classList.add('open');
+}
+function sdselFill(id, items, cur){
+  const el=document.getElementById(id); if(!el) return;
+  const list=el.querySelector('.sdsel-list'), btn=el.querySelector('.sdsel-btn');
+  const val=cur!==undefined?cur:(_sdselVal[id]||'');
+  _sdselVal[id]=val;
+  list.innerHTML='';
+  items.forEach(it=>{
+    const d=document.createElement('div');
+    d.className='sdsel-opt'+(it.value===val?' on':'');
+    d.textContent=it.label;
+    d.onclick=e=>{ e.stopPropagation(); sdselSet(id, it.value, it.label); };
+    list.appendChild(d);
+  });
+  const hit=items.find(i=>i.value===val);
+  btn.textContent=hit?hit.label:(items[0]?items[0].label:'전체');
+}
+function sdselSet(id, value, label){
+  _sdselVal[id]=value;
+  const el=document.getElementById(id); if(!el) return;
+  el.querySelector('.sdsel-btn').textContent=label;
+  el.querySelectorAll('.sdsel-opt').forEach(o=>o.classList.toggle('on', o.textContent===label));
+  el.classList.remove('open');
+}
+function sdselGet(id){ return _sdselVal[id]||''; }
+function sdselDisable(id, on){
+  const el=document.getElementById(id); if(!el) return;
+  const b=el.querySelector('.sdsel-btn');
+  b.disabled=!!on; b.style.opacity=on?'.5':''; b.style.cursor=on?'default':'pointer';
+  if(on) el.classList.remove('open');
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.sdsel')) document.querySelectorAll('.sdsel.open').forEach(x=>x.classList.remove('open'));
+});
 
 function _agoText(ts){
   if(!ts) return '';
@@ -9344,13 +9393,10 @@ function naverSyncUpdateBadge(){
   const total=ACCOUNTS.filter(a=>a.role==='client').length;
   const keys=Object.keys(_naverLinkMap);
   b.textContent=`연결 ${keys.length} / 전체 ${total}`;
-  const sel=document.getElementById('nsTarget');
-  if(sel&&!_nsRunning){
-    const prev=sel.value;
-    let o=`<option value="">전체 (${keys.length}개 계정)</option>`;
-    keys.forEach(k=>{ o+=`<option value="${k}">${k}</option>`; });
-    sel.innerHTML=o;
-    if(prev) sel.value=prev;
+  if(!_nsRunning){
+    const items=[{value:'',label:`전체 (${keys.length}개 계정)`}];
+    keys.forEach(k=>{ items.push({value:k,label:k}); });
+    sdselFill('nsTargetSel', items);
   }
 }
 
@@ -9359,8 +9405,7 @@ function naverSyncStop(){ _nsStopFlag=true; }
 async function naverSyncRun(mode, clientKey){
   if(_nsRunning){ toast('이미 동기화가 진행 중입니다'); return; }
   const secret=metaSyncSecret(); if(!secret) return;
-  const sel=document.getElementById('nsTarget');
-  const target=clientKey||(sel?sel.value:'');
+  const target=clientKey||sdselGet('nsTargetSel');
   const bar=document.getElementById('nsBar'), stat=document.getElementById('nsStat'), log=document.getElementById('nsLog');
   const stopBtn=document.getElementById('nsStop'), wrap=document.getElementById('nsProgWrap');
   if(!bar||!stat) return;
@@ -9417,13 +9462,10 @@ function metaSyncUpdateBadge(){
   const total=ACCOUNTS.filter(a=>a.role==='client').length;
   const keys=_metaLinkMap?Object.keys(_metaLinkMap):[];
   b.textContent=`연결 ${keys.length} / 전체 ${total}`;
-  const sel=document.getElementById('msTarget');
-  if(sel&&!_msRunning){
-    const prev=sel.value;
-    let o=`<option value="">전체 (${keys.length}개 계정)</option>`;
-    keys.forEach(k=>{ o+=`<option value="${_metaLinkMap[k]}">${k}</option>`; });
-    sel.innerHTML=o;
-    if(prev) sel.value=prev;
+  if(!_msRunning){
+    const items=[{value:'',label:`전체 (${linked}개 계정)`}];
+    if(_metaLinkMap) Object.keys(_metaLinkMap).forEach(k=>{ items.push({value:_metaLinkMap[k],label:k}); });
+    sdselFill('msTargetSel', items);
   }
 }
 
@@ -9448,8 +9490,7 @@ function metaSyncStop(){ _msStopFlag=true; }
 async function metaSyncRun(mode, actId){
   if(_msRunning){ toast('이미 동기화가 진행 중입니다'); return; }
   const secret=metaSyncSecret(); if(!secret) return;
-  const sel=document.getElementById('msTarget');
-  const target=actId||(sel?sel.value:'');
+  const target=actId||sdselGet('msTargetSel');
   const bar=document.getElementById('msBar'), stat=document.getElementById('msStat'), log=document.getElementById('msLog');
   const stopBtn=document.getElementById('msStop'), wrap=document.getElementById('msProgWrap');
   if(!bar||!stat) return;
