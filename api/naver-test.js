@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
   const allIds = camp.body.map(c => c.nccCampaignId);
   const idParam = allIds.map(id => `ids=${encodeURIComponent(id)}`).join('&');
-  const fields = encodeURIComponent(JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']));
+  const fields = encodeURIComponent(JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt', 'convAmt', 'crto', 'cpc', 'ctr', 'avgRnk', 'viewCnt']));
 
   // 기간을 나눠 훑으며 데이터가 있는 구간을 찾는다
   async function statFor(since, until) {
@@ -93,12 +93,13 @@ export default async function handler(req, res) {
     camp.body.forEach(c => { nameMap[c.nccCampaignId] = c.name; });
     out.detail = {
       period: f.period,
+      raw_sample: ((s.body && s.body.data) || [])[0] || null,
       rows: ((s.body && s.body.data) || [])
         .filter(r => (r.salesAmt || 0) > 0 || (r.impCnt || 0) > 0)
         .map(r => ({
           campaign: nameMap[r.id] || r.id,
           노출: r.impCnt, 클릭: r.clkCnt,
-          광고비: r.salesAmt, 전환: r.ccnt
+          광고비: r.salesAmt, 전환: r.ccnt, 전환매출: r.convAmt
         }))
     };
   }
