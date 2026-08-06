@@ -9542,9 +9542,9 @@ function renderAdminTable(){
         <td style="color:var(--text3);font-size:11px">${rowNum++}</td>
         <td><b>${c.company}</b></td>
         <td style="font-size:11.5px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${c.id}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;white-space:nowrap">
           ${c.naver_search_id
-            ? `<span style="color:var(--naver);font-weight:600">${c.naver_search_id}</span>`
+            ? `<span style="color:var(--naver);font-weight:600">${c.naver_search_id}</span>${(_naverLinkMap&&_naverLinkMap[c.id])?`<button class="btn btn-ol btn-sm" style="margin-left:5px;padding:0 5px;font-size:10px;line-height:16px;vertical-align:1px" title="이 업체만 동기화" onclick="event.stopPropagation();naverSyncOne('${c.id}')">⟳</button>`:''}`
             : `<span style="color:var(--red);font-size:11px">⚠️ 미등록</span>`}
         </td>
         <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">
