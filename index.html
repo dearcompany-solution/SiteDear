@@ -3604,8 +3604,59 @@ async function fetchReportData(month){
       fetchAll(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${ck}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*`),
     ]);
 
-    const kpiData = kpiResult || {};
-    const dailyArr = Array.isArray(trendResult) ? trendResult : [];
+    let kpiData = kpiResult || {};
+    let dailyArr = Array.isArray(trendResult) ? trendResult : [];
+
+    // ── 업로드 데이터가 없을 때만 네이버 API로 채움 (다른 업체·채널 영향 없음)
+    if(!dailyArr.length && typeof naverApiFetch === 'function'){
+      try{
+        const camps = await naverApiFetch('naver_ad_data',
+          'date,campaign_id,campaign_name,campaign_type,imp,clk,cost,conv,conv_amt', fromDate, toDate);
+        if(camps.length){
+          const det = await naverApiFetch('naver_detail_data',
+            'date,campaign_id,device,imp,clk,cost,conv', fromDate, toDate);
+          const DEV = { P:'PC', M:'모바일' };
+          const typeMap = {}, revMap = {}, costMap = {};
+          camps.forEach(c=>{
+            typeMap[c.campaign_id] = c.campaign_type || '기타';
+            const k = c.date + '|' + c.campaign_id;
+            revMap[k]  = (revMap[k]  || 0) + (+c.conv_amt || 0);
+            costMap[k] = (costMap[k] || 0) + (+c.cost || 0);
+          });
+          const detDates = new Set(det.map(r => r.date));
+          const dmap = {};
+          det.forEach(r=>{
+            const k = r.date + '|' + r.campaign_id + '|' + r.device;
+            if(!dmap[k]) dmap[k] = { date:r.date, campaign_id:r.campaign_id,
+              device: DEV[r.device] || r.device || '', imp:0, click:0, cost:0, conv:0 };
+            dmap[k].imp += +r.imp||0;  dmap[k].click += +r.clk||0;
+            dmap[k].cost += +r.cost||0; dmap[k].conv += +r.conv||0;
+          });
+          const out = [];
+          Object.values(dmap).forEach(r=>{
+            const k = r.date + '|' + r.campaign_id;
+            const share = costMap[k] > 0 ? r.cost / costMap[k] : 0;
+            out.push(Object.assign({}, r, {
+              campaign_type: typeMap[r.campaign_id] || '기타',
+              rev: Math.round((revMap[k] || 0) * share) }));
+          });
+          camps.forEach(c=>{
+            if(detDates.has(c.date)) return;
+            out.push({ date:c.date, campaign_id:c.campaign_id, device:'',
+              campaign_type: c.campaign_type || '기타',
+              imp:+c.imp||0, click:+c.clk||0, cost:+c.cost||0,
+              conv:+c.conv||0, rev:+c.conv_amt||0 });
+          });
+          dailyArr = out.sort((a,b)=>a.date.localeCompare(b.date));
+          const sum = f => camps.reduce((s,c)=> s + (+c[f]||0), 0);
+          kpiData = { totalCost:sum('cost'), totalImp:sum('imp'), totalClick:sum('clk'),
+            totalConv:sum('conv'), totalRev:sum('conv_amt'),
+            totalPurchaseConv:sum('conv'), totalPurchaseRev:sum('conv_amt'),
+            totalCartRev:0, totalCartConv:0 };
+          console.log('[네이버 API] 캠페인', camps.length, '/ 상세', det.length, '→ 행', dailyArr.length);
+        }
+      }catch(e){ console.warn('[네이버 API] 실패 — 업로드 데이터 유지', e); }
+    }
 
     // KPI 직접 설정 (RPC 집계값 사용)
     const totalCost        = +kpiData.totalCost        || 0;
