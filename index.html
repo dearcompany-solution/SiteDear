@@ -6000,6 +6000,74 @@ function saveOneFile(fileObj, client) {
             // 파일명에서 못찾으면 month(업로드 시 자동감지된 월) 그대로 사용
           }
 
+          // ── GFA 소재별 파일 (별도 테이블) — 반드시 일별/매체별보다 먼저 판별
+          const isCreative = cols.includes('광고 소재 이름') || cols.includes('광고 소재 ID');
+          if(isCreative){
+            const cRows = [];
+            for(let i = headerIdx + 1; i < lines.length; i++){
+              const line = lines[i];
+              if(!line.trim()) continue;
+              const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+              if(vals.every(v=>!v)) continue;
+              const row = {};
+              cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
+              const rawDate = row['기간'] || '';
+              const dateStr = rawDate.replace(/\./g,'-').replace(/-+$/,'').slice(0,10);
+              if(!dateStr || dateStr.length < 8) continue;
+              const rowMonth = dateStr.slice(0,7);
+              if(gfaMonth && rowMonth !== gfaMonth) continue;
+              const nm = row['광고 소재 이름'] || '';
+              const kid = row['광고 소재 ID'] || '';
+              if(!nm && !kid) continue;
+              cRows.push({
+                client_key: client, month: rowMonth, date: dateStr,
+                creative_name: nm || ('ID ' + kid), creative_id: kid || null,
+                adgroup_name: row['광고 그룹 이름'] || null, adgroup_id: row['광고 그룹 ID'] || null,
+                campaign_name: row['캠페인 이름'] || null, campaign_id: row['캠페인 ID'] || null,
+                placement: row['게재 위치'] || '기타',
+                cost:  parseNum(row['총비용']),
+                imp:   parseNum(row['노출수']),
+                click: parseNum(row['클릭수']),
+                cpc:   parseNum(row['평균 CPC']),
+                ctr:   parseNum(row['클릭률(%)']),
+                conv:  parseNum(row['구매완료 수']),
+                cart_conv: parseNum(row['장바구니 담기 수']),
+                rev:   parseNum(row['구매완료 전환매출액']),
+                roas:  parseNum(row['총 광고수익률(%)'])
+              });
+            }
+            if(!cRows.length){
+              fileObj.status='저장실패'; renderUploadTab();
+              toast('⚠️ ' + fileObj.name + ' — GFA 소재 데이터 없음'); return;
+            }
+            const dh = {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SUPABASE_ANON_KEY),'Prefer':'return=minimal'};
+            (async () => {
+              const months = [...new Set(cRows.map(r=>r.month))];
+              for(const m of months){
+                const dr = await fetch(`${SUPABASE_URL}/rest/v1/gfa_creative_data?client_key=eq.${encodeURIComponent(client)}&month=eq.${m}`,
+                  { method:'DELETE', headers:dh });
+                if(!dr.ok) throw new Error('기존 소재 데이터 삭제 실패: ' + await dr.text());
+              }
+              await new Promise(r=>setTimeout(r,300));
+              for(let i=0; i<cRows.length; i+=200){
+                const pr = await fetch(`${SUPABASE_URL}/rest/v1/gfa_creative_data`, {
+                  method:'POST', headers:{...dh,'Content-Type':'application/json'},
+                  body: JSON.stringify(cRows.slice(i, i+200)) });
+                if(!pr.ok) throw new Error(await pr.text());
+              }
+            })().then(()=>{
+              fileObj.status='저장완료'; fileObj.savedMonth=gfaMonth; fileObj.savedCount=cRows.length;
+              renderUploadTab();
+              const n = new Set(cRows.map(r=>r.creative_name)).size;
+              toast('✅ ' + fileObj.name + ' GFA 소재별 — ' + cRows.length + '행 / 소재 ' + n + '개 저장 완료!');
+              saveUploadLog(client, fileObj.name, 'gfa_creative', gfaMonth, cRows.length);
+            }).catch(err=>{
+              fileObj.status='저장실패'; renderUploadTab();
+              toast('❌ GFA 소재별 저장 실패: '+err.message);
+            });
+            return;
+          }
+
           const gfaRows = [];
           for(let i = headerIdx + 1; i < lines.length; i++){
             const line = lines[i];
