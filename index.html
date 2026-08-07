@@ -15710,11 +15710,11 @@ async function loadRptGFATab(){
         window._gfaCreativeHTML = bestHTML + `
         <style>
         .gfa-cw{position:relative}
-        .gfa-pop{position:absolute;left:44px;top:calc(100% - 4px);z-index:50;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);opacity:0;visibility:hidden;transition:opacity .12s;pointer-events:none}
+        .gfa-pop{position:absolute;left:44px;top:6px;z-index:50;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);opacity:0;visibility:hidden;transition:opacity .12s;pointer-events:none}
         .gfa-cw:hover .gfa-pop{opacity:1;visibility:visible}
         .tbl tr:nth-last-child(-n+2) .gfa-pop{top:auto;bottom:calc(100% - 4px)}
         </style>` + `
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+        <div class="card" style="padding:0;overflow:visible;margin-bottom:16px">
           <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
             <div style="font-size:14px;font-weight:600">🎨 소재별 성과 <span style="font-size:11px;background:rgba(3,199,90,.12);color:var(--naver);padding:2px 8px;border-radius:99px;margin-left:6px">소재 ${list.length}개</span></div>
             <span style="font-size:12px;color:var(--text3)">${cFrom} ~ ${cTo}</span>
@@ -15725,7 +15725,7 @@ async function loadRptGFATab(){
             ${kpi('클릭 · CTR', fmtn(T.click), T.imp>0?(T.click/T.imp*100).toFixed(2)+'%':'')}
             ${kpi('평균 CPC', T.click>0?fmt(Math.round(T.cost/T.click)):'—')}
           </div>
-          <div style="overflow-x:auto">
+          <div style="overflow:visible">
             <table class="tbl">
               <thead><tr>
                 <th style="width:34px">#</th><th>소재</th><th>광고비</th><th>노출수</th><th>클릭수</th>
