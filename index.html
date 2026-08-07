@@ -5172,7 +5172,7 @@ async function loadUploadLogs(clientFilter, monthFilter){
 
     const typeLabel = {
       daily:'📅 일별', keyword:'🔑 키워드', hourly:'🕐 시간대별',
-      gfa_daily:'📡 GFA 일별', gfa_placement:'📍 GFA 매체별', ebay_product_gmarket:'🟢 G마켓', ebay_product_auction:'🔴 옥션', ebay_ad:'📢 이베이광고', unknown:'📄 기타'
+      gfa_daily:'📡 GFA 일별', gfa_placement:'📍 GFA 매체별', gfa_creative:'🎨 GFA 소재별', ebay_product_gmarket:'🟢 G마켓', ebay_product_auction:'🔴 옥션', ebay_ad:'📢 이베이광고', unknown:'📄 기타'
     };
 
     const rows = logs.map(log=>{
@@ -5245,6 +5245,7 @@ function confirmDeleteUploadLog(logStr){
     hourly:        { table:'hourly_reports',  label:'시간대별 데이터' },
     gfa_daily:     { table:'gfa_reports',     label:'GFA 일별 데이터' },
     gfa_placement: { table:'gfa_reports',     label:'GFA 매체별 데이터' },
+    gfa_creative:  { table:'gfa_creative_data', label:'GFA 소재별 데이터' },
     ebay_product_gmarket: { table:'ebay_products', label:'G마켓 상품 데이터' },
     ebay_product_auction: { table:'ebay_products', label:'옥션 상품 데이터' },
     ebay_ad:              { table:'ebay_ads',      label:'이베이 광고 데이터' },
@@ -5284,6 +5285,7 @@ async function deleteUploadLog(logStr){
     hourly:        'hourly_reports',
     gfa_daily:     'gfa_reports',
     gfa_placement: 'gfa_reports',
+    gfa_creative:  'gfa_creative_data',
   };
   const dataTable = tableMap[log.file_type];
 
@@ -15497,6 +15499,8 @@ async function loadRptGFATab(){
         <canvas id="${pfx}gfaDailyCost" height="100"></canvas>
       </div>
 
+      ${window._gfaCreativeHTML || ''}
+
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:14px;font-weight:600">📍 게재위치별 성과</div>
@@ -15552,6 +15556,81 @@ async function loadRptGFATab(){
     while(true){ const res=await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`,{headers:h}); const data=await res.json(); if(!Array.isArray(data)||!data.length) break; result.push(...data); if(data.length<PAGE) break; offset+=PAGE; } return result;
   };
   try{
+    // ── GFA 소재별 (gfa_creative_data) ──
+    window._gfaCreativeHTML = '';
+    try{
+      const cq = `${SUPABASE_URL}/rest/v1/gfa_creative_data?client_key=eq.${encodeURIComponent(targetClient)}`
+        + `&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&limit=20000`;
+      let cr = await fetch(cq, {headers:h}).then(r=>r.ok?r.json():[]);
+      if(!Array.isArray(cr)) cr = [];
+      const cFrom = currentDateRange?.from || `${fromMonth}-01`;
+      const cTo   = currentDateRange?.to   || `${toMonth}-31`;
+      cr = cr.filter(r => !r.date || (r.date >= cFrom && r.date <= cTo));
+
+      if(cr.length){
+        const cm = {};
+        cr.forEach(r=>{
+          const k = r.creative_name || ('ID ' + (r.creative_id||''));
+          if(!cm[k]) cm[k] = {name:k, adgroup:r.adgroup_name||'', placement:r.placement||'',
+            cost:0, imp:0, click:0, conv:0, cart:0, rev:0};
+          const o = cm[k];
+          o.cost += +r.cost||0;  o.imp  += +r.imp||0;
+          o.click+= +r.click||0; o.conv += +r.conv||0;
+          o.cart += +r.cart_conv||0; o.rev += +r.rev||0;
+        });
+        const list = Object.values(cm).sort((a,b)=>b.cost-a.cost);
+        const T = list.reduce((s,o)=>({cost:s.cost+o.cost, imp:s.imp+o.imp, click:s.click+o.click,
+          conv:s.conv+o.conv, rev:s.rev+o.rev}), {cost:0,imp:0,click:0,conv:0,rev:0});
+        let bestCtr = null;
+        list.forEach(o=>{ if(o.imp>=100){ const c=o.click/o.imp; if(!bestCtr||c>bestCtr.v) bestCtr={n:o.name,v:c}; } });
+
+        const kpi = (lb,v,sub) => `<div style="background:var(--surface);border-radius:10px;padding:11px 14px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${lb}</div>
+          <div style="font-size:19px;font-weight:700;font-family:'IBM Plex Mono',monospace">${v}${sub?`<span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:5px">${sub}</span>`:''}</div></div>`;
+
+        const body = list.map((o,i)=>{
+          const ctr = o.imp>0 ? (o.click/o.imp*100) : 0;
+          const cpc = o.click>0 ? Math.round(o.cost/o.click) : 0;
+          const isBest = bestCtr && bestCtr.n===o.name;
+          return `<tr${isBest?' style="background:rgba(3,199,90,.06)"':''}>
+            <td style="font-size:12px;color:var(--text3)">${i+1}</td>
+            <td style="font-size:12.5px;font-weight:600;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.name}${isBest?` <span style="font-size:10px;background:rgba(3,199,90,.14);color:var(--naver);padding:1px 6px;border-radius:99px;font-weight:700">CTR 최고</span>`:''}<div style="font-size:10.5px;color:var(--text3);font-weight:400;overflow:hidden;text-overflow:ellipsis">${o.adgroup} · ${o.placement}</div></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(o.cost)}<div style="font-size:10.5px;color:var(--text3)">${T.cost>0?(o.cost/T.cost*100).toFixed(1):'0'}%</div></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(o.imp)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(o.click)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${ctr.toFixed(2)}%</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${cpc?fmt(cpc):'—'}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtn(o.conv)}건</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmt(o.rev)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${roasColor(o.cost,o.rev)}">${calcR(o.cost,o.rev)}</td>
+          </tr>`;
+        }).join('');
+
+        window._gfaCreativeHTML = `
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;font-weight:600">🎨 소재별 성과 <span style="font-size:11px;background:rgba(3,199,90,.12);color:var(--naver);padding:2px 8px;border-radius:99px;margin-left:6px">소재 ${list.length}개</span></div>
+            <span style="font-size:12px;color:var(--text3)">${cFrom} ~ ${cTo}</span>
+          </div>
+          <div style="padding:14px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            ${kpi('광고비', fmt(T.cost))}
+            ${kpi('노출수', fmtn(T.imp))}
+            ${kpi('클릭 · CTR', fmtn(T.click), T.imp>0?(T.click/T.imp*100).toFixed(2)+'%':'')}
+            ${kpi('평균 CPC', T.click>0?fmt(Math.round(T.cost/T.click)):'—')}
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr>
+                <th style="width:34px">#</th><th>소재</th><th>광고비</th><th>노출수</th><th>클릭수</th>
+                <th>CTR</th><th>평균CPC</th><th>구매완료</th><th>전환매출</th><th>ROAS</th>
+              </tr></thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>`;
+      }
+    }catch(e){ console.warn('[GFA 소재별]', e); }
+
     let rows = await fetchAllGfa(`${SUPABASE_URL}/rest/v1/gfa_reports?client_key=eq.${encodeURIComponent(targetClient)}&month=gte.${fromMonth}&month=lte.${toMonth}&select=*&order=date.asc`);
 if(!Array.isArray(rows)) rows = [];
 // 날짜 범위 필터 적용
