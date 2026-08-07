@@ -14742,6 +14742,14 @@ function naverApiRange(){
 async function naverApiFetch(table, cols, from, to, extra){
   const client = naverApiClient();
   if(!client) return [];
+  // 2026-02-31 같은 없는 날짜를 그 달 마지막 날로 보정
+  const fixD = d => {
+    const m = String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return d;
+    const last = new Date(Date.UTC(+m[1], +m[2], 0)).getUTCDate();
+    return `${m[1]}-${m[2]}-${String(Math.min(+m[3], last)).padStart(2,'0')}`;
+  };
+  from = fixD(from); to = fixD(to);
   const key = [table, client, from, to, extra||''].join('|');
   if(_naverApiCache[key] && _naverApiCache[key].length) return _naverApiCache[key];
 
@@ -15646,7 +15654,7 @@ async function loadRptGFATab(){
               </div>
               <div class="gfa-pop">
                 <div style="width:180px;height:180px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden">
-                  <img src="${CIMG}${encodeURIComponent(o.cid)}" style="max-width:100%;max-height:100%;object-fit:contain" onload="this.parentElement.nextElementSibling.textContent=this.naturalWidth+' × '+this.naturalHeight+' · ${o.placement}'" onerror="this.parentElement.innerHTML='<span style=&quot;font-size:11px;color:var(--text3)&quot;>이미지 없음</span>';this.parentElement.nextElementSibling.textContent='파일 관리에서 등록하세요'">
+                  <img src="${CIMG}${encodeURIComponent(o.cid)}" style="max-width:100%;max-height:100%;object-fit:contain" onload="this.parentElement.nextElementSibling.textContent=this.naturalWidth+' × '+this.naturalHeight+' · ${o.placement}'" onerror="var p=this.parentElement,c=p.nextElementSibling;p.innerHTML='<span style=&quot;font-size:11px;color:var(--text3)&quot;>이미지 없음</span>';if(c)c.textContent='파일 관리에서 등록하세요'">
                 </div>
                 <div style="font-size:11px;color:var(--text3);margin-top:7px;text-align:center">${o.placement}</div>
               </div></td>
