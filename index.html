@@ -955,7 +955,14 @@ const _now = new Date();
 const _y = _now.getFullYear();
 const _m = String(_now.getMonth()+1).padStart(2,'0');
 const _lastDay = new Date(_y, _now.getMonth()+1, 0).getDate();
-let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:`${_y}-${_m}-01`, to:`${_y}-${_m}-${_lastDay}`};
+// 로컬(한국) 기준 오늘 — toISOString은 UTC라 오전 9시 이전에 하루 밀림
+function todayLocal(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const _today = todayLocal();
+const _monthEnd = `${_y}-${_m}-${_lastDay}`;
+let currentDateRange = JSON.parse(sessionStorage.getItem('currentDateRange')) || {from:`${_y}-${_m}-01`, to:(_monthEnd > _today ? _today : _monthEnd)};
 
 /* ════ 보고서 상태 ════ */
 let currentReportMonth = (JSON.parse(sessionStorage.getItem('currentDateRange'))?.from || new Date().toISOString()).slice(0,7);
@@ -994,7 +1001,10 @@ async function applyLatestDataDateRange(ck, force){
     if(storedMonth === latestMonth) return;
   }
   const lastDay=String(new Date(Number(y),Number(m),0).getDate()).padStart(2,'0');
-  currentDateRange={from:`${y}-${m}-01`, to:`${y}-${m}-${lastDay}`};
+  const _tdy = todayLocal();
+  let _to = `${y}-${m}-${lastDay}`;
+  if(_to > _tdy) _to = _tdy;
+  currentDateRange={from:`${y}-${m}-01`, to:_to};
   currentReportMonth=latestMonth;
   sessionStorage.setItem('currentDateRange', JSON.stringify(currentDateRange));
   const label=document.getElementById('drangeLabel');
@@ -1827,7 +1837,7 @@ function dpRenderCal(elId, year, month, calNum){
   if(!el) return;
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const dows = ['일','월','화','수','목','금','토'];
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayLocal();
   const fmt = (y,m,d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
   let html = `
@@ -1953,6 +1963,10 @@ function dpApply(){
   if(!dpState.start || !dpState.end){
     toast('⚠️ 시작일과 종료일을 모두 선택해주세요'); return;
   }
+  // 미래 날짜는 오늘까지로 잘라냄
+  const _tdy = todayLocal();
+  if(dpState.start > _tdy) dpState.start = _tdy;
+  if(dpState.end   > _tdy) dpState.end   = _tdy;
   currentDateRange = {from: dpState.start, to: dpState.end};
   currentReportMonth = dpState.start.slice(0,7);
 
