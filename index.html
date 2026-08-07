@@ -5555,7 +5555,7 @@ function saveOneFile(fileObj, client) {
       fileObj.status='저장실패'; renderUploadTab();
       toast('⚠️ ' + fileObj.name + ' — 파일명에서 소재 ID를 찾을 수 없습니다'); return;
     }
-    const path = encodeURIComponent(client) + '/' + encodeURIComponent(cid);
+    const path = String(cid).replace(/[^A-Za-z0-9._-]/g, '');
     fetch(`${SUPABASE_URL}/storage/v1/object/gfa-creatives/${path}`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON_KEY,
@@ -15637,7 +15637,7 @@ async function loadRptGFATab(){
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${lb}</div>
           <div style="font-size:19px;font-weight:700;font-family:'IBM Plex Mono',monospace">${v}${sub?`<span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:5px">${sub}</span>`:''}</div></div>`;
 
-        const CIMG = `${SUPABASE_URL}/storage/v1/object/public/gfa-creatives/${encodeURIComponent(naverApiClient())}/`;
+        const CIMG = `${SUPABASE_URL}/storage/v1/object/public/gfa-creatives/`;
         const body = list.map((o,i)=>{
           const ctr = o.imp>0 ? (o.click/o.imp*100) : 0;
           const cpc = o.click>0 ? Math.round(o.cost/o.click) : 0;
@@ -15646,7 +15646,7 @@ async function loadRptGFATab(){
             <td style="font-size:12px;color:var(--text3)">${i+1}</td>
             <td style="font-size:12.5px;font-weight:600;max-width:250px" class="gfa-cw">
               <div style="display:flex;align-items:center;gap:9px">
-                <div style="width:32px;height:32px;border-radius:6px;overflow:hidden;background:var(--surface);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);position:relative">🖼<img src="${CIMG}${encodeURIComponent(o.cid)}" style="width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0" onerror="this.remove()"></div>
+                <div style="width:32px;height:32px;border-radius:6px;overflow:hidden;background:var(--surface);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);position:relative">🖼<img src="${CIMG}${String(o.cid).replace(/[^A-Za-z0-9._-]/g,'')}" style="width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0" onerror="this.remove()"></div>
                 <div style="min-width:0;overflow:hidden">
                   <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.name}${isBest?` <span style="font-size:10px;background:rgba(3,199,90,.14);color:var(--naver);padding:1px 6px;border-radius:99px;font-weight:700">CTR 최고</span>`:''}</div>
                   <div style="font-size:10.5px;color:var(--text3);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.adgroup} · ${o.placement}</div>
@@ -15654,7 +15654,7 @@ async function loadRptGFATab(){
               </div>
               <div class="gfa-pop">
                 <div style="width:180px;height:180px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden">
-                  <img src="${CIMG}${encodeURIComponent(o.cid)}" style="max-width:100%;max-height:100%;object-fit:contain" onload="this.parentElement.nextElementSibling.textContent=this.naturalWidth+' × '+this.naturalHeight+' · ${o.placement}'" onerror="var p=this.parentElement,c=p.nextElementSibling;p.innerHTML='<span style=&quot;font-size:11px;color:var(--text3)&quot;>이미지 없음</span>';if(c)c.textContent='파일 관리에서 등록하세요'">
+                  <img src="${CIMG}${String(o.cid).replace(/[^A-Za-z0-9._-]/g,'')}" style="max-width:100%;max-height:100%;object-fit:contain" onload="this.parentElement.nextElementSibling.textContent=this.naturalWidth+' × '+this.naturalHeight+' · ${o.placement}'" onerror="var p=this.parentElement,c=p.nextElementSibling;p.innerHTML='<span style=&quot;font-size:11px;color:var(--text3)&quot;>이미지 없음</span>';if(c)c.textContent='파일 관리에서 등록하세요'">
                 </div>
                 <div style="font-size:11px;color:var(--text3);margin-top:7px;text-align:center">${o.placement}</div>
               </div></td>
