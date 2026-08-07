@@ -6005,11 +6005,25 @@ function saveOneFile(fileObj, client) {
           // ── GFA 소재별 파일 (별도 테이블) — 반드시 일별/매체별보다 먼저 판별
           const isCreative = cols.includes('광고 소재 이름') || cols.includes('광고 소재 ID');
           if(isCreative){
+            // 따옴표 안의 쉼표를 보존하는 CSV 분해
+            const splitCsvLine = (ln) => {
+              const out = []; let cur = '', q = false;
+              for(let i=0;i<ln.length;i++){
+                const ch = ln[i];
+                if(ch === '"'){
+                  if(q && ln[i+1] === '"'){ cur += '"'; i++; }
+                  else q = !q;
+                } else if(ch === ',' && !q){ out.push(cur); cur = ''; }
+                else cur += ch;
+              }
+              out.push(cur);
+              return out.map(v=>v.trim());
+            };
             const cRows = [];
             for(let i = headerIdx + 1; i < lines.length; i++){
               const line = lines[i];
               if(!line.trim()) continue;
-              const vals = line.split(',').map(v=>v.trim().replace(/^"+|"+$/g,'').replace(/""/g,'"'));
+              const vals = splitCsvLine(line);
               if(vals.every(v=>!v)) continue;
               const row = {};
               cols.forEach((col,idx)=>{ row[col]=(vals[idx]||'').trim(); });
@@ -15606,7 +15620,53 @@ async function loadRptGFATab(){
           </tr>`;
         }).join('');
 
-        window._gfaCreativeHTML = `
+        const hasConv = list.some(o => o.conv > 0);
+        const pick = (arr, fn) => arr.length ? arr.reduce((a,b)=> fn(b) > fn(a) ? b : a) : null;
+        const cards = [];
+        if(hasConv){
+          const c = pick(list.filter(o=>o.cost>0), o=>o.rev/o.cost);
+          if(c) cards.push({t:'ROAS 1위', c:'var(--naver)', o:c, hl:'roas'});
+        }
+        const spend = pick(list, o=>o.cost);
+        if(spend) cards.push({t:'소진액 1위', c:'var(--blue)', o:spend, hl:'cost'});
+        const ctrPool = list.filter(o=>o.imp>=100);
+        const ctrTop = pick(ctrPool.length?ctrPool:list, o=>o.imp>0?o.click/o.imp:0);
+        if(ctrTop) cards.push({t:'CTR 1위', c:'var(--naver)', o:ctrTop, hl:'ctr'});
+        if(!hasConv){
+          let cpcPool = list.filter(o=>o.click>=300);
+          if(!cpcPool.length) cpcPool = list.filter(o=>o.click>0);
+          if(cpcPool.length){
+            const cpcTop = cpcPool.reduce((a,b)=> (b.cost/b.click) < (a.cost/a.click) ? b : a);
+            cards.push({t:'CPC 최저', c:'var(--gold)', o:cpcTop, hl:'cpc', sub:'클릭 300+'});
+          }
+        }
+        const rowLine = (lb,v,hi,col) => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text3)">${lb}</span><span style="font-family:'IBM Plex Mono',monospace${hi?';font-weight:700;color:'+col:''}">${v}</span></div>`;
+        const bestHTML = !cards.length ? '' : `
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hd"><div><div class="card-title">🏆 기간 BEST 소재</div></div>
+            <span style="font-size:12px;color:var(--text3)">${cFrom} ~ ${cTo}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(${cards.length},1fr);gap:11px">
+            ${cards.map(cd=>{
+              const o = cd.o;
+              const ct = o.imp>0 ? (o.click/o.imp*100).toFixed(2)+'%' : '—';
+              const cp = o.click>0 ? fmt(Math.round(o.cost/o.click)) : '—';
+              const rs = o.cost>0 && o.rev>0 ? (o.rev/o.cost*100).toFixed(1)+'%' : '—';
+              return `<div style="border:1px solid var(--border);border-radius:12px;padding:13px 15px">
+                <div style="font-size:11px;font-weight:700;color:${cd.c};margin-bottom:8px">◆ ${cd.t}${cd.sub?` <span style="color:var(--text3);font-weight:400">· ${cd.sub}</span>`:''}</div>
+                <div style="font-size:13px;font-weight:700;line-height:1.4;min-height:36px;overflow:hidden">${o.name}</div>
+                <div style="border-top:1px solid var(--border);margin-top:9px;padding-top:9px">
+                  ${rowLine('광고비', fmt(o.cost), cd.hl==='cost', cd.c)}
+                  ${rowLine('클릭수', fmtn(o.click), false)}
+                  ${rowLine('CTR', ct, cd.hl==='ctr', cd.c)}
+                  ${rowLine('평균CPC', cp, cd.hl==='cpc', cd.c)}
+                  ${rowLine('구매완료', fmtn(o.conv)+'건', false)}
+                  ${rowLine('ROAS', rs, cd.hl==='roas', cd.c)}
+                </div></div>`;
+            }).join('')}
+          </div>
+        </div>`;
+
+        window._gfaCreativeHTML = bestHTML + `
         <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
           <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
             <div style="font-size:14px;font-weight:600">🎨 소재별 성과 <span style="font-size:11px;background:rgba(3,199,90,.12);color:var(--naver);padding:2px 8px;border-radius:99px;margin-left:6px">소재 ${list.length}개</span></div>
